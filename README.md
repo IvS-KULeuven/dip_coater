@@ -1,6 +1,6 @@
 # The Dip Coater App
 
-This small App is developed for IvS to drive the motor fro the dip coater. The motor is connected to a Raspberry Pi through the GPIO bus.
+This small App is developed for IvS to drive the motor for the dip coater. The motor is connected to a Raspberry Pi through the GPIO bus.
 
 ## Installation
 
