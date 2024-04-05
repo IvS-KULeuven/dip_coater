@@ -2,6 +2,8 @@
 
 This small App is developed for IvS to drive the motor for the dip coater. The motor is connected to a Raspberry Pi through the GPIO bus.
 
+This App is develop with [Textual](https://www.textualize.io).
+
 ## Installation
 
 Always install in a dedicated virtual environment!
