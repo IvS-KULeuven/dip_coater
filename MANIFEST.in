@@ -1,0 +1,4 @@
+# Exclude the entire directory named "RPi"
+recursive-exclude src/RPi *
+
+include dip_coater/tui.tcss
