@@ -23,7 +23,7 @@ requires-python = ">=3.8, <4.0"
 dependencies = [
     "textual",
     "textual-dev",
-    "TMC-2209-Raspberry-Pi"
+    "TMC-2209-Raspberry-Pi>=0.4.3"
 ]
 
 [project.urls]
