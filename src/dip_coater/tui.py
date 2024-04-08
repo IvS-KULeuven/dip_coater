@@ -32,16 +32,16 @@ except ModuleNotFoundError:
     import sys
     import MyRPi
     sys.modules["RPi"] = MyRPi
+
 try:
     import TMC_2209
 except ModuleNotFoundError:
     import sys
-    import MyTMC_2209
-    sys.modules["TMC_2209"] = MyTMC_2209
+    import MyTMC_2209 as TMC_2209
+    sys.modules["TMC_2209"] = TMC_2209
 
 from TMC_2209._TMC_2209_logger import Loglevel
-import dip_coater.motor as motor
-from motor import TMC2209_MotorDriver
+from dip_coater.motor import TMC2209_MotorDriver
 
 # Logging settings
 STEP_MODE_WRITE_TO_LOG = False
