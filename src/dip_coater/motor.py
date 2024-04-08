@@ -24,6 +24,8 @@ class TMC2209_MotorDriver:
 
         self.tmc.tmc_logger.set_loglevel(_loglevel)  # NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL
 
+        # Set motor driver settings
+        self.tmc.set_vactual(True)      # Motor is controlled by UART
         self.tmc.set_direction_reg(False)
         self.tmc.set_current(1500)
         self.tmc.set_interpolation(True)
