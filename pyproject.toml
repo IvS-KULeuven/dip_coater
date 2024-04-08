@@ -4,14 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dip-coater"
-version = "0.6.0"
+version = "0.7.0"
 authors = [
     {name="Rik Huygen", email="rik.huygen@kuleuven.be"}
 ]
 license = { text = "MIT License" }
 readme = "README.md"
 classifiers = [
-    "Framework :: Textual",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -26,6 +25,9 @@ dependencies = [
     "rpimotorlib"
 ]
 
+[project.urls]
+repository = "https://github.com/IvS-KULeuven/dip_coater"
+
 [project.optional-dependencies]
 rpi = ["RPi.GPIO"]
 
@@ -39,4 +41,5 @@ where = ["src"]
 dip_coater = [
     "*.tcss",
     "*.md",
+    "images/*.png"
 ]
