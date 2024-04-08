@@ -30,10 +30,20 @@ except ModuleNotFoundError:
     import sys
     import MyRPi
     sys.modules["RPi"] = MyRPi
+try:
+    import TMC_2209
+except ModuleNotFoundError:
+    import sys
+    import MyTMC_2209
+    sys.modules["TMC_2209"] = MyTMC_2209
 
+from TMC_2209._TMC_2209_logger import Loglevel
 import dip_coater.motor as motor
+from motor import TMC2209_MotorDriver
 
+# Logging settings
 STEP_MODE_WRITE_TO_LOG = False
+LOGGING_LEVEL = Loglevel.ERROR  # NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL
 
 DEFAULT_SPEED = 10
 SPEED_STEP = 1
@@ -46,43 +56,55 @@ MAX_DISTANCE = 300
 MIN_DISTANCE = 0
 
 STEP_MODE = {
-    "I16": "1/16",
-    "I8": "1/8",
-    "I4": "1/4",
-    "I2": "Half",
-    "I1": "Full",
+    "I1": 1,
+    "I2": 2,
+    "I4": 4,
+    "I8": 8,
+    "I16": 16,
+    "I32": 32,
+    "I64": 64,
+    "I128": 128,
+    "I256": 256,
 }
 
 class StepMode(Static):
-    def __init__(self):
+    def __init__(self, motor_driver: TMC2209_MotorDriver):
         super().__init__()
-        self.step_mode = '1/4'
+        self.step_mode = 8
+        self.motor_driver = motor_driver
+        self.motor_driver.set_stepmode(self.step_mode)
 
     def compose(self) -> ComposeResult:
         with Vertical():
             yield Label("Step Mode")
             with RadioSet(id="step-mode"):
-                yield RadioButton("1/16", id="I16")
-                yield RadioButton("1/8", id="I8")
-                yield RadioButton("1/4", id="I4", value=True)
-                yield RadioButton("1/2", id="I2")
                 yield RadioButton("1", id="I1")
+                yield RadioButton("1/2", id="I2")
+                yield RadioButton("1/4", id="I4")
+                yield RadioButton("1/8", id="I8", value=True)
+                yield RadioButton("1/16", id="I16")
+                yield RadioButton("1/32", id="I32")
+                #yield RadioButton("1/64", id="I64")
+                #yield RadioButton("1/128", id="I128")
+                #yield RadioButton("1/256", id="I256")
 
     def on_mount(self):
-        self.app.query_one(Status).step_mode = f"StepMode: 1/4 mm/s"
+        self.app.query_one(Status).step_mode = f"StepMode: 1/8 µsteps"
 
     def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
         self.step_mode = STEP_MODE[event.pressed.id]
+        self.motor_driver.set_stepmode(self.step_mode)
         if STEP_MODE_WRITE_TO_LOG:
             log = self.app.query_one(RichLog)
-            log.write(f"StepMode set to {event.pressed.label} mm/s")
-        self.app.query_one(Status).step_mode = f"Step Mode: {event.pressed.label} mm/s ({self.step_mode})"
+            log.write(f"StepMode set to {event.pressed.label} µsteps.")
+        self.app.query_one(Status).step_mode = f"Step Mode: {event.pressed.label} µsteps ({self.step_mode})"
 
 
 class MotorControls(Static):
-    def __init__(self):
+    def __init__(self, motor_driver: TMC2209_MotorDriver):
         super().__init__()
         self._motor_state: str = "disabled"
+        self.motor_driver = motor_driver
 
     def compose(self) -> ComposeResult:
         yield Button("move UP", id="move-up")
@@ -108,10 +130,8 @@ class MotorControls(Static):
         log = self.app.query_one(RichLog)
         if self._motor_state == "enabled":
             distance_mm, speed_mm_s, step_mode = self.get_parameters()
-            steps, delay = motor.calculate_steps_and_delay(distance_mm, speed_mm_s, step_mode)
-            log.write(f"Moving up ({distance_mm=}, {speed_mm_s=}, {step_mode=}) with {steps=} and {delay=}.")
-
-            motor.move_up(distance_mm, speed_mm_s, step_mode)
+            log.write(f"Moving up ({distance_mm=} mm, {speed_mm_s=} mm/s, {step_mode=} step mode).")
+            self.motor_driver.move_up(distance_mm, speed_mm_s)
         else:
             log.write("[red]We cannot move up when the motor is disabled[/]")
 
@@ -120,10 +140,8 @@ class MotorControls(Static):
         log = self.app.query_one(RichLog)
         if self._motor_state == "enabled":
             distance_mm, speed_mm_s, step_mode = self.get_parameters()
-            steps, delay = motor.calculate_steps_and_delay(distance_mm, speed_mm_s, step_mode)
-            log.write(f"Moving down ({distance_mm=}, {speed_mm_s=}, {step_mode=}) with {steps=} and {delay=}.")
-
-            motor.move_down(distance_mm, speed_mm_s, step_mode)
+            log.write(f"Moving down ({distance_mm=} mm, {speed_mm_s=} mm/s, {step_mode=} step mode).")
+            self.motor_driver.move_down(distance_mm, speed_mm_s, step_mode)
         else:
             log.write("[red]We cannot move down when the motor is disabled[/]")
 
@@ -131,7 +149,7 @@ class MotorControls(Static):
     def enable_motor(self):
         log = self.app.query_one(RichLog)
         if self._motor_state == "disabled":
-            motor.enable_motor()
+            self.motor_driver.enable_motor()
             self._motor_state = "enabled"
             log.write(f"Motor is now enabled.")
             self.app.query_one(Status).motor = "Motor: [green]ENABLED[/]"
@@ -140,7 +158,7 @@ class MotorControls(Static):
     def disable_motor(self):
         log = self.app.query_one(RichLog)
         if self._motor_state == "enabled":
-            motor.disable_motor()
+            self.motor_driver.disable_motor()
             self._motor_state = "disabled"
             log.write(f"[dark_orange]Motor is now disabled.[/]")
             self.app.query_one(Status).motor = "Motor: [dark_orange]DISABLED[/]"
@@ -291,9 +309,12 @@ class DipCoaterApp(App):
         ("h", "show_help", "Help"),
     ]
     COMMANDS = App.COMMANDS | {HelpCommand}
-    def on_mount(self):
-        motor.init_motor_driver()
 
+    def __init__(self):
+        super().__init__()
+        self.motor_driver = TMC2209_MotorDriver(_loglevel=LOGGING_LEVEL)
+
+    def on_mount(self):
         # on_mount() is called after compose(), so the RichLog is known
         log = self.query_one(RichLog)
         log.write("Motor has been initialised.")
@@ -303,10 +324,10 @@ class DipCoaterApp(App):
         yield Footer()
         with Horizontal():
             with Vertical(id="left-side"):
-                yield StepMode()
+                yield StepMode(self.motor_driver)
                 yield SpeedControls()
                 yield DistanceControls()
-                yield MotorControls()
+                yield MotorControls(self.motor_driver)
                 yield RichLog(markup=True, id="logger")
             with Vertical(id="right-side"):
                 yield Status()
@@ -316,8 +337,7 @@ class DipCoaterApp(App):
         self.dark = not self.dark
 
     def action_request_quit(self) -> None:
-        motor.disable_motor()
-        motor.GPIO.cleanup()
+        self.motor_driver.cleanup()
         self.app.exit()
 
     def action_show_help(self):
