@@ -59,13 +59,22 @@ SpeedControls {
     #speed-label {
         width: 10;
     }
-    #speed-up {
-        width: 6;
+    #speed-down-coarse, #speed-down-fine {
+        width: 7;
+    }
+    #speed-down-fine {
         margin-right: 1;
     }
-    #speed-down {
-        width: 6;
-        margin-left: 1;  # note: margins overlap
+    #speed-up-coarse, #speed-up-fine {
+        width: 7;
+    }
+    #speed-input {
+        content-align: left top;
+        margin-left: 2;
+        width: 7;
+        height: 1;
+        padding: 0;
+        border: none;
     }
 }
 
@@ -76,17 +85,26 @@ DistanceControls {
     #distance-label {
         width: 10;
     }
-    #distance-up {
-        width: 6;
+    #distance-down-coarse, #distance-down-fine {
+        width: 7;
+    }
+    #distance-down-fine {
         margin-right: 1;
     }
-    #distance-down {
-        width: 6;
-        margin-left: 1;
+    #distance-up-coarse, #distance-up-fine {
+        width: 7;
+    }
+    #distance-input {
+        content-align: left top;
+        margin-left: 2;
+        width: 7;
+        height: 1;
+        padding: 0;
+        border: none;
     }
 }
 
-#speed-up {
+#speed-down-coarse, #speed-down-fine {
     margin-right: 0;
     margin-left: 0;
     height: 1;
@@ -95,7 +113,7 @@ DistanceControls {
     padding: 0 0 0 0;
 }
 
-#speed-down {
+#speed-up-coarse, #speed-up-fine {
     margin-right: 0;
     margin-left: 0;
     height: 1;
@@ -104,7 +122,7 @@ DistanceControls {
     padding: 0 0 0 0;
 }
 
-#distance-up {
+#distance-up-coarse, #distance-up-fine {
     margin-right: 0;
     margin-left: 0;
     height: 1;
@@ -113,7 +131,7 @@ DistanceControls {
     padding: 0 0 0 0;
 }
 
-#distance-down {
+#distance-down-coarse, #distance-down-fine {
     margin-right: 0;
     margin-left: 0;
     height: 1;

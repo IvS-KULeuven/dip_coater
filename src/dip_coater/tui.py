@@ -17,11 +17,13 @@ from textual.widgets import Button
 from textual.widgets import Footer
 from textual.widgets import Header
 from textual.widgets import Label
+from textual.widgets import Input
 from textual.widgets import MarkdownViewer
 from textual.widgets import RadioButton
 from textual.widgets import RadioSet
 from textual.widgets import RichLog
 from textual.widgets import Static
+from textual.validation import Number
 
 # Mock the import of RPi when the package is not available
 try:
@@ -30,65 +32,91 @@ except ModuleNotFoundError:
     import sys
     import MyRPi
     sys.modules["RPi"] = MyRPi
+try:
+    import TMC_2209
+except ModuleNotFoundError:
+    import sys
+    import MyTMC_2209
+    sys.modules["TMC_2209"] = MyTMC_2209
 
+from TMC_2209._TMC_2209_logger import Loglevel
 import dip_coater.motor as motor
+from motor import TMC2209_MotorDriver
 
+# Logging settings
 STEP_MODE_WRITE_TO_LOG = False
+LOGGING_LEVEL = Loglevel.ERROR  # NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL
 
+# Speed settings (mm/s)
 DEFAULT_SPEED = 10
-SPEED_STEP = 1
-MAX_SPEED = 100
-MIN_SPEED = 1
+SPEED_STEP_COARSE = 1
+SPEED_STEP_FINE = 0.1
+MAX_SPEED = 50
+MIN_SPEED = 0.01
 
-DEFAULT_DISTANCE = 50
-DISTANCE_STEP = 10
-MAX_DISTANCE = 300
+# Distance settings (mm)
+DEFAULT_DISTANCE = 10
+DISTANCE_STEP_COARSE = 5
+DISTANCE_STEP_FINE = 1
+MAX_DISTANCE = 250
 MIN_DISTANCE = 0
 
 STEP_MODE = {
-    "I16": "1/16",
-    "I8": "1/8",
-    "I4": "1/4",
-    "I2": "Half",
-    "I1": "Full",
+    "I1": 1,
+    "I2": 2,
+    "I4": 4,
+    "I8": 8,
+    "I16": 16,
+    "I32": 32,
+    "I64": 64,
+    "I128": 128,
+    "I256": 256,
 }
 
 class StepMode(Static):
-    def __init__(self):
+    def __init__(self, motor_driver: TMC2209_MotorDriver):
         super().__init__()
-        self.step_mode = '1/4'
+        self.step_mode = 8
+        self.motor_driver = motor_driver
+        self.motor_driver.set_stepmode(self.step_mode)
 
     def compose(self) -> ComposeResult:
         with Vertical():
             yield Label("Step Mode")
             with RadioSet(id="step-mode"):
-                yield RadioButton("1/16", id="I16")
-                yield RadioButton("1/8", id="I8")
-                yield RadioButton("1/4", id="I4", value=True)
-                yield RadioButton("1/2", id="I2")
                 yield RadioButton("1", id="I1")
+                yield RadioButton("1/2", id="I2")
+                yield RadioButton("1/4", id="I4")
+                yield RadioButton("1/8", id="I8", value=True)
+                yield RadioButton("1/16", id="I16")
+                yield RadioButton("1/32", id="I32")
+                #yield RadioButton("1/64", id="I64")
+                #yield RadioButton("1/128", id="I128")
+                #yield RadioButton("1/256", id="I256")
 
     def on_mount(self):
-        self.app.query_one(Status).step_mode = f"StepMode: 1/4 mm/s"
+        self.app.query_one(Status).step_mode = f"StepMode: 1/8 µsteps"
 
     def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
         self.step_mode = STEP_MODE[event.pressed.id]
+        self.motor_driver.set_stepmode(self.step_mode)
         if STEP_MODE_WRITE_TO_LOG:
             log = self.app.query_one(RichLog)
-            log.write(f"StepMode set to {event.pressed.label} mm/s")
-        self.app.query_one(Status).step_mode = f"Step Mode: {event.pressed.label} mm/s ({self.step_mode})"
+            log.write(f"StepMode set to {event.pressed.label} µsteps.")
+        self.app.query_one(Status).step_mode = f"Step Mode: {event.pressed.label} µsteps ({self.step_mode})"
 
 
 class MotorControls(Static):
-    def __init__(self):
+    def __init__(self, motor_driver: TMC2209_MotorDriver):
         super().__init__()
         self._motor_state: str = "disabled"
+        self.motor_driver = motor_driver
 
     def compose(self) -> ComposeResult:
-        yield Button("move UP", id="move-up")
-        yield Button("move DOWN", id="move-down")
-        yield Button("enable motor", id="enable-motor")
-        yield Button("disable motor", id="disable-motor")
+        yield Button("Move UP", id="move-up")
+        yield Button("Move DOWN", id="move-down")
+        yield Button("Enable motor", id="enable-motor")
+        yield Button("Disable motor", id="disable-motor")
 
     @property
     def motor_state(self):
@@ -108,10 +136,8 @@ class MotorControls(Static):
         log = self.app.query_one(RichLog)
         if self._motor_state == "enabled":
             distance_mm, speed_mm_s, step_mode = self.get_parameters()
-            steps, delay = motor.calculate_steps_and_delay(distance_mm, speed_mm_s, step_mode)
-            log.write(f"Moving up ({distance_mm=}, {speed_mm_s=}, {step_mode=}) with {steps=} and {delay=}.")
-
-            motor.move_up(distance_mm, speed_mm_s, step_mode)
+            log.write(f"Moving up ({distance_mm=} mm, {speed_mm_s=} mm/s, {step_mode=} step mode).")
+            self.motor_driver.move_up(distance_mm, speed_mm_s)
         else:
             log.write("[red]We cannot move up when the motor is disabled[/]")
 
@@ -120,10 +146,8 @@ class MotorControls(Static):
         log = self.app.query_one(RichLog)
         if self._motor_state == "enabled":
             distance_mm, speed_mm_s, step_mode = self.get_parameters()
-            steps, delay = motor.calculate_steps_and_delay(distance_mm, speed_mm_s, step_mode)
-            log.write(f"Moving down ({distance_mm=}, {speed_mm_s=}, {step_mode=}) with {steps=} and {delay=}.")
-
-            motor.move_down(distance_mm, speed_mm_s, step_mode)
+            log.write(f"Moving down ({distance_mm=} mm, {speed_mm_s=} mm/s, {step_mode=} step mode).")
+            self.motor_driver.move_down(distance_mm, speed_mm_s)
         else:
             log.write("[red]We cannot move down when the motor is disabled[/]")
 
@@ -131,7 +155,7 @@ class MotorControls(Static):
     def enable_motor(self):
         log = self.app.query_one(RichLog)
         if self._motor_state == "disabled":
-            motor.enable_motor()
+            self.motor_driver.enable_motor()
             self._motor_state = "enabled"
             log.write(f"Motor is now enabled.")
             self.app.query_one(Status).motor = "Motor: [green]ENABLED[/]"
@@ -140,7 +164,7 @@ class MotorControls(Static):
     def disable_motor(self):
         log = self.app.query_one(RichLog)
         if self._motor_state == "enabled":
-            motor.disable_motor()
+            self.motor_driver.disable_motor()
             self._motor_state = "disabled"
             log.write(f"[dark_orange]Motor is now disabled.[/]")
             self.app.query_one(Status).motor = "Motor: [dark_orange]DISABLED[/]"
@@ -152,27 +176,57 @@ class SpeedControls(Widget):
     def compose(self) -> ComposeResult:
         with Horizontal():
             yield Label("Speed: ", id="speed-label")
-            yield Button("UP", id="speed-up")
-            yield Button("DOWN", id="speed-down")
-            yield Label(f"{DEFAULT_SPEED} mm/s", id="speed-value")
+            yield Button(f"-- {SPEED_STEP_COARSE}", id="speed-down-coarse")
+            yield Button(f"- {SPEED_STEP_FINE}", id="speed-down-fine")
+            yield Button(f"+ {SPEED_STEP_FINE}", id="speed-up-fine")
+            yield Button(f"++ {SPEED_STEP_COARSE}", id="speed-up-coarse")
+            yield Input(
+                value=f"{DEFAULT_SPEED}",
+                type="number",
+                placeholder="Speed (mm/s)",
+                id="speed-input",
+                validate_on=["submitted"],
+                validators=[Number(minimum=MIN_SPEED, maximum=MAX_SPEED)],
+            )
+            yield Label("mm/s", id="speed-unit")
 
-    @on(Button.Pressed, "#speed-up")
-    def increase_speed(self):
-        if self.speed == 1:
-            self.speed = SPEED_STEP
-        else:
-            self.speed += SPEED_STEP
+    @on(Button.Pressed, "#speed-down-coarse")
+    def decrease_speed_coarse(self):
+        new_speed = self.speed - SPEED_STEP_COARSE
+        self.set_speed(new_speed)
 
-    @on(Button.Pressed, "#speed-down")
-    def decrease_speed(self):
-        self.speed -= SPEED_STEP
+    @on(Button.Pressed, "#speed-down-fine")
+    def decrease_speed_fine(self):
+        new_speed = self.speed - SPEED_STEP_FINE
+        self.set_speed(new_speed)
 
-    def watch_speed(self, speed: int):
-        label = self.query_one("#speed-value", Label)
-        label.update(f"{speed} mm/s")
+    @on(Button.Pressed, "#speed-up-fine")
+    def increase_speed_fine(self):
+        new_speed = self.speed + SPEED_STEP_FINE
+        self.set_speed(new_speed)
+
+    @on(Button.Pressed, "#speed-up-coarse")
+    def increase_speed_coarse(self):
+        new_speed = self.speed + SPEED_STEP_COARSE
+        self.set_speed(new_speed)
+
+    @on(Input.Submitted, "#speed-input")
+    def submit_speed_input(self):
+        speed_input = self.query_one("#speed-input", Input)
+        speed = float(speed_input.value)
+        self.set_speed(speed)
+
+    def set_speed(self, speed: float):
+        validated_speed = self.validate_speed(speed)
+        self.speed = round(validated_speed, 2)
+
+    def watch_speed(self, speed: float):
+        speed_input = self.query_one("#speed-input", Input)
+        speed_input.value = f"{speed}"
         self.app.query_one(Status).speed = f"Speed: {speed} mm/s"
 
-    def validate_speed(self, speed: int) -> int:
+    @staticmethod
+    def validate_speed(speed: float) -> int:
         if speed > MAX_SPEED:
             speed = MAX_SPEED
         elif speed < MIN_SPEED:
@@ -186,24 +240,57 @@ class DistanceControls(Static):
     def compose(self) -> ComposeResult:
         with Horizontal():
             yield Label("Distance: ", id="distance-label")
-            yield Button("UP", id="distance-up")
-            yield Button("DOWN", id="distance-down")
-            yield Label(f"{DEFAULT_DISTANCE} mm", id="distance-value")
+            yield Button(f"-- {DISTANCE_STEP_COARSE}", id="distance-down-coarse")
+            yield Button(f"- {DISTANCE_STEP_FINE}", id="distance-down-fine")
+            yield Button(f"+ {DISTANCE_STEP_FINE}", id="distance-up-fine")
+            yield Button(f"++ {DISTANCE_STEP_COARSE}", id="distance-up-coarse")
+            yield Input(
+                value=f"{DEFAULT_DISTANCE}",
+                type="number",
+                placeholder="Distance (mm)",
+                id="distance-input",
+                validate_on=["submitted"],
+                validators=[Number(minimum=MIN_DISTANCE, maximum=MAX_DISTANCE)],
+            )
+            yield Label("mm", id="distance-unit")
 
-    @on(Button.Pressed, "#distance-up")
-    def increase_distance(self):
-        self.distance += DISTANCE_STEP
+    @on(Button.Pressed, "#distance-down-coarse")
+    def decrease_distance_coarse(self):
+        new_distance = self.distance - DISTANCE_STEP_COARSE
+        self.set_distance(new_distance)
 
-    @on(Button.Pressed, "#distance-down")
-    def decrease_distance(self):
-        self.distance -= DISTANCE_STEP
+    @on(Button.Pressed, "#distance-down-fine")
+    def decrease_distance_fine(self):
+        new_distance = self.distance - DISTANCE_STEP_FINE
+        self.set_distance(new_distance)
 
-    def watch_distance(self, distance: int):
-        label = self.query_one("#distance-value", Label)
-        label.update(f"{distance} mm")
+    @on(Button.Pressed, "#distance-up-fine")
+    def increase_distance_fine(self):
+        new_distance = self.distance + DISTANCE_STEP_FINE
+        self.set_distance(new_distance)
+
+    @on(Button.Pressed, "#distance-up-coarse")
+    def increase_distance_coarse(self):
+        new_distance = self.distance + DISTANCE_STEP_COARSE
+        self.set_distance(new_distance)
+
+    @on(Input.Submitted, "#distance-input")
+    def submit_speed_input(self):
+        distance_input = self.query_one("#distance-input", Input)
+        distance = float(distance_input.value)
+        self.set_distance(distance)
+
+    def set_distance(self, distance: float):
+        validated_distance = self.validate_distance(distance)
+        self.distance = round(validated_distance, 1)
+
+    def watch_distance(self, distance: float):
+        distance_input = self.query_one("#distance-input", Input)
+        distance_input.value = f"{distance}"
         self.app.query_one(Status).distance = f"Distance: {distance} mm"
 
-    def validate_distance(self, distance: int) -> int:
+    @staticmethod
+    def validate_distance(distance: float) -> float:
         if distance > MAX_DISTANCE:
             distance = MAX_DISTANCE
         elif distance < MIN_DISTANCE:
@@ -291,9 +378,12 @@ class DipCoaterApp(App):
         ("h", "show_help", "Help"),
     ]
     COMMANDS = App.COMMANDS | {HelpCommand}
-    def on_mount(self):
-        motor.init_motor_driver()
 
+    def __init__(self):
+        super().__init__()
+        self.motor_driver = TMC2209_MotorDriver(_loglevel=LOGGING_LEVEL)
+
+    def on_mount(self):
         # on_mount() is called after compose(), so the RichLog is known
         log = self.query_one(RichLog)
         log.write("Motor has been initialised.")
@@ -303,10 +393,10 @@ class DipCoaterApp(App):
         yield Footer()
         with Horizontal():
             with Vertical(id="left-side"):
-                yield StepMode()
+                yield StepMode(self.motor_driver)
                 yield SpeedControls()
                 yield DistanceControls()
-                yield MotorControls()
+                yield MotorControls(self.motor_driver)
                 yield RichLog(markup=True, id="logger")
             with Vertical(id="right-side"):
                 yield Status()
@@ -316,8 +406,7 @@ class DipCoaterApp(App):
         self.dark = not self.dark
 
     def action_request_quit(self) -> None:
-        motor.disable_motor()
-        motor.GPIO.cleanup()
+        self.motor_driver.cleanup()
         self.app.exit()
 
     def action_show_help(self):
