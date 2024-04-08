@@ -8,10 +8,13 @@ class TMC_2209:
                  driver_address=0, gpio_mode=None, loglevel=None, skip_uart_init=False):
         self.tmc_logger = TMC_logger(loglevel, f"TMC2209 {driver_address}")
 
-    def set_stepmode(self, ):
+    def set_stepmode(self, _stepmode: int):
         pass
 
     def set_motor_enabled(self, en):
+        pass
+
+    def set_vactual(self, flag: bool):
         pass
 
     def set_vactual_rps(self, rps, duration=0, revolutions=0, acceleration=0):

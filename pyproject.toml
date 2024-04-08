@@ -23,14 +23,13 @@ requires-python = ">=3.8, <4.0"
 dependencies = [
     "textual",
     "textual-dev",
-    "TMC-2209-Raspberry-Pi>=0.4.3"
 ]
 
 [project.urls]
 repository = "https://github.com/IvS-KULeuven/dip_coater"
 
 [project.optional-dependencies]
-rpi = ["RPi.GPIO"]
+rpi = ["RPi.GPIO", "TMC-2209-Raspberry-Pi>=0.4.3"]
 
 [project.scripts]
 dip-coater = "dip_coater.tui:main"
