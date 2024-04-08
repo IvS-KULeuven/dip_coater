@@ -17,11 +17,13 @@ from textual.widgets import Button
 from textual.widgets import Footer
 from textual.widgets import Header
 from textual.widgets import Label
+from textual.widgets import Input
 from textual.widgets import MarkdownViewer
 from textual.widgets import RadioButton
 from textual.widgets import RadioSet
 from textual.widgets import RichLog
 from textual.widgets import Static
+from textual.validation import Number
 
 # Mock the import of RPi when the package is not available
 try:
@@ -45,14 +47,18 @@ from motor import TMC2209_MotorDriver
 STEP_MODE_WRITE_TO_LOG = False
 LOGGING_LEVEL = Loglevel.ERROR  # NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL
 
+# Speed settings (mm/s)
 DEFAULT_SPEED = 10
-SPEED_STEP = 1
-MAX_SPEED = 100
-MIN_SPEED = 1
+SPEED_STEP_COARSE = 1
+SPEED_STEP_FINE = 0.1
+MAX_SPEED = 50
+MIN_SPEED = 0.01
 
-DEFAULT_DISTANCE = 50
-DISTANCE_STEP = 10
-MAX_DISTANCE = 300
+# Distance settings (mm)
+DEFAULT_DISTANCE = 10
+DISTANCE_STEP_COARSE = 5
+DISTANCE_STEP_FINE = 1
+MAX_DISTANCE = 250
 MIN_DISTANCE = 0
 
 STEP_MODE = {
@@ -107,10 +113,10 @@ class MotorControls(Static):
         self.motor_driver = motor_driver
 
     def compose(self) -> ComposeResult:
-        yield Button("move UP", id="move-up")
-        yield Button("move DOWN", id="move-down")
-        yield Button("enable motor", id="enable-motor")
-        yield Button("disable motor", id="disable-motor")
+        yield Button("Move UP", id="move-up")
+        yield Button("Move DOWN", id="move-down")
+        yield Button("Enable motor", id="enable-motor")
+        yield Button("Disable motor", id="disable-motor")
 
     @property
     def motor_state(self):
@@ -170,27 +176,57 @@ class SpeedControls(Widget):
     def compose(self) -> ComposeResult:
         with Horizontal():
             yield Label("Speed: ", id="speed-label")
-            yield Button("UP", id="speed-up")
-            yield Button("DOWN", id="speed-down")
-            yield Label(f"{DEFAULT_SPEED} mm/s", id="speed-value")
+            yield Button(f"-- {SPEED_STEP_COARSE}", id="speed-down-coarse")
+            yield Button(f"- {SPEED_STEP_FINE}", id="speed-down-fine")
+            yield Button(f"+ {SPEED_STEP_FINE}", id="speed-up-fine")
+            yield Button(f"++ {SPEED_STEP_COARSE}", id="speed-up-coarse")
+            yield Input(
+                value=f"{DEFAULT_SPEED}",
+                type="number",
+                placeholder="Speed (mm/s)",
+                id="speed-input",
+                validate_on=["submitted"],
+                validators=[Number(minimum=MIN_SPEED, maximum=MAX_SPEED)],
+            )
+            yield Label("mm/s", id="speed-unit")
 
-    @on(Button.Pressed, "#speed-up")
-    def increase_speed(self):
-        if self.speed == 1:
-            self.speed = SPEED_STEP
-        else:
-            self.speed += SPEED_STEP
+    @on(Button.Pressed, "#speed-down-coarse")
+    def decrease_speed_coarse(self):
+        new_speed = self.speed - SPEED_STEP_COARSE
+        self.set_speed(new_speed)
 
-    @on(Button.Pressed, "#speed-down")
-    def decrease_speed(self):
-        self.speed -= SPEED_STEP
+    @on(Button.Pressed, "#speed-down-fine")
+    def decrease_speed_fine(self):
+        new_speed = self.speed - SPEED_STEP_FINE
+        self.set_speed(new_speed)
 
-    def watch_speed(self, speed: int):
-        label = self.query_one("#speed-value", Label)
-        label.update(f"{speed} mm/s")
+    @on(Button.Pressed, "#speed-up-fine")
+    def increase_speed_fine(self):
+        new_speed = self.speed + SPEED_STEP_FINE
+        self.set_speed(new_speed)
+
+    @on(Button.Pressed, "#speed-up-coarse")
+    def increase_speed_coarse(self):
+        new_speed = self.speed + SPEED_STEP_COARSE
+        self.set_speed(new_speed)
+
+    @on(Input.Submitted, "#speed-input")
+    def submit_speed_input(self):
+        speed_input = self.query_one("#speed-input", Input)
+        speed = float(speed_input.value)
+        self.set_speed(speed)
+
+    def set_speed(self, speed: float):
+        validated_speed = self.validate_speed(speed)
+        self.speed = round(validated_speed, 2)
+
+    def watch_speed(self, speed: float):
+        speed_input = self.query_one("#speed-input", Input)
+        speed_input.value = f"{speed}"
         self.app.query_one(Status).speed = f"Speed: {speed} mm/s"
 
-    def validate_speed(self, speed: int) -> int:
+    @staticmethod
+    def validate_speed(speed: float) -> int:
         if speed > MAX_SPEED:
             speed = MAX_SPEED
         elif speed < MIN_SPEED:
@@ -204,24 +240,57 @@ class DistanceControls(Static):
     def compose(self) -> ComposeResult:
         with Horizontal():
             yield Label("Distance: ", id="distance-label")
-            yield Button("UP", id="distance-up")
-            yield Button("DOWN", id="distance-down")
-            yield Label(f"{DEFAULT_DISTANCE} mm", id="distance-value")
+            yield Button(f"-- {DISTANCE_STEP_COARSE}", id="distance-down-coarse")
+            yield Button(f"- {DISTANCE_STEP_FINE}", id="distance-down-fine")
+            yield Button(f"+ {DISTANCE_STEP_FINE}", id="distance-up-fine")
+            yield Button(f"++ {DISTANCE_STEP_COARSE}", id="distance-up-coarse")
+            yield Input(
+                value=f"{DEFAULT_DISTANCE}",
+                type="number",
+                placeholder="Distance (mm)",
+                id="distance-input",
+                validate_on=["submitted"],
+                validators=[Number(minimum=MIN_DISTANCE, maximum=MAX_DISTANCE)],
+            )
+            yield Label("mm", id="distance-unit")
 
-    @on(Button.Pressed, "#distance-up")
-    def increase_distance(self):
-        self.distance += DISTANCE_STEP
+    @on(Button.Pressed, "#distance-down-coarse")
+    def decrease_distance_coarse(self):
+        new_distance = self.distance - DISTANCE_STEP_COARSE
+        self.set_distance(new_distance)
 
-    @on(Button.Pressed, "#distance-down")
-    def decrease_distance(self):
-        self.distance -= DISTANCE_STEP
+    @on(Button.Pressed, "#distance-down-fine")
+    def decrease_distance_fine(self):
+        new_distance = self.distance - DISTANCE_STEP_FINE
+        self.set_distance(new_distance)
 
-    def watch_distance(self, distance: int):
-        label = self.query_one("#distance-value", Label)
-        label.update(f"{distance} mm")
+    @on(Button.Pressed, "#distance-up-fine")
+    def increase_distance_fine(self):
+        new_distance = self.distance + DISTANCE_STEP_FINE
+        self.set_distance(new_distance)
+
+    @on(Button.Pressed, "#distance-up-coarse")
+    def increase_distance_coarse(self):
+        new_distance = self.distance + DISTANCE_STEP_COARSE
+        self.set_distance(new_distance)
+
+    @on(Input.Submitted, "#distance-input")
+    def submit_speed_input(self):
+        distance_input = self.query_one("#distance-input", Input)
+        distance = float(distance_input.value)
+        self.set_distance(distance)
+
+    def set_distance(self, distance: float):
+        validated_distance = self.validate_distance(distance)
+        self.distance = round(validated_distance, 1)
+
+    def watch_distance(self, distance: float):
+        distance_input = self.query_one("#distance-input", Input)
+        distance_input.value = f"{distance}"
         self.app.query_one(Status).distance = f"Distance: {distance} mm"
 
-    def validate_distance(self, distance: int) -> int:
+    @staticmethod
+    def validate_distance(distance: float) -> float:
         if distance > MAX_DISTANCE:
             distance = MAX_DISTANCE
         elif distance < MIN_DISTANCE:
