@@ -25,6 +25,8 @@ from textual.widgets import RichLog
 from textual.widgets import Static
 from textual.validation import Number
 
+import argparse
+
 # Mock the import of RPi when the package is not available
 try:
     import RPi
@@ -414,6 +416,16 @@ class DipCoaterApp(App):
 
 
 def main():
+    global LOGGING_LEVEL
+    parser = argparse.ArgumentParser(description='Process logging level.')
+    parser.add_argument('-l', '--log-level', type=str, default='ERROR',
+                        choices=['NONE', 'ERROR', 'INFO', 'DEBUG', 'MOVEMENT', 'ALL'],
+                        help='Set the logging level')
+    args = parser.parse_args()
+
+    # Convert string level to the appropriate value in your Loglevel enum
+    LOGGING_LEVEL = getattr(Loglevel, args.log_level)
+
     app = DipCoaterApp()
     app.run()
 
