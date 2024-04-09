@@ -23,3 +23,39 @@ To access more advanced control settings, you can switch to the `Advanced` tab o
 Authors: Rik Huygen (https://github.com/rhuygen), Sibo Van Gool (https://github.com/SiboVG)
 
 Press ESCAPE to Exit.
+
+## Coder API
+
+You can create custom control routines using the coder in the `Coder` tab. To do so, you must write Python code with the following
+functions (the so-called 'Coder API'):
+- `self.enable_motor()`: arm the motor
+- `self.disable_motor()`: disarm the motor
+- `self.move_down(distance_mm, speed_mm_s, acceleration_mm_s=None)`: move the motor down by supplying the following parameters:
+  - `distance_mm`: the distance in mm to move down
+  - `speed_mm_s`: the speed in mm/s to move down
+  - `acceleration_mm_s`: the acceleration in mm/s^2 to move down (optional, leave empty for default acceleration)
+- `self.move_up(distance_mm, speed_mm_s, acceleration_mm_s=None)`: move the motor up by supplying the following parameters:
+  - `distance_mm`: the distance in mm to move up
+  - `speed_mm_s`: the speed in mm/s to move up
+  - `acceleration_mm_s`: the acceleration in mm/s^2 to move up (optional, leave empty for default acceleration)
+- `self.sleep(seconds)`: wait for a number of seconds
+
+For example, to move the motor down by 10 mm at a speed of 5 mm/s, then wait 5 seconds, and then move up by 10 mm at 2 mm/s,
+you can write the following code in the `Coder` tab:
+
+```python
+# Arm the motor
+self.enable_motor()
+
+# Move down
+self.move_down(10, 5)
+
+# Wait for 5 seconds
+self.sleep(5)
+
+# Move up
+self.move_up(10, 2)
+
+# Disarm the motor
+self.disable_motor()
+```

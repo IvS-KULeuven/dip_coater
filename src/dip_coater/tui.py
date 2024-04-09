@@ -25,9 +25,12 @@ from textual.widgets import RichLog
 from textual.widgets import Static
 from textual.widgets import TabPane
 from textual.widgets import TabbedContent
+from textual.widgets import TextArea
 from textual.validation import Number
 
 import argparse
+import asyncio
+import time
 
 # Mock the import of RPi when the package is not available
 try:
@@ -144,21 +147,35 @@ class MotorControls(Static):
 
     @on(Button.Pressed, "#move-up")
     def move_up_action(self):
+        distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
+        self.move_up(distance_mm, speed_mm_s, accel_mm_s2)
+
+    def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
         log = self.app.query_one("#logger", RichLog)
         if self._motor_state == "enabled":
-            distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
-            log.write(f"Moving up ({distance_mm=} mm, {speed_mm_s=} mm/s, {accel_mm_s2=} mm/s^2, {step_mode=} step mode).")
-            self.motor_driver.move_up(distance_mm, speed_mm_s, accel_mm_s2)
+            def_dist, def_speed, def_accel, step_mode = self.get_parameters()
+            if acceleration_mm_s2 is None:
+                acceleration_mm_s2 = def_accel
+            log.write(
+                f"Moving up ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s^2, {step_mode=} step mode).")
+            self.motor_driver.move_up(distance_mm, speed_mm_s, acceleration_mm_s2)
         else:
             log.write("[red]We cannot move up when the motor is disabled[/]")
 
     @on(Button.Pressed, "#move-down")
     def move_down_action(self):
+        distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
+        self.move_down(distance_mm, speed_mm_s, accel_mm_s2)
+
+    def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
         log = self.app.query_one("#logger", RichLog)
         if self._motor_state == "enabled":
-            distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
-            log.write(f"Moving down ({distance_mm=} mm, {speed_mm_s=} mm/s, {accel_mm_s2=} mm/s^2, {step_mode=} step mode).")
-            self.motor_driver.move_down(distance_mm, speed_mm_s, accel_mm_s2)
+            def_dist, def_speed, def_accel, step_mode = self.get_parameters()
+            if acceleration_mm_s2 is None:
+                acceleration_mm_s2 = def_accel
+            log.write(
+                f"Moving down ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s^2, {step_mode=} step mode).")
+            self.motor_driver.move_down(distance_mm, speed_mm_s, acceleration_mm_s2)
         else:
             log.write("[red]We cannot move down when the motor is disabled[/]")
 
@@ -430,6 +447,76 @@ class AdvancedSettings(Static):
             acceleration = MIN_ACCELERATION
         return acceleration
 
+
+class Coder(Static):
+    code = ""
+
+    def compose(self) -> ComposeResult:
+        with Vertical():
+            yield Label("Enter your Coder API code below and press 'RUN code' to execute it.")
+            yield TextArea(
+                "print(\"Hello, World!\")",
+                language="python",
+                show_line_numbers=True,
+                id="code-editor",
+            )
+            yield Button(
+                "RUN code",
+                id="run-code-btn",
+            )
+
+    def _on_mount(self, event: events.Mount) -> None:
+        with open(Path(__file__).parent / "code_editor_init_content.py") as text:
+            self.set_editor_text(text.read())
+
+    @on(Button.Pressed, "#run-code-btn")
+    async def run_code(self):
+        self.code = self.app.query_one("#code-editor", TextArea).text
+        tabbed_content = self.app.query_one("#tabbed-content", TabbedContent)
+        tabbed_content.active = "main-tab"
+        await asyncio.sleep(0.1)
+        await self.exec_code_async()
+
+    async def exec_code_async(self):
+        log = self.app.query_one("#logger", RichLog)
+        try:
+            log.write("[blue]Executing code >>>>>>>>>>>>[/]")
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, self.exec_code)
+            log.write("[dark_cyan]>>>>>>>>>>>> Code finished.[/]")
+        except Exception as e:
+            log.write(f"Error executing code: {e}")
+
+    def exec_code(self):
+        exec(self.code)
+
+    def set_editor_text(self, text: str):
+        self.query_one("#code-editor", TextArea).text = text
+
+    ''' ========== API for the code editor ========== '''
+
+    def enable_motor(self):
+        self.app.query_one(MotorControls).enable_motor_action()
+
+    def disable_motor(self):
+        self.app.query_one(MotorControls).disable_motor_action()
+
+    def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
+        # NOTE: We are purposely not changing the distance, speed and acceleration settings here,
+        # as this may be undesirable in some cases.
+        self.app.query_one(MotorControls).move_up(distance_mm, speed_mm_s, acceleration_mm_s2)
+
+    def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
+        # NOTE: We are purposely not changing the distance, speed and acceleration settings here,
+        # as this may be undesirable in some cases.
+        self.app.query_one(MotorControls).move_down(distance_mm, speed_mm_s, acceleration_mm_s2)
+
+    def sleep(self, seconds: float):
+        log = self.app.query_one("#logger", RichLog)
+        log.write(f"[cyan]...Sleeping for {seconds} seconds...[/]")
+        time.sleep(seconds)
+
+
 class DipCoaterApp(App):
     """A Textual App to control a dip coater motor."""
 
@@ -453,8 +540,8 @@ class DipCoaterApp(App):
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         yield Footer()
-        with TabbedContent():
-            with TabPane("Main"):
+        with TabbedContent(initial="main-tab", id="tabbed-content"):
+            with TabPane("Main", id="main-tab"):
                 with Horizontal():
                     with Vertical(id="left-side"):
                         yield StepMode(self.motor_driver)
@@ -464,13 +551,15 @@ class DipCoaterApp(App):
                         yield RichLog(markup=True, id="logger")
                     with Vertical(id="right-side"):
                         yield Status()
-            with TabPane("Advanced"):
+            with TabPane("Advanced", id="advanced-tab"):
                 with Horizontal():
                     with Vertical(id="left-side-advanced"):
                         yield AdvancedSettings()
                         yield RichLog(markup=True, id="motor-logger")       # TODO: write motor logs to here
                     with Vertical(id="right-side-advanced"):
                         yield StatusAdvanced()
+            with TabPane("Coder", id="coder-tab"):
+                yield Coder()
 
     def action_toggle_dark(self) -> None:
         """An action to toggle dark mode."""
