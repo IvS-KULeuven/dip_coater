@@ -63,6 +63,11 @@ DISTANCE_STEP_FINE = 1
 MAX_DISTANCE = 250
 MIN_DISTANCE = 0
 
+# Acceleration settings (mm/s^2)
+DEFAULT_ACCELERATION = 10
+MIN_ACCELERATION = 0.5
+MAX_ACCELERATION = 40
+
 STEP_MODE = {
     "I1": 1,
     "I2": 2,
@@ -129,17 +134,18 @@ class MotorControls(Static):
         distance_mm = widget.distance
         widget = self.app.query_one(SpeedControls)
         speed_mm_s = widget.speed
+        accel_mm_s2 = DEFAULT_ACCELERATION      # TODO: replace with widget in advanced motor settings dialog
         widget = self.app.query_one(StepMode)
         step_mode = widget.step_mode
-        return distance_mm, speed_mm_s, step_mode
+        return distance_mm, speed_mm_s, accel_mm_s2, step_mode
 
     @on(Button.Pressed, "#move-up")
     def move_up(self):
         log = self.app.query_one(RichLog)
         if self._motor_state == "enabled":
-            distance_mm, speed_mm_s, step_mode = self.get_parameters()
-            log.write(f"Moving up ({distance_mm=} mm, {speed_mm_s=} mm/s, {step_mode=} step mode).")
-            self.motor_driver.move_up(distance_mm, speed_mm_s)
+            distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
+            log.write(f"Moving up ({distance_mm=} mm, {speed_mm_s=} mm/s, {accel_mm_s2=} mm/s^2, {step_mode=} step mode).")
+            self.motor_driver.move_up(distance_mm, speed_mm_s, accel_mm_s2)
         else:
             log.write("[red]We cannot move up when the motor is disabled[/]")
 
@@ -147,9 +153,9 @@ class MotorControls(Static):
     def move_down(self):
         log = self.app.query_one(RichLog)
         if self._motor_state == "enabled":
-            distance_mm, speed_mm_s, step_mode = self.get_parameters()
-            log.write(f"Moving down ({distance_mm=} mm, {speed_mm_s=} mm/s, {step_mode=} step mode).")
-            self.motor_driver.move_down(distance_mm, speed_mm_s)
+            distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
+            log.write(f"Moving down ({distance_mm=} mm, {speed_mm_s=} mm/s, {accel_mm_s2=} mm/s^2, {step_mode=} step mode).")
+            self.motor_driver.move_down(distance_mm, speed_mm_s, accel_mm_s2)
         else:
             log.write("[red]We cannot move down when the motor is disabled[/]")
 
