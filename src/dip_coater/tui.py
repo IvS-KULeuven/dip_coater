@@ -145,7 +145,7 @@ class MotorControls(Static):
         if self._motor_state == "enabled":
             distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
             log.write(f"Moving up ({distance_mm=} mm, {speed_mm_s=} mm/s, {accel_mm_s2=} mm/s^2, {step_mode=} step mode).")
-            self.motor_driver.move_up(distance_mm, speed_mm_s, accel_mm_s2)
+            self.motor_driver.move_up(distance_mm, speed_mm_s, acceleration_mm_s2=accel_mm_s2)
         else:
             log.write("[red]We cannot move up when the motor is disabled[/]")
 
@@ -155,7 +155,7 @@ class MotorControls(Static):
         if self._motor_state == "enabled":
             distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
             log.write(f"Moving down ({distance_mm=} mm, {speed_mm_s=} mm/s, {accel_mm_s2=} mm/s^2, {step_mode=} step mode).")
-            self.motor_driver.move_down(distance_mm, speed_mm_s, accel_mm_s2)
+            self.motor_driver.move_down(distance_mm, speed_mm_s, acceleration_mm_s2=accel_mm_s2)
         else:
             log.write("[red]We cannot move down when the motor is disabled[/]")
 
