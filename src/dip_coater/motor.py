@@ -50,7 +50,7 @@ class TMC2209_MotorDriver:
     def enable_motor(self):
         """ Arm the motor"""
         self.tmc.set_motor_enabled(True)
-        time.sleep(2)
+        time.sleep(0.5)
 
     def disable_motor(self):
         """ Disarm the motor """
