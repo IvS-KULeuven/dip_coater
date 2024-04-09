@@ -18,6 +18,7 @@ After startup the motor will have been initialised, but disabled. Press the `ena
 
 The right part of the screen shows the current values and the state of the motor.
 
+To access more advanced control settings, you can switch to the `Advanced` tab on top of the screen (by default, the `Main` tab is selected).
 
 Authors: Rik Huygen (https://github.com/rhuygen), Sibo Van Gool (https://github.com/SiboVG)
 
