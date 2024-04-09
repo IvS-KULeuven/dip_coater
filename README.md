@@ -38,12 +38,16 @@ $ dip-coater
 
 This will show the following App in your terminal:
 
-![](https://raw.githubusercontent.com/IvS-KULeuven/dip_coater/develop/images/dip-coater-dark.png)
+![](./images/dip-coater-dark.png)
+
+By default, the `Main` tab is selected. You can switch to the `Advanced` tab on top of the screen to access more advanced settings.
+
+![](./images/dip-coater-dark-advanced.png)
 
 If you prefer light mode, press the `d` key.
 
-![](https://raw.githubusercontent.com/IvS-KULeuven/dip_coater/develop/images/dip-coater-light.png)
+![](./images/dip-coater-light.png)
 
 Further help is available in the App by pressing the 'h' key:
 
-![](https://raw.githubusercontent.com/IvS-KULeuven/dip_coater/develop/images/dip-coater-help-screen.png)
+![](./images/dip-coater-help-screen.png)
