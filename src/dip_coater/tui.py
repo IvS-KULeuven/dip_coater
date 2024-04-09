@@ -404,6 +404,9 @@ class AdvancedSettings(Static):
                 validators=[Number(minimum=MIN_ACCELERATION, maximum=MAX_ACCELERATION)],
             )
             yield Label("mm/s^2", id="acceleration-unit")
+        # TODO: set motor current?
+        # TODO: toggle interpolation?
+        # TODO: set logging level using Select widget?
 
     def _on_mount(self, event: events.Mount) -> None:
         self.app.query_one(StatusAdvanced).acceleration = f"Acceleration: {DEFAULT_ACCELERATION} mm/s^2"
