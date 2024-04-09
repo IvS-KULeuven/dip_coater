@@ -27,11 +27,13 @@ class TMC2209_MotorDriver:
         # Set motor driver settings
         self.tmc.set_vactual(True)      # Motor is controlled by UART
         self.tmc.set_direction_reg(False)
-        self.tmc.set_current(1500)
+        self.tmc.set_current(1500, pdn_disable=True)    # mA (also disable PDN, otherwise UART can't be used)
         self.tmc.set_interpolation(True)
         self.tmc.set_spreadcycle(False)  # True: spreadcycle, False: stealthchop
         self.tmc.set_microstepping_resolution(_stepmode)  # 1, 2, 4, 8, 16, 32, 64, 128, 256
         self.tmc.set_internal_rsense(False)
+
+        self.tmc.set_movement_abs_rel(MovementAbsRel.ABSOLUTE)
 
     def set_stepmode(self, _stepmode=4):
         """ Set the step mode of the motor driver
