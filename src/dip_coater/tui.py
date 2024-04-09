@@ -140,7 +140,7 @@ class MotorControls(Static):
         return distance_mm, speed_mm_s, accel_mm_s2, step_mode
 
     @on(Button.Pressed, "#move-up")
-    def move_up(self):
+    def move_up_action(self):
         log = self.app.query_one(RichLog)
         if self._motor_state == "enabled":
             distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
@@ -150,7 +150,7 @@ class MotorControls(Static):
             log.write("[red]We cannot move up when the motor is disabled[/]")
 
     @on(Button.Pressed, "#move-down")
-    def move_down(self):
+    def move_down_action(self):
         log = self.app.query_one(RichLog)
         if self._motor_state == "enabled":
             distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
@@ -160,7 +160,7 @@ class MotorControls(Static):
             log.write("[red]We cannot move down when the motor is disabled[/]")
 
     @on(Button.Pressed, "#enable-motor")
-    def enable_motor(self):
+    def enable_motor_action(self):
         log = self.app.query_one(RichLog)
         if self._motor_state == "disabled":
             self.motor_driver.enable_motor()
@@ -169,7 +169,7 @@ class MotorControls(Static):
             self.app.query_one(Status).motor = "Motor: [green]ENABLED[/]"
 
     @on(Button.Pressed, "#disable-motor")
-    def disable_motor(self):
+    def disable_motor_action(self):
         log = self.app.query_one(RichLog)
         if self._motor_state == "enabled":
             self.motor_driver.disable_motor()
