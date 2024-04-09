@@ -26,7 +26,7 @@ class TMC2209_MotorDriver:
         # Set motor driver settings
         self.tmc.set_vactual(False)      # Motor is not controlled by UART
         self.tmc.set_direction_reg(True)
-        self.tmc.set_current(1500, pdn_disable=False)    # mA
+        self.tmc.set_current(1000, pdn_disable=False)    # mA
         self.tmc.set_interpolation(True)
         self.tmc.set_spreadcycle(False)  # True: spreadcycle, False: stealthchop
         self.tmc.set_microstepping_resolution(_stepmode)  # 1, 2, 4, 8, 16, 32, 64, 128, 256
@@ -50,7 +50,7 @@ class TMC2209_MotorDriver:
     def enable_motor(self):
         """ Arm the motor"""
         self.tmc.set_motor_enabled(True)
-        time.sleep(0.5)
+        time.sleep(2)
 
     def disable_motor(self):
         """ Disarm the motor """
