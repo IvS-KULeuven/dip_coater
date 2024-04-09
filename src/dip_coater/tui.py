@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from textual import on
+from textual import on, events
 from textual.app import App
 from textual.app import ComposeResult
 from textual.command import DiscoveryHit
@@ -23,6 +23,8 @@ from textual.widgets import RadioButton
 from textual.widgets import RadioSet
 from textual.widgets import RichLog
 from textual.widgets import Static
+from textual.widgets import TabPane
+from textual.widgets import TabbedContent
 from textual.validation import Number
 
 import argparse
@@ -108,7 +110,7 @@ class StepMode(Static):
         self.step_mode = STEP_MODE[event.pressed.id]
         self.motor_driver.set_stepmode(self.step_mode)
         if STEP_MODE_WRITE_TO_LOG:
-            log = self.app.query_one(RichLog)
+            log = self.app.query_one("#logger", RichLog)
             log.write(f"StepMode set to {event.pressed.label} µsteps.")
         self.app.query_one(Status).step_mode = f"Step Mode: {event.pressed.label} µsteps ({self.step_mode})"
 
@@ -134,43 +136,44 @@ class MotorControls(Static):
         distance_mm = widget.distance
         widget = self.app.query_one(SpeedControls)
         speed_mm_s = widget.speed
-        accel_mm_s2 = DEFAULT_ACCELERATION      # TODO: replace with widget in advanced motor settings dialog
+        widget = self.app.query_one(AdvancedSettings)
+        accel_mm_s2 = widget.acceleration
         widget = self.app.query_one(StepMode)
         step_mode = widget.step_mode
         return distance_mm, speed_mm_s, accel_mm_s2, step_mode
 
     @on(Button.Pressed, "#move-up")
     def move_up_action(self):
-        log = self.app.query_one(RichLog)
+        log = self.app.query_one("#logger", RichLog)
         if self._motor_state == "enabled":
             distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
             log.write(f"Moving up ({distance_mm=} mm, {speed_mm_s=} mm/s, {accel_mm_s2=} mm/s^2, {step_mode=} step mode).")
-            self.motor_driver.move_up(distance_mm, speed_mm_s, acceleration_mm_s2=accel_mm_s2)
+            self.motor_driver.move_up(distance_mm, speed_mm_s, accel_mm_s2)
         else:
             log.write("[red]We cannot move up when the motor is disabled[/]")
 
     @on(Button.Pressed, "#move-down")
     def move_down_action(self):
-        log = self.app.query_one(RichLog)
+        log = self.app.query_one("#logger", RichLog)
         if self._motor_state == "enabled":
             distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
             log.write(f"Moving down ({distance_mm=} mm, {speed_mm_s=} mm/s, {accel_mm_s2=} mm/s^2, {step_mode=} step mode).")
-            self.motor_driver.move_down(distance_mm, speed_mm_s, acceleration_mm_s2=accel_mm_s2)
+            self.motor_driver.move_down(distance_mm, speed_mm_s, accel_mm_s2)
         else:
             log.write("[red]We cannot move down when the motor is disabled[/]")
 
     @on(Button.Pressed, "#enable-motor")
     def enable_motor_action(self):
-        log = self.app.query_one(RichLog)
+        log = self.app.query_one("#logger", RichLog)
         if self._motor_state == "disabled":
             self.motor_driver.enable_motor()
             self._motor_state = "enabled"
-            log.write(f"Motor is now enabled.")
+            log.write(f"[green]Motor is now enabled.[/]")
             self.app.query_one(Status).motor = "Motor: [green]ENABLED[/]"
 
     @on(Button.Pressed, "#disable-motor")
     def disable_motor_action(self):
-        log = self.app.query_one(RichLog)
+        log = self.app.query_one("#logger", RichLog)
         if self._motor_state == "enabled":
             self.motor_driver.disable_motor()
             self._motor_state = "disabled"
@@ -336,6 +339,15 @@ class Status(Static):
     def watch_motor(self, motor: str):
         self.query_one("#status-motor", Label).update(motor)
 
+class StatusAdvanced(Static):
+    acceleration = reactive("Acceleration: ")
+
+    def compose(self) -> ComposeResult:
+        with Vertical():
+            yield Label(id="status-acceleration")
+
+    def watch_acceleration(self, acceleration: str):
+        self.query_one("#status-acceleration", Label).update(acceleration)
 
 class HelpCommand(Provider):
 
@@ -376,6 +388,45 @@ class HelpScreen(ModalScreen[None]):
             with open(Path(__file__).parent / "help.md") as text:
                 yield MarkdownViewer(text.read(), show_table_of_contents=False)
 
+
+class AdvancedSettings(Static):
+    acceleration = reactive(DEFAULT_ACCELERATION)
+
+    def compose(self) -> ComposeResult:
+        with Horizontal():
+            yield Label("Acceleration: ", id="acceleration-label")
+            yield Input(
+                value=f"{DEFAULT_ACCELERATION}",
+                type="number",
+                placeholder="Acceleration (mm/s^2)",
+                id="acceleration-input",
+                validate_on=["submitted"],
+                validators=[Number(minimum=MIN_ACCELERATION, maximum=MAX_ACCELERATION)],
+            )
+            yield Label("mm/s^2", id="acceleration-unit")
+
+    def _on_mount(self, event: events.Mount) -> None:
+        self.app.query_one(StatusAdvanced).acceleration = f"Acceleration: {DEFAULT_ACCELERATION} mm/s^2"
+
+    @on(Input.Submitted, "#acceleration-input")
+    def submit_acceleration_input(self):
+        acceleration_input = self.query_one("#acceleration-input", Input)
+        acceleration = float(acceleration_input.value)
+        self.acceleration = acceleration
+        self.app.query_one(StatusAdvanced).acceleration = f"Acceleration: {acceleration} mm/s^2"
+
+    def set_acceleration(self, acceleration: float):
+        validated_acceleration = self.validate_acceleration(acceleration)
+        self.acceleration = round(validated_acceleration, 1)
+
+    @staticmethod
+    def validate_acceleration(acceleration: float) -> float:
+        if acceleration > MAX_ACCELERATION:
+            acceleration = MAX_ACCELERATION
+        elif acceleration < MIN_ACCELERATION:
+            acceleration = MIN_ACCELERATION
+        return acceleration
+
 class DipCoaterApp(App):
     """A Textual App to control a dip coater motor."""
 
@@ -393,21 +444,30 @@ class DipCoaterApp(App):
 
     def on_mount(self):
         # on_mount() is called after compose(), so the RichLog is known
-        log = self.query_one(RichLog)
+        log = self.query_one("#logger", RichLog)
         log.write("Motor has been initialised.")
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         yield Footer()
-        with Horizontal():
-            with Vertical(id="left-side"):
-                yield StepMode(self.motor_driver)
-                yield SpeedControls()
-                yield DistanceControls()
-                yield MotorControls(self.motor_driver)
-                yield RichLog(markup=True, id="logger")
-            with Vertical(id="right-side"):
-                yield Status()
+        with TabbedContent():
+            with TabPane("Main"):
+                with Horizontal():
+                    with Vertical(id="left-side"):
+                        yield StepMode(self.motor_driver)
+                        yield SpeedControls()
+                        yield DistanceControls()
+                        yield MotorControls(self.motor_driver)
+                        yield RichLog(markup=True, id="logger")
+                    with Vertical(id="right-side"):
+                        yield Status()
+            with TabPane("Advanced"):
+                with Horizontal():
+                    with Vertical(id="left-side-advanced"):
+                        yield AdvancedSettings()
+                        yield RichLog(markup=True, id="motor-logger")       # TODO: write motor logs to here
+                    with Vertical(id="right-side-advanced"):
+                        yield StatusAdvanced()
 
     def action_toggle_dark(self) -> None:
         """An action to toggle dark mode."""

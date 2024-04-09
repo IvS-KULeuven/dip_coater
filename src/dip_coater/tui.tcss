@@ -143,3 +143,14 @@ DistanceControls {
 .selected {
     background: $success;
 }
+
+AdvancedSettings {
+    #acceleration-input {
+        content-align: left top;
+        margin-left: 2;
+        width: 7;
+        height: 1;
+        padding: 0;
+        border: none;
+    }
+}
