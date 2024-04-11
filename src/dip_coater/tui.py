@@ -104,12 +104,12 @@ class StepMode(Static):
                 yield RadioButton("1/8", id="I8", value=True)
                 yield RadioButton("1/16", id="I16")
                 yield RadioButton("1/32", id="I32")
-                #yield RadioButton("1/64", id="I64")
+                yield RadioButton("1/64", id="I64")
                 #yield RadioButton("1/128", id="I128")
                 #yield RadioButton("1/256", id="I256")
 
     def on_mount(self):
-        self.app.query_one(Status).step_mode = f"StepMode: 1/8 µsteps"
+        self.app.query_one(StatusAdvanced).step_mode = f"StepMode: 1/8 µsteps"
 
     def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
         self.step_mode = STEP_MODE[event.pressed.id]
@@ -117,20 +117,20 @@ class StepMode(Static):
         if STEP_MODE_WRITE_TO_LOG:
             log = self.app.query_one("#logger", RichLog)
             log.write(f"StepMode set to {event.pressed.label} µsteps.")
-        self.app.query_one(Status).step_mode = f"Step Mode: {event.pressed.label} µsteps ({self.step_mode})"
+        self.app.query_one(StatusAdvanced).step_mode = f"Step Mode: {event.pressed.label} µsteps ({self.step_mode})"
 
 
 class MotorControls(Static):
     def __init__(self, motor_driver: TMC2209_MotorDriver):
         super().__init__()
-        self._motor_state: str = "disabled"
+        self._motor_state: str = "disabled"     # TODO: add motor state 'MOVING;
         self.motor_driver = motor_driver
 
     def compose(self) -> ComposeResult:
-        yield Button("Move UP", id="move-up")
-        yield Button("Move DOWN", id="move-down")
-        yield Button("Enable motor", id="enable-motor")
-        yield Button("Disable motor", id="disable-motor")
+        yield Button("Move UP ↑", id="move-up", variant="primary")
+        yield Button("Move DOWN ↓", id="move-down", variant="primary")
+        yield Button("ENABLE motor", id="enable-motor", variant="success")
+        yield Button("DISABLE motor", id="disable-motor", variant="error")
 
     @property
     def motor_state(self):
@@ -161,7 +161,7 @@ class MotorControls(Static):
             log.write(
                 f"Moving up ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s^2, {step_mode=} step mode).")
             self.motor_driver.move_up(distance_mm, speed_mm_s, acceleration_mm_s2)
-            log.write(f"Finished moving up.")
+            log.write(f"-> Finished moving up.")
         else:
             log.write("[red]We cannot move up when the motor is disabled[/]")
 
@@ -179,7 +179,7 @@ class MotorControls(Static):
             log.write(
                 f"Moving down ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s^2, {step_mode=} step mode).")
             self.motor_driver.move_down(distance_mm, speed_mm_s, acceleration_mm_s2)
-            log.write(f"Finished moving down.")
+            log.write(f"-> Finished moving down.")
         else:
             log.write("[red]We cannot move down when the motor is disabled[/]")
 
@@ -208,10 +208,10 @@ class SpeedControls(Widget):
     def compose(self) -> ComposeResult:
         with Horizontal():
             yield Label("Speed: ", id="speed-label")
-            yield Button(f"-- {SPEED_STEP_COARSE}", id="speed-down-coarse")
-            yield Button(f"- {SPEED_STEP_FINE}", id="speed-down-fine")
-            yield Button(f"+ {SPEED_STEP_FINE}", id="speed-up-fine")
-            yield Button(f"++ {SPEED_STEP_COARSE}", id="speed-up-coarse")
+            yield Button(f"-- {SPEED_STEP_COARSE}", id="speed-down-coarse", classes="btn-speed-control")
+            yield Button(f"- {SPEED_STEP_FINE}", id="speed-down-fine", classes="btn-speed-control")
+            yield Button(f"+ {SPEED_STEP_FINE}", id="speed-up-fine", classes="btn-speed-control")
+            yield Button(f"++ {SPEED_STEP_COARSE}", id="speed-up-coarse", classes="btn-speed-control")
             yield Input(
                 value=f"{DEFAULT_SPEED}",
                 type="number",
@@ -272,10 +272,10 @@ class DistanceControls(Static):
     def compose(self) -> ComposeResult:
         with Horizontal():
             yield Label("Distance: ", id="distance-label")
-            yield Button(f"-- {DISTANCE_STEP_COARSE}", id="distance-down-coarse")
-            yield Button(f"- {DISTANCE_STEP_FINE}", id="distance-down-fine")
-            yield Button(f"+ {DISTANCE_STEP_FINE}", id="distance-up-fine")
-            yield Button(f"++ {DISTANCE_STEP_COARSE}", id="distance-up-coarse")
+            yield Button(f"-- {DISTANCE_STEP_COARSE}", id="distance-down-coarse", classes="btn-distance-control")
+            yield Button(f"- {DISTANCE_STEP_FINE}", id="distance-down-fine", classes="btn-distance-control")
+            yield Button(f"+ {DISTANCE_STEP_FINE}", id="distance-up-fine", classes="btn-distance-control")
+            yield Button(f"++ {DISTANCE_STEP_COARSE}", id="distance-up-coarse", classes="btn-distance-control")
             yield Input(
                 value=f"{DEFAULT_DISTANCE}",
                 type="number",
@@ -331,14 +331,12 @@ class DistanceControls(Static):
 
 
 class Status(Static):
-    step_mode = reactive("Step Mode: ")
     speed = reactive("Speed: ")
     distance = reactive("Distance: ")
     motor = reactive("Motor: ")
 
     def compose(self) -> ComposeResult:
         with Vertical():
-            yield Label(id="status-step-mode")
             yield Label(id="status-speed")
             yield Label(id="status-distance")
             yield Label(id="status-motor")
@@ -347,9 +345,6 @@ class Status(Static):
         motor_state = self.app.query_one(MotorControls).motor_state
         color = "green" if motor_state == "enabled" else "dark_orange"
         self.motor = f"Motor: [{color}]{motor_state.upper()}[/]"
-
-    def watch_step_mode(self, step_mode: str):
-        self.query_one("#status-step-mode", Label).update(step_mode)
 
     def watch_speed(self, speed: str):
         self.query_one("#status-speed", Label).update(speed)
@@ -361,11 +356,16 @@ class Status(Static):
         self.query_one("#status-motor", Label).update(motor)
 
 class StatusAdvanced(Static):
+    step_mode = reactive("Step Mode: ")
     acceleration = reactive("Acceleration: ")
 
     def compose(self) -> ComposeResult:
         with Vertical():
+            yield Label(id="status-step-mode")
             yield Label(id="status-acceleration")
+
+    def watch_step_mode(self, step_mode: str):
+        self.query_one("#status-step-mode", Label).update(step_mode)
 
     def watch_acceleration(self, acceleration: str):
         self.query_one("#status-acceleration", Label).update(acceleration)
@@ -413,21 +413,27 @@ class HelpScreen(ModalScreen[None]):
 class AdvancedSettings(Static):
     acceleration = reactive(DEFAULT_ACCELERATION)
 
+    def __init__(self, motor_driver: TMC2209_MotorDriver):
+        super().__init__()
+        self.motor_driver = motor_driver
+
     def compose(self) -> ComposeResult:
-        with Horizontal():
-            yield Label("Acceleration: ", id="acceleration-label")
-            yield Input(
-                value=f"{DEFAULT_ACCELERATION}",
-                type="number",
-                placeholder="Acceleration (mm/s^2)",
-                id="acceleration-input",
-                validate_on=["submitted"],
-                validators=[Number(minimum=MIN_ACCELERATION, maximum=MAX_ACCELERATION)],
-            )
-            yield Label("mm/s^2", id="acceleration-unit")
-        # TODO: set motor current?
-        # TODO: toggle interpolation?
-        # TODO: set logging level using Select widget?
+        with Vertical():
+            yield StepMode(self.motor_driver)
+            with Horizontal():
+                yield Label("Acceleration: ", id="acceleration-label")
+                yield Input(
+                    value=f"{DEFAULT_ACCELERATION}",
+                    type="number",
+                    placeholder="Acceleration (mm/s^2)",
+                    id="acceleration-input",
+                    validate_on=["submitted"],
+                    validators=[Number(minimum=MIN_ACCELERATION, maximum=MAX_ACCELERATION)],
+                )
+                yield Label("mm/s^2", id="acceleration-unit")
+            # TODO: set motor current?
+            # TODO: toggle interpolation?
+            # TODO: set logging level using Select widget?
 
     def _on_mount(self, event: events.Mount) -> None:
         self.app.query_one(StatusAdvanced).acceleration = f"Acceleration: {DEFAULT_ACCELERATION} mm/s^2"
@@ -475,6 +481,7 @@ class Coder(Static):
             yield Button(
                 "RUN code",
                 id="run-code-btn",
+                variant="success",
             )
             with Horizontal(id="file-path-import-container"):
                 yield Button(
@@ -617,20 +624,19 @@ class DipCoaterApp(App):
             with TabPane("Main", id="main-tab"):
                 with Horizontal():
                     with Vertical(id="left-side"):
-                        yield StepMode(self.motor_driver)
                         yield SpeedControls()
                         yield DistanceControls()
                         yield MotorControls(self.motor_driver)
                         yield RichLog(markup=True, id="logger")
                     with Vertical(id="right-side"):
-                        yield Status()
+                        yield Status(id="status")
             with TabPane("Advanced", id="advanced-tab"):
                 with Horizontal():
                     with Vertical(id="left-side-advanced"):
-                        yield AdvancedSettings()
+                        yield AdvancedSettings(self.motor_driver)
                         yield RichLog(markup=True, id="motor-logger")       # TODO: write motor logs to here
                     with Vertical(id="right-side-advanced"):
-                        yield StatusAdvanced()
+                        yield StatusAdvanced(id="status-advanced")
             with TabPane("Coder", id="coder-tab"):
                 yield Coder()
 
