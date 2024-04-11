@@ -156,6 +156,12 @@ AdvancedSettings {
 }
 
 Coder {
+    #coder-api-collapsible {
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+
     #coder-api-markdown {
         border: none;
         margin: 0;
@@ -171,6 +177,10 @@ Coder {
     #file-path-import-container {
         height: 3;
         width: 100%;
+    }
+
+    #run-code-btn {
+        background: $success;
     }
 
     #code-file-path-input {
