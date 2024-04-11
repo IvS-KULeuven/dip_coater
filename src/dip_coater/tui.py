@@ -19,6 +19,7 @@ from textual.widgets import Header
 from textual.widgets import Label
 from textual.widgets import Input
 from textual.widgets import MarkdownViewer
+from textual.widgets import Markdown
 from textual.widgets import RadioButton
 from textual.widgets import RadioSet
 from textual.widgets import RichLog
@@ -26,6 +27,7 @@ from textual.widgets import Static
 from textual.widgets import TabPane
 from textual.widgets import TabbedContent
 from textual.widgets import TextArea
+from textual.widgets import Collapsible
 from textual.validation import Number
 
 import argparse
@@ -454,6 +456,15 @@ class Coder(Static):
     def compose(self) -> ComposeResult:
         with Vertical():
             yield Label("Enter your Coder API code below and press 'RUN code' to execute it.")
+            with Collapsible(title="View Coder API", collapsed=True, id="coder-api-collapsible"):
+                with open(Path(__file__).parent / "coder_API.md") as text:
+                    md = Markdown(
+                        text.read(),
+                        id="coder-api-markdown",
+                    )
+                    md.code_dark_theme = "monokai"
+                    yield md
+
             yield TextArea(
                 "print(\"Hello, World!\")",
                 language="python",
