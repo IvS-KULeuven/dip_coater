@@ -28,7 +28,7 @@ from textual.widgets import TabPane
 from textual.widgets import TabbedContent
 from textual.widgets import TextArea
 from textual.widgets import Collapsible
-from textual.validation import Number
+from textual.validation import Number, Function
 
 import argparse
 import asyncio
@@ -464,7 +464,6 @@ class Coder(Static):
                     )
                     md.code_dark_theme = "monokai"
                     yield md
-
             yield TextArea(
                 "print(\"Hello, World!\")",
                 language="python",
@@ -475,10 +474,25 @@ class Coder(Static):
                 "RUN code",
                 id="run-code-btn",
             )
+            with Horizontal(id="file-path-import-container"):
+                yield Button(
+                    "LOAD code from file",
+                    id="load-code-btn",
+                )
+                yield Input(
+                    value="<dummy input>",
+                    type="text",
+                    placeholder="Input file path to python code, or empty for default code",
+                    id="code-file-path-input",
+                    validate_on=["changed"],
+                    validators=[Function(self.is_file_path_valid_python,
+                                         "File path does not point to valid Python (.py) file")],
+                )
+            yield Label("", id="coder-path-invalid-reasons")
 
     def _on_mount(self, event: events.Mount) -> None:
-        with open(Path(__file__).parent / "code_editor_init_content.py") as text:
-            self.set_editor_text(text.read())
+        self.load_default_code()
+        self.query_one("#code-file-path-input", Input).value = ""
 
     @on(Button.Pressed, "#run-code-btn")
     async def run_code(self):
@@ -503,6 +517,45 @@ class Coder(Static):
 
     def set_editor_text(self, text: str):
         self.query_one("#code-editor", TextArea).text = text
+
+    @on(Input.Changed)
+    def show_invalid_reasons(self, event: Input.Changed) -> None:
+        # Updating the UI to show the reasons why validation failed
+        if not event.validation_result.is_valid:
+            (self.query_one("#coder-path-invalid-reasons", Label)
+                .update(f"[red]{event.validation_result.failure_descriptions}[/]"))
+        else:
+            (self.query_one("#coder-path-invalid-reasons", Label)
+                .update("[green]Valid file path[/]"))
+
+    @staticmethod
+    def is_file_path_valid_python(file_path: str) -> bool:
+        # Default code is allowed
+        if file_path is None or file_path == "":
+            return True
+        return Path(file_path).suffix == ".py"
+
+    @on(Input.Submitted, "#code-file-path-input")
+    @on(Button.Pressed, "#load-code-btn")
+    def submit_speed_input(self):
+        file_path_input = self.query_one("#code-file-path-input", Input)
+        file_path = file_path_input.value
+
+        if not self.is_file_path_valid_python(file_path):
+            return
+
+        if file_path is None or file_path == "":
+            self.load_default_code()
+        else:
+            self.load_code_into_editor(file_path)
+
+    def load_code_into_editor(self, file_path):
+        with open(file_path) as text:
+            self.set_editor_text(text.read())
+
+    def load_default_code(self):
+        file_path = Path(__file__).parent / "code_editor_init_content.py"
+        self.load_code_into_editor(file_path)
 
     ''' ========== API for the code editor ========== '''
 
