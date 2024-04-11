@@ -19,15 +19,20 @@ from textual.widgets import Header
 from textual.widgets import Label
 from textual.widgets import Input
 from textual.widgets import MarkdownViewer
+from textual.widgets import Markdown
 from textual.widgets import RadioButton
 from textual.widgets import RadioSet
 from textual.widgets import RichLog
 from textual.widgets import Static
 from textual.widgets import TabPane
 from textual.widgets import TabbedContent
-from textual.validation import Number
+from textual.widgets import TextArea
+from textual.widgets import Collapsible
+from textual.validation import Number, Function
 
 import argparse
+import asyncio
+import time
 
 # Mock the import of RPi when the package is not available
 try:
@@ -144,21 +149,35 @@ class MotorControls(Static):
 
     @on(Button.Pressed, "#move-up")
     def move_up_action(self):
+        distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
+        self.move_up(distance_mm, speed_mm_s, accel_mm_s2)
+
+    def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
         log = self.app.query_one("#logger", RichLog)
         if self._motor_state == "enabled":
-            distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
-            log.write(f"Moving up ({distance_mm=} mm, {speed_mm_s=} mm/s, {accel_mm_s2=} mm/s^2, {step_mode=} step mode).")
-            self.motor_driver.move_up(distance_mm, speed_mm_s, accel_mm_s2)
+            def_dist, def_speed, def_accel, step_mode = self.get_parameters()
+            if acceleration_mm_s2 is None:
+                acceleration_mm_s2 = def_accel
+            log.write(
+                f"Moving up ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s^2, {step_mode=} step mode).")
+            self.motor_driver.move_up(distance_mm, speed_mm_s, acceleration_mm_s2)
         else:
             log.write("[red]We cannot move up when the motor is disabled[/]")
 
     @on(Button.Pressed, "#move-down")
     def move_down_action(self):
+        distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
+        self.move_down(distance_mm, speed_mm_s, accel_mm_s2)
+
+    def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
         log = self.app.query_one("#logger", RichLog)
         if self._motor_state == "enabled":
-            distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
-            log.write(f"Moving down ({distance_mm=} mm, {speed_mm_s=} mm/s, {accel_mm_s2=} mm/s^2, {step_mode=} step mode).")
-            self.motor_driver.move_down(distance_mm, speed_mm_s, accel_mm_s2)
+            def_dist, def_speed, def_accel, step_mode = self.get_parameters()
+            if acceleration_mm_s2 is None:
+                acceleration_mm_s2 = def_accel
+            log.write(
+                f"Moving down ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s^2, {step_mode=} step mode).")
+            self.motor_driver.move_down(distance_mm, speed_mm_s, acceleration_mm_s2)
         else:
             log.write("[red]We cannot move down when the motor is disabled[/]")
 
@@ -430,6 +449,138 @@ class AdvancedSettings(Static):
             acceleration = MIN_ACCELERATION
         return acceleration
 
+
+class Coder(Static):
+    code = ""
+
+    def compose(self) -> ComposeResult:
+        with Vertical():
+            yield Label("Enter your Coder API code below and press 'RUN code' to execute it.")
+            with Collapsible(title="View Coder API", collapsed=True, id="coder-api-collapsible"):
+                with open(Path(__file__).parent / "coder_API.md") as text:
+                    md = Markdown(
+                        text.read(),
+                        id="coder-api-markdown",
+                    )
+                    md.code_dark_theme = "monokai"
+                    yield md
+            yield TextArea(
+                "print(\"Hello, World!\")",
+                language="python",
+                show_line_numbers=True,
+                id="code-editor",
+            )
+            yield Button(
+                "RUN code",
+                id="run-code-btn",
+            )
+            with Horizontal(id="file-path-import-container"):
+                yield Button(
+                    "LOAD code from file",
+                    id="load-code-btn",
+                )
+                yield Input(
+                    value="<dummy input>",
+                    type="text",
+                    placeholder="Input file path to python code, or empty for default code",
+                    id="code-file-path-input",
+                    validate_on=["changed"],
+                    validators=[Function(self.is_file_path_valid_python,
+                                         "File path does not point to valid Python (.py) file")],
+                )
+            yield Label("", id="coder-path-invalid-reasons")
+
+    def _on_mount(self, event: events.Mount) -> None:
+        self.load_default_code()
+        self.query_one("#code-file-path-input", Input).value = ""
+
+    @on(Button.Pressed, "#run-code-btn")
+    async def run_code(self):
+        self.code = self.app.query_one("#code-editor", TextArea).text
+        tabbed_content = self.app.query_one("#tabbed-content", TabbedContent)
+        tabbed_content.active = "main-tab"
+        await asyncio.sleep(0.1)
+        await self.exec_code_async()
+
+    async def exec_code_async(self):
+        log = self.app.query_one("#logger", RichLog)
+        try:
+            log.write("[blue]Executing code >>>>>>>>>>>>[/]")
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, self.exec_code)
+            log.write("[dark_cyan]>>>>>>>>>>>> Code finished.[/]")
+        except Exception as e:
+            log.write(f"Error executing code: {e}")
+
+    def exec_code(self):
+        exec(self.code)
+
+    def set_editor_text(self, text: str):
+        self.query_one("#code-editor", TextArea).text = text
+
+    @on(Input.Changed)
+    def show_invalid_reasons(self, event: Input.Changed) -> None:
+        # Updating the UI to show the reasons why validation failed
+        if not event.validation_result.is_valid:
+            (self.query_one("#coder-path-invalid-reasons", Label)
+                .update(f"[red]{event.validation_result.failure_descriptions}[/]"))
+        else:
+            (self.query_one("#coder-path-invalid-reasons", Label)
+                .update("[green]Valid file path[/]"))
+
+    @staticmethod
+    def is_file_path_valid_python(file_path: str) -> bool:
+        # Default code is allowed
+        if file_path is None or file_path == "":
+            return True
+        return Path(file_path).suffix == ".py"
+
+    @on(Input.Submitted, "#code-file-path-input")
+    @on(Button.Pressed, "#load-code-btn")
+    def submit_speed_input(self):
+        file_path_input = self.query_one("#code-file-path-input", Input)
+        file_path = file_path_input.value
+
+        if not self.is_file_path_valid_python(file_path):
+            return
+
+        if file_path is None or file_path == "":
+            self.load_default_code()
+        else:
+            self.load_code_into_editor(file_path)
+
+    def load_code_into_editor(self, file_path):
+        with open(file_path) as text:
+            self.set_editor_text(text.read())
+
+    def load_default_code(self):
+        file_path = Path(__file__).parent / "code_editor_init_content.py"
+        self.load_code_into_editor(file_path)
+
+    ''' ========== API for the code editor ========== '''
+
+    def enable_motor(self):
+        self.app.query_one(MotorControls).enable_motor_action()
+
+    def disable_motor(self):
+        self.app.query_one(MotorControls).disable_motor_action()
+
+    def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
+        # NOTE: We are purposely not changing the distance, speed and acceleration settings here,
+        # as this may be undesirable in some cases.
+        self.app.query_one(MotorControls).move_up(distance_mm, speed_mm_s, acceleration_mm_s2)
+
+    def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
+        # NOTE: We are purposely not changing the distance, speed and acceleration settings here,
+        # as this may be undesirable in some cases.
+        self.app.query_one(MotorControls).move_down(distance_mm, speed_mm_s, acceleration_mm_s2)
+
+    def sleep(self, seconds: float):
+        log = self.app.query_one("#logger", RichLog)
+        log.write(f"[cyan]...Sleeping for {seconds} seconds...[/]")
+        time.sleep(seconds)
+
+
 class DipCoaterApp(App):
     """A Textual App to control a dip coater motor."""
 
@@ -453,8 +604,8 @@ class DipCoaterApp(App):
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         yield Footer()
-        with TabbedContent():
-            with TabPane("Main"):
+        with TabbedContent(initial="main-tab", id="tabbed-content"):
+            with TabPane("Main", id="main-tab"):
                 with Horizontal():
                     with Vertical(id="left-side"):
                         yield StepMode(self.motor_driver)
@@ -464,13 +615,15 @@ class DipCoaterApp(App):
                         yield RichLog(markup=True, id="logger")
                     with Vertical(id="right-side"):
                         yield Status()
-            with TabPane("Advanced"):
+            with TabPane("Advanced", id="advanced-tab"):
                 with Horizontal():
                     with Vertical(id="left-side-advanced"):
                         yield AdvancedSettings()
                         yield RichLog(markup=True, id="motor-logger")       # TODO: write motor logs to here
                     with Vertical(id="right-side-advanced"):
                         yield StatusAdvanced()
+            with TabPane("Coder", id="coder-tab"):
+                yield Coder()
 
     def action_toggle_dark(self) -> None:
         """An action to toggle dark mode."""

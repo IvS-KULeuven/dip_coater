@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dip-coater"
-version = "0.10.0"
+version = "0.11.0"
 authors = [
     {name="Rik Huygen", email="rik.huygen@kuleuven.be"},
     {name="Sibo Van Gool", email="sibo.vangool@kuleuven.be"}
@@ -21,7 +21,7 @@ classifiers = [
 requires-python = ">=3.8, <4.0"
 
 dependencies = [
-    "textual",
+    "textual>=0.48.0",
     "textual-dev",
 ]
 

@@ -154,3 +154,37 @@ AdvancedSettings {
         border: none;
     }
 }
+
+Coder {
+    #coder-api-markdown {
+        border: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    #coder-api-markdown > MarkdownFence {
+        border: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    #file-path-import-container {
+        height: 3;
+        width: 100%;
+    }
+
+    #code-file-path-input {
+        content-align: left top;
+        margin-left: 1;
+        padding: 0;
+    }
+
+    #code-file-path-input.-valid {
+        border: solid green;
+    }
+
+    #code-file-path-input.-invalid {
+        border: solid red;
+    }
+}
+
