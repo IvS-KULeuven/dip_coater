@@ -20,6 +20,11 @@ The right part of the screen shows the current values and the state of the motor
 
 To access more advanced control settings, you can switch to the `Advanced` tab on top of the screen (by default, the `Main` tab is selected).
 
+To run custom, automated routines you can use the `Coder` tab. Here you can write your own Python code to control the motor using the Coder API. 
+The code is executed when you press the `RUN code` button. You can view the available Coder API calls in the collapsible section at the top of the screen, or in the help menu. If you do not want to use the default code, you can enter the file path to a Python file on the bottom of the coder panel. The new file will be loaded when you press the `LOAD code from file` button.
+
+If the UI is too small, you can zoom out by selecting `Edit` in the terminal toolbar and then select `Zoom out`.
+
 Authors: Rik Huygen (https://github.com/rhuygen), Sibo Van Gool (https://github.com/SiboVG)
 
 Press ESCAPE to Exit.
