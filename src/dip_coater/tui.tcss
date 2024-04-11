@@ -6,10 +6,29 @@ Status {
 
 #right-side {
     width: 25%;
+    height: 100%;
 }
 
 #left-side {
     width: 74%;
+}
+
+#left-side-advanced {
+    width: 74%;
+}
+
+#right-side-advanced {
+    width: 25%;
+}
+
+Status {
+    border: solid $panel;
+    height: 100%;
+}
+
+StatusAdvanced {
+    border: solid $panel;
+    height: 100%;
 }
 
 StepMode {
@@ -59,14 +78,21 @@ SpeedControls {
     #speed-label {
         width: 10;
     }
-    #speed-down-coarse, #speed-down-fine {
+    .btn-speed-control {
+        content-align: center middle;
+        margin-right: 0;
+        margin-left: 0;
+        border: none;
+        min-width: 0;
         width: 7;
+        padding: 0;
     }
     #speed-down-fine {
-        margin-right: 1;
+        margin-right: 2;
+        margin-left: 1;
     }
-    #speed-up-coarse, #speed-up-fine {
-        width: 7;
+    #speed-up-fine {
+        margin-right: 1;
     }
     #speed-input {
         content-align: left top;
@@ -85,14 +111,21 @@ DistanceControls {
     #distance-label {
         width: 10;
     }
-    #distance-down-coarse, #distance-down-fine {
+    .btn-distance-control {
+        content-align: center middle;
+        margin-right: 0;
+        margin-left: 0;
+        border: none;
+        min-width: 0;
         width: 7;
+        padding: 0;
     }
     #distance-down-fine {
-        margin-right: 1;
+        margin-right: 2;
+        margin-left: 1;
     }
-    #distance-up-coarse, #distance-up-fine {
-        width: 7;
+    #distance-up-fine {
+        margin-right: 1;
     }
     #distance-input {
         content-align: left top;
@@ -102,42 +135,6 @@ DistanceControls {
         padding: 0;
         border: none;
     }
-}
-
-#speed-down-coarse, #speed-down-fine {
-    margin-right: 0;
-    margin-left: 0;
-    height: 1;
-    border: none;
-    min-width: 0;
-    padding: 0 0 0 0;
-}
-
-#speed-up-coarse, #speed-up-fine {
-    margin-right: 0;
-    margin-left: 0;
-    height: 1;
-    border: none;
-    min-width: 0;
-    padding: 0 0 0 0;
-}
-
-#distance-up-coarse, #distance-up-fine {
-    margin-right: 0;
-    margin-left: 0;
-    height: 1;
-    border: none;
-    min-width: 0;
-    padding: 0 0 0 0;
-}
-
-#distance-down-coarse, #distance-down-fine {
-    margin-right: 0;
-    margin-left: 0;
-    height: 1;
-    border: none;
-    min-width: 0;
-    padding: 0 0 0 0;
 }
 
 .selected {
@@ -156,6 +153,12 @@ AdvancedSettings {
 }
 
 Coder {
+    #coder-api-collapsible {
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+
     #coder-api-markdown {
         border: none;
         margin: 0;
