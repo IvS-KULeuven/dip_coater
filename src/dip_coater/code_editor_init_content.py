@@ -5,7 +5,7 @@ Stick to the provided API and do not import any modules or use any functions tha
 
 # ====== PARAMETERS ======
 distance_down = 10  # mm
-distance_up = 10    # mm
+distance_up = distance_down    # mm
 
 speed_down = 5      # mm/s
 speed_up = 2        # mm/s
