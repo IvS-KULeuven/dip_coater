@@ -148,11 +148,11 @@ class MotorControls(Static):
         return distance_mm, speed_mm_s, accel_mm_s2, step_mode
 
     @on(Button.Pressed, "#move-up")
-    def move_up_action(self):
+    async def move_up_action(self):
         distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
-        self.move_up(distance_mm, speed_mm_s, accel_mm_s2)
+        await self.move_up(distance_mm, speed_mm_s, accel_mm_s2)
 
-    def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
+    async def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
         log = self.app.query_one("#logger", RichLog)
         if self._motor_state == "enabled":
             def_dist, def_speed, def_accel, step_mode = self.get_parameters()
@@ -161,15 +161,16 @@ class MotorControls(Static):
             log.write(
                 f"Moving up ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s^2, {step_mode=} step mode).")
             self.motor_driver.move_up(distance_mm, speed_mm_s, acceleration_mm_s2)
+            log.write(f"Finished moving up.")
         else:
             log.write("[red]We cannot move up when the motor is disabled[/]")
 
     @on(Button.Pressed, "#move-down")
-    def move_down_action(self):
+    async def move_down_action(self):
         distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
-        self.move_down(distance_mm, speed_mm_s, accel_mm_s2)
+        await self.move_down(distance_mm, speed_mm_s, accel_mm_s2)
 
-    def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
+    async def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
         log = self.app.query_one("#logger", RichLog)
         if self._motor_state == "enabled":
             def_dist, def_speed, def_accel, step_mode = self.get_parameters()
@@ -178,11 +179,12 @@ class MotorControls(Static):
             log.write(
                 f"Moving down ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s^2, {step_mode=} step mode).")
             self.motor_driver.move_down(distance_mm, speed_mm_s, acceleration_mm_s2)
+            log.write(f"Finished moving down.")
         else:
             log.write("[red]We cannot move down when the motor is disabled[/]")
 
     @on(Button.Pressed, "#enable-motor")
-    def enable_motor_action(self):
+    async def enable_motor_action(self):
         log = self.app.query_one("#logger", RichLog)
         if self._motor_state == "disabled":
             self.motor_driver.enable_motor()
@@ -191,7 +193,7 @@ class MotorControls(Static):
             self.app.query_one(Status).motor = "Motor: [green]ENABLED[/]"
 
     @on(Button.Pressed, "#disable-motor")
-    def disable_motor_action(self):
+    async def disable_motor_action(self):
         log = self.app.query_one("#logger", RichLog)
         if self._motor_state == "enabled":
             self.motor_driver.disable_motor()
@@ -502,19 +504,6 @@ class Coder(Static):
         await asyncio.sleep(0.1)
         await self.exec_code_async()
 
-    async def exec_code_async(self):
-        log = self.app.query_one("#logger", RichLog)
-        try:
-            log.write("[blue]Executing code >>>>>>>>>>>>[/]")
-            loop = asyncio.get_running_loop()
-            await loop.run_in_executor(None, self.exec_code)
-            log.write("[dark_cyan]>>>>>>>>>>>> Code finished.[/]")
-        except Exception as e:
-            log.write(f"Error executing code: {e}")
-
-    def exec_code(self):
-        exec(self.code)
-
     def set_editor_text(self, text: str):
         self.query_one("#code-editor", TextArea).text = text
 
@@ -557,28 +546,48 @@ class Coder(Static):
         file_path = Path(__file__).parent / "code_editor_init_content.py"
         self.load_code_into_editor(file_path)
 
+    async def exec_code_async(self):
+        log = self.app.query_one("#logger", RichLog)
+        try:
+            log.write("[blue]Executing code >>>>>>>>>>>>[/]")
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, self.exec_code)
+            log.write("[dark_cyan]>>>>>>>>>>>> Code finished.[/]")
+        except Exception as e:
+            log.write(f"[red]Error executing code: {e}[/]")
+            raise e
+
+    def exec_code(self):
+        exec(self.code)
+
+    @staticmethod
+    def async_run(func, *args):
+        async def run():
+            await func(*args)
+        asyncio.run(run())
+
     ''' ========== API for the code editor ========== '''
 
     def enable_motor(self):
-        self.app.query_one(MotorControls).enable_motor_action()
+        self.async_run(self.app.query_one(MotorControls).enable_motor_action)
 
     def disable_motor(self):
-        self.app.query_one(MotorControls).disable_motor_action()
+        self.async_run(self.app.query_one(MotorControls).disable_motor_action)
 
     def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
         # NOTE: We are purposely not changing the distance, speed and acceleration settings here,
         # as this may be undesirable in some cases.
-        self.app.query_one(MotorControls).move_up(distance_mm, speed_mm_s, acceleration_mm_s2)
+        self.async_run(self.app.query_one(MotorControls).move_up, distance_mm, speed_mm_s, acceleration_mm_s2)
 
     def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
         # NOTE: We are purposely not changing the distance, speed and acceleration settings here,
         # as this may be undesirable in some cases.
-        self.app.query_one(MotorControls).move_down(distance_mm, speed_mm_s, acceleration_mm_s2)
+        self.async_run(self.app.query_one(MotorControls).move_down, distance_mm, speed_mm_s, acceleration_mm_s2)
 
     def sleep(self, seconds: float):
         log = self.app.query_one("#logger", RichLog)
         log.write(f"[cyan]...Sleeping for {seconds} seconds...[/]")
-        time.sleep(seconds)
+        self.async_run(asyncio.sleep, seconds)
 
 
 class DipCoaterApp(App):
