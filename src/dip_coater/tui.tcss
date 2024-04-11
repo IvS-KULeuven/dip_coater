@@ -14,11 +14,11 @@ Status {
 }
 
 #left-side-advanced {
-    width: 74%;
+    width: 64%;
 }
 
 #right-side-advanced {
-    width: 25%;
+    width: 35%;
 }
 
 Status {
@@ -33,11 +33,13 @@ StatusAdvanced {
 
 StepMode {
     align-vertical: middle;
-    height: 4;
+    height: 6;
 
     #step-mode {
         layout: horizontal;
-        height: 3;
+        width: 100%;
+        overflow: auto;
+        height: 5;
         margin: 0;
     }
 

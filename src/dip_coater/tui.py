@@ -75,7 +75,8 @@ DEFAULT_ACCELERATION = 20
 MIN_ACCELERATION = 0.5
 MAX_ACCELERATION = 50
 
-STEP_MODE = {
+# Step mode settings
+STEP_MODES = {
     "I1": 1,
     "I2": 2,
     "I4": 4,
@@ -86,11 +87,13 @@ STEP_MODE = {
     "I128": 128,
     "I256": 256,
 }
+DEFAULT_STEP_MODE = "I8"
+
 
 class StepMode(Static):
     def __init__(self, motor_driver: TMC2209_MotorDriver):
         super().__init__()
-        self.step_mode = 8
+        self.step_mode = STEP_MODES[DEFAULT_STEP_MODE]
         self.motor_driver = motor_driver
         self.motor_driver.set_stepmode(self.step_mode)
 
@@ -101,23 +104,23 @@ class StepMode(Static):
                 yield RadioButton("1", id="I1")
                 yield RadioButton("1/2", id="I2")
                 yield RadioButton("1/4", id="I4")
-                yield RadioButton("1/8", id="I8", value=True)
+                yield RadioButton("1/8", id="I8")
                 yield RadioButton("1/16", id="I16")
                 yield RadioButton("1/32", id="I32")
                 yield RadioButton("1/64", id="I64")
-                #yield RadioButton("1/128", id="I128")
-                #yield RadioButton("1/256", id="I256")
+                yield RadioButton("1/128", id="I128")
+                yield RadioButton("1/256", id="I256")
 
     def on_mount(self):
-        self.app.query_one(StatusAdvanced).step_mode = f"StepMode: 1/8 µsteps"
+        self.query_one(f"#{DEFAULT_STEP_MODE}", RadioButton).value = True
 
     def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
-        self.step_mode = STEP_MODE[event.pressed.id]
+        self.step_mode = STEP_MODES[event.pressed.id]
         self.motor_driver.set_stepmode(self.step_mode)
         if STEP_MODE_WRITE_TO_LOG:
             log = self.app.query_one("#logger", RichLog)
             log.write(f"StepMode set to {event.pressed.label} µsteps.")
-        self.app.query_one(StatusAdvanced).step_mode = f"Step Mode: {event.pressed.label} µsteps ({self.step_mode})"
+        self.app.query_one(StatusAdvanced).step_mode = f"Step Mode: {event.pressed.label} µsteps"
 
 
 class MotorControls(Static):
@@ -159,7 +162,7 @@ class MotorControls(Static):
             if acceleration_mm_s2 is None:
                 acceleration_mm_s2 = def_accel
             log.write(
-                f"Moving up ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s^2, {step_mode=} step mode).")
+                f"Moving up ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s\u00b2, {step_mode=} step mode).")
             self.motor_driver.move_up(distance_mm, speed_mm_s, acceleration_mm_s2)
             log.write(f"-> Finished moving up.")
         else:
@@ -177,7 +180,7 @@ class MotorControls(Static):
             if acceleration_mm_s2 is None:
                 acceleration_mm_s2 = def_accel
             log.write(
-                f"Moving down ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s^2, {step_mode=} step mode).")
+                f"Moving down ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s\u00b2, {step_mode=} step mode).")
             self.motor_driver.move_down(distance_mm, speed_mm_s, acceleration_mm_s2)
             log.write(f"-> Finished moving down.")
         else:
@@ -425,25 +428,25 @@ class AdvancedSettings(Static):
                 yield Input(
                     value=f"{DEFAULT_ACCELERATION}",
                     type="number",
-                    placeholder="Acceleration (mm/s^2)",
+                    placeholder="Acceleration (mm/s\u00b2)",
                     id="acceleration-input",
                     validate_on=["submitted"],
                     validators=[Number(minimum=MIN_ACCELERATION, maximum=MAX_ACCELERATION)],
                 )
-                yield Label("mm/s^2", id="acceleration-unit")
+                yield Label("mm/s\u00b2", id="acceleration-unit")
             # TODO: set motor current?
             # TODO: toggle interpolation?
             # TODO: set logging level using Select widget?
 
     def _on_mount(self, event: events.Mount) -> None:
-        self.app.query_one(StatusAdvanced).acceleration = f"Acceleration: {DEFAULT_ACCELERATION} mm/s^2"
+        self.app.query_one(StatusAdvanced).acceleration = f"Acceleration: {DEFAULT_ACCELERATION} mm/s\u00b2"
 
     @on(Input.Submitted, "#acceleration-input")
     def submit_acceleration_input(self):
         acceleration_input = self.query_one("#acceleration-input", Input)
         acceleration = float(acceleration_input.value)
         self.acceleration = acceleration
-        self.app.query_one(StatusAdvanced).acceleration = f"Acceleration: {acceleration} mm/s^2"
+        self.app.query_one(StatusAdvanced).acceleration = f"Acceleration: {acceleration} mm/s\u00b2"
 
     def set_acceleration(self, acceleration: float):
         validated_acceleration = self.validate_acceleration(acceleration)
