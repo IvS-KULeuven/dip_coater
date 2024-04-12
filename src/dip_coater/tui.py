@@ -29,10 +29,10 @@ from textual.widgets import TabbedContent
 from textual.widgets import TextArea
 from textual.widgets import Collapsible
 from textual.validation import Number, Function
+from importlib.metadata import version
 
 import argparse
 import asyncio
-import time
 
 # Mock the import of RPi when the package is not available
 try:
@@ -667,6 +667,8 @@ def main():
     LOGGING_LEVEL = getattr(Loglevel, args.log_level)
 
     app = DipCoaterApp()
+    package_version = version("dip-coater")
+    app.title = f"Dip Coater v{package_version}"
     app.run()
 
 
