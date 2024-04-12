@@ -14,11 +14,11 @@ Status {
 }
 
 #left-side-advanced {
-    width: 64%;
+    width: 69%;
 }
 
 #right-side-advanced {
-    width: 35%;
+    width: 30%;
 }
 
 Status {
@@ -144,12 +144,30 @@ DistanceControls {
 }
 
 AdvancedSettings {
-    #acceleration-input {
+    height: 20;
+    .input-fields {
         content-align: left top;
         margin-left: 2;
         width: 7;
         height: 1;
         padding: 0;
+        border: none;
+    }
+
+    #interpolation-compat-label {
+        width: 70%;
+        margin-left: 1;
+    }
+
+    .checkbox {
+        content-align: left top;
+        height: 1;
+        padding: 0;
+        border: none;
+    }
+
+    #reset-to-defaults-btn {
+        height: 3;
         border: none;
     }
 }

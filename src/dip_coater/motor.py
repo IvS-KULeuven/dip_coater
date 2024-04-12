@@ -9,11 +9,21 @@ TRANS_PER_REV = 8  # The vertical translation in mm of the coater for one revolu
 
 class TMC2209_MotorDriver:
     """ Class to control the TMC2209 motor driver for the dip coater"""
-    def __init__(self, _stepmode: int = 8, _loglevel: Loglevel = Loglevel.ERROR):
+    def __init__(self, stepmode: int = 64, current: int = 1000, interpolation: bool = False, spread_cycle: bool = True,
+                 loglevel: Loglevel = Loglevel.ERROR):
         """ Initialize the motor driver
 
-        :param _stepmode: The step mode to set (1, 2, 4, 8, 16, 32, 64, 128, 256)
-        :param _loglevel: The log level to set for the motor driver (NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL)
+        :param stepmode: The step mode to set (1, 2, 4, 8, 16, 32, 64, 128, 256)
+        :param current: The current to set for the motor driver in mA
+        :param interpolation: Whether to use interpolation for the motor driver
+            The interpolate setting may reduce the audible noise of printer movement at the cost of introducing a
+            small systemic positional error.
+            For best positional accuracy consider using spreadCycle mode and disable interpolation.
+            Typically, a microstep setting of 64 or 128 will have similar audible noise as interpolation.
+        :param spreadcycle: Whether to use spread_cycle for the motor driver (true) or stealthchop (false).
+            In general, spreadCycle mode provides greater torque and greater positional accuracy than stealthChop mode.
+            However, stealthChop mode may produce significantly lower audible noise
+        :param loglevel: The log level to set for the motor driver (NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL)
         """
         # GPIO pins
         en_pin = 21
@@ -21,15 +31,15 @@ class TMC2209_MotorDriver:
         dir_pin = 26
 
         # Motor driver
-        self.tmc = TMC_2209(en_pin, step_pin, dir_pin, loglevel=_loglevel)
+        self.tmc = TMC_2209(en_pin, step_pin, dir_pin, loglevel=loglevel)
 
         # Set motor driver settings
         self.tmc.set_vactual(False)      # Motor is not controlled by UART
         self.tmc.set_direction_reg(True)
-        self.tmc.set_current(1000, pdn_disable=False)    # mA
-        self.tmc.set_interpolation(True)
-        self.tmc.set_spreadcycle(False)  # True: spreadcycle, False: stealthchop
-        self.tmc.set_microstepping_resolution(_stepmode)  # 1, 2, 4, 8, 16, 32, 64, 128, 256
+        self.tmc.set_current(current, pdn_disable=False)    # mA
+        self.tmc.set_interpolation(interpolation)
+        self.tmc.set_spreadcycle(spread_cycle)  # True: spreadcycle, False: stealthchop
+        self.tmc.set_microstepping_resolution(stepmode)  # 1, 2, 4, 8, 16, 32, 64, 128, 256
         self.tmc.set_internal_rsense(False)
 
         self.tmc.set_movement_abs_rel(MovementAbsRel.RELATIVE)
@@ -46,6 +56,33 @@ class TMC2209_MotorDriver:
         :param _stepmode: The step mode to set (1, 2, 4, 8, 16, 32, 64, 128, 256)
         """
         self.tmc.set_microstepping_resolution(_stepmode)
+
+    def set_current(self, current: int = 1000):
+        """ Set the current of the motor driver
+
+        :param current: The current to set for the motor driver in mA
+        """
+        self.tmc.set_current(current, pdn_disable=False)
+
+    def set_interpolation(self, interpolation: bool = False):
+        """ Set the interpolation setting of the motor driver
+
+        :param interpolation: Whether to use interpolation for the motor driver
+            The interpolate setting may reduce the audible noise of printer movement at the cost of introducing a
+            small systemic positional error.
+            For best positional accuracy consider using spreadCycle mode and disable interpolation.
+            Typically, a microstep setting of 64 or 128 will have similar audible noise as interpolation.
+        """
+        self.tmc.set_interpolation(interpolation)
+
+    def set_spreadcycle(self, spread_cycle: bool = True):
+        """ Set the spreadcycle setting of the motor driver
+
+        :param spreadcycle: Whether to use spread_cycle for the motor driver (true) or stealthchop (false).
+            In general, spreadCycle mode provides greater torque and greater positional accuracy than stealthChop mode.
+            However, stealthChop mode may produce significantly lower audible noise
+        """
+        self.tmc.set_spreadcycle(spread_cycle)
 
     def enable_motor(self):
         """ Arm the motor"""
@@ -114,7 +151,7 @@ class TMC2209_MotorDriver:
 if __name__ == "__main__":
     # ======== SETTINGS ========
     # Step mode
-    stepmode = 8  # 1 (full), 2 (half), 4 (1/4), 8, 16, 32, 64, 128, 256
+    _stepmode = 8  # 1 (full), 2 (half), 4 (1/4), 8, 16, 32, 64, 128, 256
 
     # Movement speed in mm/s
     speed_up = 2
@@ -132,10 +169,10 @@ if __name__ == "__main__":
     accel_down = accel_up
 
     # ======== DEBUG SETTINGS =======
-    loglevel = Loglevel.INFO  # NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL
+    _loglevel = Loglevel.INFO  # NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL
 
     # ======== INIT ========
-    motor_driver = TMC2209_MotorDriver(_stepmode=stepmode, _loglevel=Loglevel.INFO)
+    motor_driver = TMC2209_MotorDriver(stepmode=_stepmode, loglevel=_loglevel)
 
     # ======== MOVE DOWN ========
     motor_driver.move_down(distance_down, speed_down, accel_down)

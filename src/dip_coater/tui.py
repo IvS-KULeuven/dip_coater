@@ -28,6 +28,8 @@ from textual.widgets import TabPane
 from textual.widgets import TabbedContent
 from textual.widgets import TextArea
 from textual.widgets import Collapsible
+from textual.widgets import Checkbox
+from textual.widgets import Rule
 from textual.validation import Number, Function
 from importlib.metadata import version
 
@@ -87,7 +89,27 @@ STEP_MODES = {
     "I128": 128,
     "I256": 256,
 }
-DEFAULT_STEP_MODE = "I8"
+STEP_MODE_LABELS = {
+    "I1": "1",
+    "I2": "1/2",
+    "I4": "1/4",
+    "I8": "1/8",
+    "I16": "1/16",
+    "I32": "1/32",
+    "I64": "1/64",
+    "I128": "1/128",
+    "I256": "1/256",
+}
+DEFAULT_STEP_MODE = "I64"
+
+# Current settings (in mA)
+DEFAULT_CURRENT = 1000
+MIN_CURRENT = 100
+MAX_CURRENT = 2000  # Absolute max limit for TMC2209!
+
+# Other motor settings
+USE_SPREAD_CYCLE = True
+USE_INTERPOLATION = False
 
 
 class StepMode(Static):
@@ -101,26 +123,23 @@ class StepMode(Static):
         with Vertical():
             yield Label("Step Mode")
             with RadioSet(id="step-mode"):
-                yield RadioButton("1", id="I1")
-                yield RadioButton("1/2", id="I2")
-                yield RadioButton("1/4", id="I4")
-                yield RadioButton("1/8", id="I8")
-                yield RadioButton("1/16", id="I16")
-                yield RadioButton("1/32", id="I32")
-                yield RadioButton("1/64", id="I64")
-                yield RadioButton("1/128", id="I128")
-                yield RadioButton("1/256", id="I256")
+                for mode, label in STEP_MODE_LABELS.items():
+                    yield RadioButton(label, id=mode)
 
     def on_mount(self):
         self.query_one(f"#{DEFAULT_STEP_MODE}", RadioButton).value = True
 
     def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
-        self.step_mode = STEP_MODES[event.pressed.id]
+        step_mode = STEP_MODES[event.pressed.id]
+        self.set_stepmode(step_mode, event.pressed.label)
+
+    def set_stepmode(self, stepmode: int, step_mode_label):
+        self.step_mode = stepmode
         self.motor_driver.set_stepmode(self.step_mode)
         if STEP_MODE_WRITE_TO_LOG:
             log = self.app.query_one("#logger", RichLog)
-            log.write(f"StepMode set to {event.pressed.label} µsteps.")
-        self.app.query_one(StatusAdvanced).step_mode = f"Step Mode: {event.pressed.label} µsteps"
+            log.write(f"StepMode set to {step_mode_label} µsteps.")
+        self.app.query_one(StatusAdvanced).step_mode = f"Step Mode: {step_mode_label} µsteps"
 
 
 class MotorControls(Static):
@@ -252,21 +271,13 @@ class SpeedControls(Widget):
         self.set_speed(speed)
 
     def set_speed(self, speed: float):
-        validated_speed = self.validate_speed(speed)
+        validated_speed = clamp(speed, MIN_SPEED, MAX_SPEED)
         self.speed = round(validated_speed, 2)
 
     def watch_speed(self, speed: float):
         speed_input = self.query_one("#speed-input", Input)
         speed_input.value = f"{speed}"
         self.app.query_one(Status).speed = f"Speed: {speed} mm/s"
-
-    @staticmethod
-    def validate_speed(speed: float) -> int:
-        if speed > MAX_SPEED:
-            speed = MAX_SPEED
-        elif speed < MIN_SPEED:
-            speed = MIN_SPEED
-        return speed
 
 
 class DistanceControls(Static):
@@ -316,21 +327,13 @@ class DistanceControls(Static):
         self.set_distance(distance)
 
     def set_distance(self, distance: float):
-        validated_distance = self.validate_distance(distance)
+        validated_distance = clamp(distance, MIN_DISTANCE, MAX_DISTANCE)
         self.distance = round(validated_distance, 1)
 
     def watch_distance(self, distance: float):
         distance_input = self.query_one("#distance-input", Input)
         distance_input.value = f"{distance}"
         self.app.query_one(Status).distance = f"Distance: {distance} mm"
-
-    @staticmethod
-    def validate_distance(distance: float) -> float:
-        if distance > MAX_DISTANCE:
-            distance = MAX_DISTANCE
-        elif distance < MIN_DISTANCE:
-            distance = MIN_DISTANCE
-        return distance
 
 
 class Status(Static):
@@ -358,20 +361,37 @@ class Status(Static):
     def watch_motor(self, motor: str):
         self.query_one("#status-motor", Label).update(motor)
 
+
 class StatusAdvanced(Static):
     step_mode = reactive("Step Mode: ")
     acceleration = reactive("Acceleration: ")
+    motor_current = reactive("Motor current: ")
+    interpolate = reactive("Interpolation: ")
+    spread_cycle = reactive("Spread Cycle: ")
 
     def compose(self) -> ComposeResult:
         with Vertical():
             yield Label(id="status-step-mode")
             yield Label(id="status-acceleration")
+            yield Label(id="status-motor-current")
+            yield Label(id="status-interpolate")
+            yield Label(id="status-spread-cycle")
 
     def watch_step_mode(self, step_mode: str):
         self.query_one("#status-step-mode", Label).update(step_mode)
 
     def watch_acceleration(self, acceleration: str):
         self.query_one("#status-acceleration", Label).update(acceleration)
+
+    def watch_motor_current(self, motor_current: str):
+        self.query_one("#status-motor-current", Label).update(motor_current)
+
+    def watch_interpolate(self, interpolate: str):
+        self.query_one("#status-interpolate", Label).update(interpolate)
+
+    def watch_spread_cycle(self, spread_cycle: str):
+        self.query_one("#status-spread-cycle", Label).update(spread_cycle)
+
 
 class HelpCommand(Provider):
 
@@ -415,6 +435,9 @@ class HelpScreen(ModalScreen[None]):
 
 class AdvancedSettings(Static):
     acceleration = reactive(DEFAULT_ACCELERATION)
+    motor_current = reactive(DEFAULT_CURRENT)
+    interpolate = reactive(USE_INTERPOLATION)
+    spread_cycle = reactive(USE_SPREAD_CYCLE)
 
     def __init__(self, motor_driver: TMC2209_MotorDriver):
         super().__init__()
@@ -426,39 +449,105 @@ class AdvancedSettings(Static):
             with Horizontal():
                 yield Label("Acceleration: ", id="acceleration-label")
                 yield Input(
-                    value=f"{DEFAULT_ACCELERATION}",
+                    value=f"{self.acceleration}",
                     type="number",
                     placeholder="Acceleration (mm/s\u00b2)",
                     id="acceleration-input",
                     validate_on=["submitted"],
                     validators=[Number(minimum=MIN_ACCELERATION, maximum=MAX_ACCELERATION)],
+                    classes="input-fields",
                 )
                 yield Label("mm/s\u00b2", id="acceleration-unit")
-            # TODO: set motor current?
-            # TODO: toggle interpolation?
+            with Horizontal():
+                yield Label("Motor current: ", id="motor-current-label")
+                yield Input(
+                    value=f"{self.motor_current}",
+                    type="number",
+                    placeholder="Motor current (mA)",
+                    id="motor-current-input",
+                    validate_on=["submitted"],
+                    validators=[Number(minimum=MIN_CURRENT, maximum=MAX_CURRENT)],
+                    classes="input-fields",
+                )
+                yield Label("mA", id="motor-current-unit")
+            with Horizontal():
+                yield Checkbox("Interpolation", value=self.interpolate, id="interpolation-checkbox", classes="checkbox")
+                yield Label("", id="interpolation-compat-label")
+            yield Checkbox("Spread Cycle (T)/Stealth Chop (F)", value=self.spread_cycle, id="spread-cycle-checkbox", classes="checkbox")
+            yield Rule()
             # TODO: set logging level using Select widget?
+            yield Button("Reset to defaults", id="reset-to-defaults-btn", variant="error")
 
     def _on_mount(self, event: events.Mount) -> None:
-        self.app.query_one(StatusAdvanced).acceleration = f"Acceleration: {DEFAULT_ACCELERATION} mm/s\u00b2"
+        self.app.query_one(StatusAdvanced).acceleration = f"Acceleration: {self.acceleration} mm/s\u00b2"
+        self.app.query_one(StatusAdvanced).motor_current = f"Motor current: {self.motor_current} mA"
+        self.app.query_one(StatusAdvanced).interpolate = f"Interpolation: {self.interpolate}"
+        self.app.query_one(StatusAdvanced).spread_cycle = f"Spread Cycle: {self.spread_cycle}"
+        self.update_interpolate_compat_label()
 
     @on(Input.Submitted, "#acceleration-input")
     def submit_acceleration_input(self):
         acceleration_input = self.query_one("#acceleration-input", Input)
         acceleration = float(acceleration_input.value)
-        self.acceleration = acceleration
-        self.app.query_one(StatusAdvanced).acceleration = f"Acceleration: {acceleration} mm/s\u00b2"
+        self.set_acceleration(acceleration)
+
+    @on(Input.Submitted, "#motor-current-input")
+    def submit_motor_current_input(self):
+        motor_current_input = self.query_one("#motor-current-input", Input)
+        motor_current = int(motor_current_input.value)
+        self.set_motor_current(motor_current)
+
+    @on(Checkbox.Changed, "#interpolation-checkbox")
+    def toggle_interpolation(self, event: Checkbox.Changed):
+        interpolate = event.checkbox.value
+        self.set_interpolate(interpolate)
+
+    @on(Checkbox.Changed, "#spread-cycle-checkbox")
+    def toggle_spread_cycle(self, event: Checkbox.Changed):
+        spread_cycle = event.checkbox.value
+        self.set_spread_cycle(spread_cycle)
+
+    @on(Button.Pressed, "#reset-to-defaults-btn")
+    def reset_to_defaults(self):
+        self.query_one(StepMode).set_stepmode(STEP_MODES[DEFAULT_STEP_MODE], STEP_MODE_LABELS[DEFAULT_STEP_MODE])
+        self.query_one(StepMode).query_one(f"#{DEFAULT_STEP_MODE}", RadioButton).value = True
+        self.set_acceleration(DEFAULT_ACCELERATION)
+        self.query_one("#acceleration-input", Input).value = f"{DEFAULT_ACCELERATION}"
+        self.set_motor_current(DEFAULT_CURRENT)
+        self.query_one("#motor-current-input", Input).value = f"{DEFAULT_CURRENT}"
+        self.set_interpolate(USE_INTERPOLATION)
+        self.query_one("#interpolation-checkbox", Checkbox).value = USE_INTERPOLATION
+        self.set_spread_cycle(USE_SPREAD_CYCLE)
+        self.query_one("#spread-cycle-checkbox", Checkbox).value = USE_SPREAD_CYCLE
+
+    def update_interpolate_compat_label(self):
+        if self.spread_cycle and self.interpolate:
+            (self.query_one("#interpolation-compat-label", Label)
+             .update("[red]When using spreadCycle, interpolation is best disabled and the microstepping is set high (64 or 128)[/]"))
+        else:
+            self.query_one("#interpolation-compat-label", Label).update("")
 
     def set_acceleration(self, acceleration: float):
-        validated_acceleration = self.validate_acceleration(acceleration)
+        validated_acceleration = clamp(acceleration, MIN_ACCELERATION, MAX_ACCELERATION)
         self.acceleration = round(validated_acceleration, 1)
+        self.app.query_one(StatusAdvanced).acceleration = f"Acceleration: {self.acceleration} mm/s\u00b2"
 
-    @staticmethod
-    def validate_acceleration(acceleration: float) -> float:
-        if acceleration > MAX_ACCELERATION:
-            acceleration = MAX_ACCELERATION
-        elif acceleration < MIN_ACCELERATION:
-            acceleration = MIN_ACCELERATION
-        return acceleration
+    def set_motor_current(self, motor_current: int):
+        self.motor_current = clamp(motor_current, MIN_CURRENT, MAX_CURRENT)
+        self.motor_driver.set_current(self.motor_current)
+        self.app.query_one(StatusAdvanced).motor_current = f"Motor current: {self.motor_current} mA"
+
+    def set_interpolate(self, interpolate: bool):
+        self.interpolate = interpolate
+        self.motor_driver.set_interpolation(self.interpolate)
+        self.app.query_one(StatusAdvanced).interpolate = f"Interpolation: {self.interpolate}"
+        self.update_interpolate_compat_label()
+
+    def set_spread_cycle(self, spread_cycle: bool):
+        self.spread_cycle = spread_cycle
+        self.motor_driver.set_spreadcycle(self.spread_cycle)
+        self.app.query_one(StatusAdvanced).spread_cycle = f"Spread Cycle: {self.spread_cycle}"
+        self.update_interpolate_compat_label()
 
 
 class Coder(Static):
@@ -613,7 +702,11 @@ class DipCoaterApp(App):
 
     def __init__(self):
         super().__init__()
-        self.motor_driver = TMC2209_MotorDriver(_loglevel=LOGGING_LEVEL)
+        self.motor_driver = TMC2209_MotorDriver(stepmode=STEP_MODES[DEFAULT_STEP_MODE],
+                                                current=DEFAULT_CURRENT,
+                                                interpolation=USE_INTERPOLATION,
+                                                spread_cycle=USE_SPREAD_CYCLE,
+                                                loglevel=LOGGING_LEVEL)
 
     def on_mount(self):
         # on_mount() is called after compose(), so the RichLog is known
@@ -653,6 +746,11 @@ class DipCoaterApp(App):
 
     def action_show_help(self):
         self.push_screen(HelpScreen())
+
+
+def clamp(value, min_value, max_value):
+    """Clamp a value between a minimum and maximum value."""
+    return max(min(value, max_value), min_value)
 
 
 def main():
