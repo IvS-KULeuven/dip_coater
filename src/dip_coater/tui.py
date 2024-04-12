@@ -100,7 +100,7 @@ STEP_MODE_LABELS = {
     "I128": "1/128",
     "I256": "1/256",
 }
-DEFAULT_STEP_MODE = "I64"
+DEFAULT_STEP_MODE = "I8"
 
 # Current settings (in mA)
 DEFAULT_CURRENT = 1000

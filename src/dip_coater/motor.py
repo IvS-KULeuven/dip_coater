@@ -9,7 +9,7 @@ TRANS_PER_REV = 8  # The vertical translation in mm of the coater for one revolu
 
 class TMC2209_MotorDriver:
     """ Class to control the TMC2209 motor driver for the dip coater"""
-    def __init__(self, stepmode: int = 64, current: int = 1000, interpolation: bool = True, spread_cycle: bool = False,
+    def __init__(self, stepmode: int = 8, current: int = 1000, interpolation: bool = True, spread_cycle: bool = False,
                  loglevel: Loglevel = Loglevel.ERROR):
         """ Initialize the motor driver
 
