@@ -17,8 +17,9 @@ with the `+` and `-` buttons, or by entering a new value in the text input field
 speed/distance value) and then pressing the Enter key on your keyboard. The application has defined minimum and maximum 
 values for the speed and distance. You will not be able to go passed these limits.
 
-For high motor speeds (> 10 mm/s), the motor may overshoot (a larger travel distance than the set distance). This is 
-due to the limitation of how fast Python can handle the motor control timing.
+For high motor speeds (> 10 mm/s) and/or high step mode (> 16), the motor may overshoot (a larger travel distance than 
+the set distance), or not respond as fast as you would expect for the given speed input. This is due to the limitation 
+of how fast Python and the Raspberry Pi can handle the motor control timing.
 
 After startup the motor will have been initialised, but disabled. Press the `enable motor` button before moving. You will 
 not be able to move when the motor is disabled.
