@@ -164,11 +164,6 @@ AdvancedSettings {
         margin-right: 2;
     }
 
-    #interpolation-compat-label {
-        width: 100%;
-        margin-left: 1;
-    }
-
     .checkbox {
         content-align: left top;
         height: 1;

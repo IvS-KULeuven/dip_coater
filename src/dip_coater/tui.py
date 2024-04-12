@@ -474,7 +474,6 @@ class AdvancedSettings(Static):
             with Horizontal(id="interpolation-container"):
                 yield Checkbox("Interpolation", value=self.interpolate, id="interpolation-checkbox", classes="checkbox")
                 yield Checkbox("Spread Cycle (T)/Stealth Chop (F)", value=self.spread_cycle, id="spread-cycle-checkbox", classes="checkbox")
-            yield Label("<dummy text>", id="interpolation-compat-label")
             #yield Rule()
             # TODO: set logging level using Select widget?
             yield Button("Reset to defaults", id="reset-to-defaults-btn", variant="error")
@@ -484,7 +483,6 @@ class AdvancedSettings(Static):
         self.app.query_one(StatusAdvanced).motor_current = f"Motor current: {self.motor_current} mA"
         self.app.query_one(StatusAdvanced).interpolate = f"Interpolation: {self.interpolate}"
         self.app.query_one(StatusAdvanced).spread_cycle = f"Spread Cycle: {self.spread_cycle}"
-        self.update_interpolate_compat_label()
 
     @on(Input.Submitted, "#acceleration-input")
     def submit_acceleration_input(self):
@@ -521,13 +519,6 @@ class AdvancedSettings(Static):
         self.set_spread_cycle(USE_SPREAD_CYCLE)
         self.query_one("#spread-cycle-checkbox", Checkbox).value = USE_SPREAD_CYCLE
 
-    def update_interpolate_compat_label(self):
-        if self.spread_cycle and self.interpolate:
-            (self.query_one("#interpolation-compat-label", Label)
-             .update("[red]When using spreadCycle, interpolation is best disabled and the microstepping is set high (64 or 128)[/]"))
-        else:
-            self.query_one("#interpolation-compat-label", Label).update("")
-
     def set_acceleration(self, acceleration: float):
         validated_acceleration = clamp(acceleration, MIN_ACCELERATION, MAX_ACCELERATION)
         self.acceleration = round(validated_acceleration, 1)
@@ -542,13 +533,11 @@ class AdvancedSettings(Static):
         self.interpolate = interpolate
         self.motor_driver.set_interpolation(self.interpolate)
         self.app.query_one(StatusAdvanced).interpolate = f"Interpolation: {self.interpolate}"
-        self.update_interpolate_compat_label()
 
     def set_spread_cycle(self, spread_cycle: bool):
         self.spread_cycle = spread_cycle
         self.motor_driver.set_spreadcycle(self.spread_cycle)
         self.app.query_one(StatusAdvanced).spread_cycle = f"Spread Cycle: {self.spread_cycle}"
-        self.update_interpolate_compat_label()
 
 
 class Coder(Static):
