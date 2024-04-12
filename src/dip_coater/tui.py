@@ -447,34 +447,35 @@ class AdvancedSettings(Static):
         with Vertical():
             yield StepMode(self.motor_driver)
             with Horizontal():
-                yield Label("Acceleration: ", id="acceleration-label")
-                yield Input(
-                    value=f"{self.acceleration}",
-                    type="number",
-                    placeholder="Acceleration (mm/s\u00b2)",
-                    id="acceleration-input",
-                    validate_on=["submitted"],
-                    validators=[Number(minimum=MIN_ACCELERATION, maximum=MAX_ACCELERATION)],
-                    classes="input-fields",
-                )
-                yield Label("mm/s\u00b2", id="acceleration-unit")
-            with Horizontal():
-                yield Label("Motor current: ", id="motor-current-label")
-                yield Input(
-                    value=f"{self.motor_current}",
-                    type="number",
-                    placeholder="Motor current (mA)",
-                    id="motor-current-input",
-                    validate_on=["submitted"],
-                    validators=[Number(minimum=MIN_CURRENT, maximum=MAX_CURRENT)],
-                    classes="input-fields",
-                )
-                yield Label("mA", id="motor-current-unit")
-            with Horizontal():
+                with Horizontal():
+                    yield Label("Acceleration: ", id="acceleration-label")
+                    yield Input(
+                        value=f"{self.acceleration}",
+                        type="number",
+                        placeholder="Acceleration (mm/s\u00b2)",
+                        id="acceleration-input",
+                        validate_on=["submitted"],
+                        validators=[Number(minimum=MIN_ACCELERATION, maximum=MAX_ACCELERATION)],
+                        classes="input-fields",
+                    )
+                    yield Label("mm/s\u00b2", id="acceleration-unit")
+                with Horizontal():
+                    yield Label("Motor current: ", id="motor-current-label")
+                    yield Input(
+                        value=f"{self.motor_current}",
+                        type="number",
+                        placeholder="Motor current (mA)",
+                        id="motor-current-input",
+                        validate_on=["submitted"],
+                        validators=[Number(minimum=MIN_CURRENT, maximum=MAX_CURRENT)],
+                        classes="input-fields",
+                    )
+                    yield Label("mA", id="motor-current-unit")
+            with Horizontal(id="interpolation-container"):
                 yield Checkbox("Interpolation", value=self.interpolate, id="interpolation-checkbox", classes="checkbox")
-                yield Label("", id="interpolation-compat-label")
-            yield Checkbox("Spread Cycle (T)/Stealth Chop (F)", value=self.spread_cycle, id="spread-cycle-checkbox", classes="checkbox")
-            yield Rule()
+                yield Checkbox("Spread Cycle (T)/Stealth Chop (F)", value=self.spread_cycle, id="spread-cycle-checkbox", classes="checkbox")
+            yield Label("<dummy text>", id="interpolation-compat-label")
+            #yield Rule()
             # TODO: set logging level using Select widget?
             yield Button("Reset to defaults", id="reset-to-defaults-btn", variant="error")
 

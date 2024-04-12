@@ -144,7 +144,7 @@ DistanceControls {
 }
 
 AdvancedSettings {
-    height: 20;
+    height: 16;
     .input-fields {
         content-align: left top;
         margin-left: 2;
@@ -154,8 +154,18 @@ AdvancedSettings {
         border: none;
     }
 
+    #interpolation-container {
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+
+    #interpolation-checkbox {
+        margin-right: 2;
+    }
+
     #interpolation-compat-label {
-        width: 70%;
+        width: 100%;
         margin-left: 1;
     }
 
@@ -170,6 +180,12 @@ AdvancedSettings {
         height: 3;
         border: none;
     }
+}
+
+#motor-logger {
+    background: $panel;
+    height: 30%;
+    margin-top: 1;
 }
 
 Coder {
