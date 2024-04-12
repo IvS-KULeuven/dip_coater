@@ -9,20 +9,14 @@ TRANS_PER_REV = 8  # The vertical translation in mm of the coater for one revolu
 
 class TMC2209_MotorDriver:
     """ Class to control the TMC2209 motor driver for the dip coater"""
-    def __init__(self, stepmode: int = 64, current: int = 1000, interpolation: bool = False, spread_cycle: bool = True,
+    def __init__(self, stepmode: int = 64, current: int = 1000, interpolation: bool = True, spread_cycle: bool = False,
                  loglevel: Loglevel = Loglevel.ERROR):
         """ Initialize the motor driver
 
         :param stepmode: The step mode to set (1, 2, 4, 8, 16, 32, 64, 128, 256)
         :param current: The current to set for the motor driver in mA
         :param interpolation: Whether to use interpolation for the motor driver
-            The interpolate setting may reduce the audible noise of printer movement at the cost of introducing a
-            small systemic positional error.
-            For best positional accuracy consider using spreadCycle mode and disable interpolation.
-            Typically, a microstep setting of 64 or 128 will have similar audible noise as interpolation.
-        :param spreadcycle: Whether to use spread_cycle for the motor driver (true) or stealthchop (false).
-            In general, spreadCycle mode provides greater torque and greater positional accuracy than stealthChop mode.
-            However, stealthChop mode may produce significantly lower audible noise
+        :param spreadcycle: Whether to use spread_cycle for the motor driver (true) or stealthchop (false)
         :param loglevel: The log level to set for the motor driver (NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL)
         """
         # GPIO pins
@@ -64,23 +58,17 @@ class TMC2209_MotorDriver:
         """
         self.tmc.set_current(current, pdn_disable=False)
 
-    def set_interpolation(self, interpolation: bool = False):
+    def set_interpolation(self, interpolation: bool = True):
         """ Set the interpolation setting of the motor driver
 
         :param interpolation: Whether to use interpolation for the motor driver
-            The interpolate setting may reduce the audible noise of printer movement at the cost of introducing a
-            small systemic positional error.
-            For best positional accuracy consider using spreadCycle mode and disable interpolation.
-            Typically, a microstep setting of 64 or 128 will have similar audible noise as interpolation.
         """
         self.tmc.set_interpolation(interpolation)
 
-    def set_spreadcycle(self, spread_cycle: bool = True):
+    def set_spreadcycle(self, spread_cycle: bool = False):
         """ Set the spreadcycle setting of the motor driver
 
-        :param spreadcycle: Whether to use spread_cycle for the motor driver (true) or stealthchop (false).
-            In general, spreadCycle mode provides greater torque and greater positional accuracy than stealthChop mode.
-            However, stealthChop mode may produce significantly lower audible noise
+        :param spreadcycle: Whether to use spread_cycle for the motor driver (true) or stealthchop (false)
         """
         self.tmc.set_spreadcycle(spread_cycle)
 

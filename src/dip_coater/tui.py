@@ -108,8 +108,8 @@ MIN_CURRENT = 100
 MAX_CURRENT = 2000  # Absolute max limit for TMC2209!
 
 # Other motor settings
-USE_SPREAD_CYCLE = True
-USE_INTERPOLATION = False
+USE_SPREAD_CYCLE = False
+USE_INTERPOLATION = True
 
 
 class StepMode(Static):
