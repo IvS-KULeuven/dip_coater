@@ -171,9 +171,15 @@ AdvancedSettings {
         border: none;
     }
 
-    #reset-to-defaults-btn {
+    #logging-level-select {
         height: 3;
         border: none;
+    }
+
+    #reset-to-defaults-btn {
+        height: 2;
+        border: none;
+        margin-top: 1;
     }
 }
 

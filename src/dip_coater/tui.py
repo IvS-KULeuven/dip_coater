@@ -30,6 +30,7 @@ from textual.widgets import TabbedContent
 from textual.widgets import TextArea
 from textual.widgets import Collapsible
 from textual.widgets import Checkbox
+from textual.widgets import Select
 from textual.widgets import Rule
 from textual.validation import Number, Function
 from importlib.metadata import version
@@ -477,7 +478,14 @@ class AdvancedSettings(Static):
                 yield Checkbox("Interpolation", value=self.interpolate, id="interpolation-checkbox", classes="checkbox")
                 yield Checkbox("Spread Cycle (T)/Stealth Chop (F)", value=self.spread_cycle, id="spread-cycle-checkbox", classes="checkbox")
             #yield Rule()
-            # TODO: set logging level using Select widget?
+            with Horizontal():
+                yield Label("Logging level: ", id="logging-level-label")
+                options = self.create_log_level_options()
+                yield Select(options,
+                             value=DEFAULT_LOGGING_LEVEL.value,
+                             allow_blank=False,
+                             name="Select logging level",
+                             id="logging-level-select")
             yield Button("Reset to defaults", id="reset-to-defaults-btn", variant="error")
 
     def _on_mount(self, event: events.Mount) -> None:
@@ -485,6 +493,13 @@ class AdvancedSettings(Static):
         self.app.query_one(StatusAdvanced).motor_current = f"Motor current: {self.motor_current} mA"
         self.app.query_one(StatusAdvanced).interpolate = f"Interpolation: {self.interpolate}"
         self.app.query_one(StatusAdvanced).spread_cycle = f"Spread Cycle: {self.spread_cycle}"
+
+    @staticmethod
+    def create_log_level_options() -> list:
+        options = []
+        for level in Loglevel:
+            options.append((level.name, level.value))
+        return options
 
     @on(Input.Submitted, "#acceleration-input")
     def submit_acceleration_input(self):
@@ -508,6 +523,11 @@ class AdvancedSettings(Static):
         spread_cycle = event.checkbox.value
         self.set_spread_cycle(spread_cycle)
 
+    @on(Select.Changed, "#logging-level-select")
+    def action_set_loglevel(self, event: Select.Changed):
+        level = Loglevel(event.value)
+        self.set_loglevel(level)
+
     @on(Button.Pressed, "#reset-to-defaults-btn")
     def reset_to_defaults(self):
         self.query_one(StepMode).set_stepmode(STEP_MODES[DEFAULT_STEP_MODE], STEP_MODE_LABELS[DEFAULT_STEP_MODE])
@@ -520,6 +540,7 @@ class AdvancedSettings(Static):
         self.query_one("#interpolation-checkbox", Checkbox).value = USE_INTERPOLATION
         self.set_spread_cycle(USE_SPREAD_CYCLE)
         self.query_one("#spread-cycle-checkbox", Checkbox).value = USE_SPREAD_CYCLE
+        self.query_one("#logging-level-select", Select).value = DEFAULT_LOGGING_LEVEL.value
 
     def set_acceleration(self, acceleration: float):
         validated_acceleration = clamp(acceleration, MIN_ACCELERATION, MAX_ACCELERATION)
@@ -540,6 +561,9 @@ class AdvancedSettings(Static):
         self.spread_cycle = spread_cycle
         self.motor_driver.set_spreadcycle(self.spread_cycle)
         self.app.query_one(StatusAdvanced).spread_cycle = f"Spread Cycle: {self.spread_cycle}"
+
+    def set_loglevel(self, level: Loglevel):
+        self.motor_driver.set_loglevel(level)
 
 
 class Coder(Static):

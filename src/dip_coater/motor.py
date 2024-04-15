@@ -73,6 +73,13 @@ class TMC2209_MotorDriver:
         """
         self.tmc.set_spreadcycle(spread_cycle)
 
+    def set_loglevel(self, loglevel: Loglevel = Loglevel.INFO):
+        """ Set the log level for the motor driver
+
+        :param loglevel: The log level to set for the motor driver (NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL)
+        """
+        self.tmc.tmc_logger.set_loglevel(loglevel)
+
     def enable_motor(self):
         """ Arm the motor"""
         self.tmc.set_motor_enabled(True)
