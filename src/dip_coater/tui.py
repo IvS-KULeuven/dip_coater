@@ -586,26 +586,27 @@ class Coder(Static):
                 show_line_numbers=True,
                 id="code-editor",
             )
-            yield Button(
-                "RUN code",
-                id="run-code-btn",
-                variant="success",
-            )
-            with Horizontal(id="file-path-import-container"):
+            with Horizontal(id="run-and-load-code-container"):
+                yield Button(
+                    "RUN code",
+                    id="run-code-btn",
+                    variant="success",
+                )
                 yield Button(
                     "LOAD code from file",
                     id="load-code-btn",
                 )
-                yield Input(
-                    value="<dummy input>",
-                    type="text",
-                    placeholder="Input file path to python code, or empty for default code",
-                    id="code-file-path-input",
-                    validate_on=["changed"],
-                    validators=[Function(self.is_file_path_valid_python,
-                                         "File path does not point to valid Python (.py) file")],
-                )
-            yield Label("", id="coder-path-invalid-reasons")
+                with Vertical(id="coder-path-input-container"):
+                    yield Input(
+                        value="<dummy input>",
+                        type="text",
+                        placeholder="Input file path to python code, or empty for default code",
+                        id="code-file-path-input",
+                        validate_on=["changed"],
+                        validators=[Function(self.is_file_path_valid_python,
+                                             "File path does not point to valid Python (.py) file")],
+                    )
+                    yield Label("", id="coder-path-invalid-reasons")
 
     def _on_mount(self, event: events.Mount) -> None:
         self.load_default_code()

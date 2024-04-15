@@ -208,9 +208,18 @@ Coder {
         padding: 0;
     }
 
-    #file-path-import-container {
-        height: 3;
+    #run-and-load-code-container {
+        height: 4;
         width: 100%;
+    }
+
+    #run-code-btn {
+        height: 3;
+        margin-right: 2;
+    }
+
+    #load-code-btn {
+        height: 3;
     }
 
     #code-file-path-input {
@@ -225,6 +234,10 @@ Coder {
 
     #code-file-path-input.-invalid {
         border: solid red;
+    }
+
+    #coder-path-invalid-reasons {
+        margin-left: 1;
     }
 }
 
