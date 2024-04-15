@@ -7,14 +7,18 @@ class TMC_2209:
     from ._TMC_2209_move import (set_max_speed, set_acceleration, run_to_position_revolutions, set_movement_abs_rel)
 
     def __init__(self, pin_en, pin_step=-1, pin_dir=-1, baudrate=115200, serialport="/dev/serial0",
-                 driver_address=0, gpio_mode=None, loglevel=None, skip_uart_init=False):
-        self.tmc_logger = TMC_logger(loglevel, f"TMC2209 {driver_address}")
+                 driver_address=0, gpio_mode=None, loglevel=None, logprefix=None,
+                 log_handlers=None, skip_uart_init=False):
+        self.tmc_logger = TMC_logger(loglevel, logprefix, log_handlers)
+
+        self.tmc_logger.log("Using mock TMC library", Loglevel.WARNING)
+        self.tmc_logger.log("Init", Loglevel.INFO)
 
     def set_stepmode(self, _stepmode: int):
         pass
 
     def set_motor_enabled(self, en):
-        pass
+        self.tmc_logger.log(f"Motor output active: {en}", Loglevel.INFO)
 
     def set_vactual(self, flag: bool):
         pass

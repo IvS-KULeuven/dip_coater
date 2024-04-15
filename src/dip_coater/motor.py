@@ -10,7 +10,7 @@ TRANS_PER_REV = 8  # The vertical translation in mm of the coater for one revolu
 class TMC2209_MotorDriver:
     """ Class to control the TMC2209 motor driver for the dip coater"""
     def __init__(self, stepmode: int = 8, current: int = 1000, interpolation: bool = True, spread_cycle: bool = False,
-                 loglevel: Loglevel = Loglevel.ERROR):
+                 loglevel: Loglevel = Loglevel.ERROR, log_handlers: list = None):
         """ Initialize the motor driver
 
         :param stepmode: The step mode to set (1, 2, 4, 8, 16, 32, 64, 128, 256)
@@ -18,6 +18,7 @@ class TMC2209_MotorDriver:
         :param interpolation: Whether to use interpolation for the motor driver
         :param spreadcycle: Whether to use spread_cycle for the motor driver (true) or stealthchop (false)
         :param loglevel: The log level to set for the motor driver (NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL)
+        :param log_handlers: The log handlers to use for the motor driver (default: None = log to console)
         """
         # GPIO pins
         en_pin = 21
@@ -25,7 +26,7 @@ class TMC2209_MotorDriver:
         dir_pin = 26
 
         # Motor driver
-        self.tmc = TMC_2209(en_pin, step_pin, dir_pin, loglevel=loglevel)
+        self.tmc = TMC_2209(en_pin, step_pin, dir_pin, loglevel=loglevel, log_handlers=log_handlers)
 
         # Set motor driver settings
         self.tmc.set_vactual(False)      # Motor is not controlled by UART

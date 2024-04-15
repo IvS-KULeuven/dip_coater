@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dip-coater"
-version = "0.12.0"
+version = "0.13.0"
 authors = [
     {name="Rik Huygen", email="rik.huygen@kuleuven.be"},
     {name="Sibo Van Gool", email="sibo.vangool@kuleuven.be"}
@@ -29,7 +29,7 @@ dependencies = [
 repository = "https://github.com/IvS-KULeuven/dip_coater"
 
 [project.optional-dependencies]
-rpi = ["RPi.GPIO", "TMC-2209-Raspberry-Pi>=0.4.3"]
+rpi = ["RPi.GPIO", "TMC-2209-Raspberry-Pi>=0.4.4"]
 
 [project.scripts]
 dip-coater = "dip_coater.tui:main"

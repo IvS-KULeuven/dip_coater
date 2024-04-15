@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from textual import on, events
@@ -35,6 +36,7 @@ from importlib.metadata import version
 
 import argparse
 import asyncio
+import logging
 
 # Mock the import of RPi when the package is not available
 try:
@@ -56,7 +58,7 @@ from dip_coater.motor import TMC2209_MotorDriver
 
 # Logging settings
 STEP_MODE_WRITE_TO_LOG = False
-LOGGING_LEVEL = Loglevel.ERROR  # NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL
+DEFAULT_LOGGING_LEVEL = Loglevel.INFO  # NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL
 
 # Speed settings (mm/s)
 DEFAULT_SPEED = 5
@@ -679,6 +681,25 @@ class Coder(Static):
         self.async_run(asyncio.sleep, seconds)
 
 
+class MotorLoggerHandler(logging.Handler):
+    def __init__(self, logger_widget: RichLog) -> None:
+        super().__init__()
+        self.logger_widget = logger_widget
+
+    def emit(self, record) -> None:
+        self.logger_widget.write(self.colorize(record))
+
+    def colorize(self, record):
+        message = self.format(record)
+        if record.levelno == Loglevel.ERROR.value:
+            return f"[red]{message}[/]"
+        elif record.levelno == Loglevel.WARNING.value:
+            return f"[dark_orange]{message}[/]"
+        elif record.levelno == Loglevel.MOVEMENT.value:
+            return f"[cyan]{message}[/]"
+        return message
+
+
 class DipCoaterApp(App):
     """A Textual App to control a dip coater motor."""
 
@@ -692,11 +713,14 @@ class DipCoaterApp(App):
 
     def __init__(self):
         super().__init__()
+        self.motor_logger_widget = RichLog(markup=True, id="motor-logger")
+        motor_logger_handler = MotorLoggerHandler(self.motor_logger_widget)
         self.motor_driver = TMC2209_MotorDriver(stepmode=STEP_MODES[DEFAULT_STEP_MODE],
                                                 current=DEFAULT_CURRENT,
                                                 interpolation=USE_INTERPOLATION,
                                                 spread_cycle=USE_SPREAD_CYCLE,
-                                                loglevel=LOGGING_LEVEL)
+                                                loglevel=DEFAULT_LOGGING_LEVEL,
+                                                log_handlers=[motor_logger_handler])
 
     def on_mount(self):
         # on_mount() is called after compose(), so the RichLog is known
@@ -720,7 +744,7 @@ class DipCoaterApp(App):
                 with Horizontal():
                     with Vertical(id="left-side-advanced"):
                         yield AdvancedSettings(self.motor_driver)
-                        yield RichLog(markup=True, id="motor-logger")       # TODO: write motor logs to here
+                        yield self.motor_logger_widget
                     with Vertical(id="right-side-advanced"):
                         yield StatusAdvanced(id="status-advanced")
             with TabPane("Coder", id="coder-tab"):
@@ -744,15 +768,15 @@ def clamp(value, min_value, max_value):
 
 
 def main():
-    global LOGGING_LEVEL
+    global DEFAULT_LOGGING_LEVEL
     parser = argparse.ArgumentParser(description='Process logging level.')
-    parser.add_argument('-l', '--log-level', type=str, default='ERROR',
+    parser.add_argument('-l', '--log-level', type=str, default=DEFAULT_LOGGING_LEVEL.name,
                         choices=['NONE', 'ERROR', 'INFO', 'DEBUG', 'MOVEMENT', 'ALL'],
                         help='Set the logging level')
     args = parser.parse_args()
 
     # Convert string level to the appropriate value in your Loglevel enum
-    LOGGING_LEVEL = getattr(Loglevel, args.log_level)
+    DEFAULT_LOGGING_LEVEL = getattr(Loglevel, args.log_level)
 
     app = DipCoaterApp()
     package_version = version("dip-coater")
