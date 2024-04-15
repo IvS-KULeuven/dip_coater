@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from textual import on, events
@@ -29,12 +30,14 @@ from textual.widgets import TabbedContent
 from textual.widgets import TextArea
 from textual.widgets import Collapsible
 from textual.widgets import Checkbox
+from textual.widgets import Select
 from textual.widgets import Rule
 from textual.validation import Number, Function
 from importlib.metadata import version
 
 import argparse
 import asyncio
+import logging
 
 # Mock the import of RPi when the package is not available
 try:
@@ -56,7 +59,7 @@ from dip_coater.motor import TMC2209_MotorDriver
 
 # Logging settings
 STEP_MODE_WRITE_TO_LOG = False
-LOGGING_LEVEL = Loglevel.ERROR  # NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL
+DEFAULT_LOGGING_LEVEL = Loglevel.INFO  # NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL
 
 # Speed settings (mm/s)
 DEFAULT_SPEED = 5
@@ -475,14 +478,40 @@ class AdvancedSettings(Static):
                 yield Checkbox("Interpolation", value=self.interpolate, id="interpolation-checkbox", classes="checkbox")
                 yield Checkbox("Spread Cycle (T)/Stealth Chop (F)", value=self.spread_cycle, id="spread-cycle-checkbox", classes="checkbox")
             #yield Rule()
-            # TODO: set logging level using Select widget?
-            yield Button("Reset to defaults", id="reset-to-defaults-btn", variant="error")
+            with Horizontal():
+                yield Label("Logging level: ", id="logging-level-label")
+                options = self.create_log_level_options()
+                yield Select(options,
+                             value=DEFAULT_LOGGING_LEVEL.value,
+                             allow_blank=False,
+                             name="Select logging level",
+                             id="logging-level-select")
 
     def _on_mount(self, event: events.Mount) -> None:
         self.app.query_one(StatusAdvanced).acceleration = f"Acceleration: {self.acceleration} mm/s\u00b2"
         self.app.query_one(StatusAdvanced).motor_current = f"Motor current: {self.motor_current} mA"
         self.app.query_one(StatusAdvanced).interpolate = f"Interpolation: {self.interpolate}"
         self.app.query_one(StatusAdvanced).spread_cycle = f"Spread Cycle: {self.spread_cycle}"
+
+    def reset_settings_to_default(self):
+        self.query_one(StepMode).set_stepmode(STEP_MODES[DEFAULT_STEP_MODE], STEP_MODE_LABELS[DEFAULT_STEP_MODE])
+        self.query_one(StepMode).query_one(f"#{DEFAULT_STEP_MODE}", RadioButton).value = True
+        self.set_acceleration(DEFAULT_ACCELERATION)
+        self.query_one("#acceleration-input", Input).value = f"{DEFAULT_ACCELERATION}"
+        self.set_motor_current(DEFAULT_CURRENT)
+        self.query_one("#motor-current-input", Input).value = f"{DEFAULT_CURRENT}"
+        self.set_interpolate(USE_INTERPOLATION)
+        self.query_one("#interpolation-checkbox", Checkbox).value = USE_INTERPOLATION
+        self.set_spread_cycle(USE_SPREAD_CYCLE)
+        self.query_one("#spread-cycle-checkbox", Checkbox).value = USE_SPREAD_CYCLE
+        self.query_one("#logging-level-select", Select).value = DEFAULT_LOGGING_LEVEL.value
+
+    @staticmethod
+    def create_log_level_options() -> list:
+        options = []
+        for level in Loglevel:
+            options.append((level.name, level.value))
+        return options
 
     @on(Input.Submitted, "#acceleration-input")
     def submit_acceleration_input(self):
@@ -506,18 +535,10 @@ class AdvancedSettings(Static):
         spread_cycle = event.checkbox.value
         self.set_spread_cycle(spread_cycle)
 
-    @on(Button.Pressed, "#reset-to-defaults-btn")
-    def reset_to_defaults(self):
-        self.query_one(StepMode).set_stepmode(STEP_MODES[DEFAULT_STEP_MODE], STEP_MODE_LABELS[DEFAULT_STEP_MODE])
-        self.query_one(StepMode).query_one(f"#{DEFAULT_STEP_MODE}", RadioButton).value = True
-        self.set_acceleration(DEFAULT_ACCELERATION)
-        self.query_one("#acceleration-input", Input).value = f"{DEFAULT_ACCELERATION}"
-        self.set_motor_current(DEFAULT_CURRENT)
-        self.query_one("#motor-current-input", Input).value = f"{DEFAULT_CURRENT}"
-        self.set_interpolate(USE_INTERPOLATION)
-        self.query_one("#interpolation-checkbox", Checkbox).value = USE_INTERPOLATION
-        self.set_spread_cycle(USE_SPREAD_CYCLE)
-        self.query_one("#spread-cycle-checkbox", Checkbox).value = USE_SPREAD_CYCLE
+    @on(Select.Changed, "#logging-level-select")
+    def action_set_loglevel(self, event: Select.Changed):
+        level = Loglevel(event.value)
+        self.set_loglevel(level)
 
     def set_acceleration(self, acceleration: float):
         validated_acceleration = clamp(acceleration, MIN_ACCELERATION, MAX_ACCELERATION)
@@ -538,6 +559,9 @@ class AdvancedSettings(Static):
         self.spread_cycle = spread_cycle
         self.motor_driver.set_spreadcycle(self.spread_cycle)
         self.app.query_one(StatusAdvanced).spread_cycle = f"Spread Cycle: {self.spread_cycle}"
+
+    def set_loglevel(self, level: Loglevel):
+        self.motor_driver.set_loglevel(level)
 
 
 class Coder(Static):
@@ -560,26 +584,27 @@ class Coder(Static):
                 show_line_numbers=True,
                 id="code-editor",
             )
-            yield Button(
-                "RUN code",
-                id="run-code-btn",
-                variant="success",
-            )
-            with Horizontal(id="file-path-import-container"):
+            with Horizontal(id="run-and-load-code-container"):
+                yield Button(
+                    "RUN code",
+                    id="run-code-btn",
+                    variant="success",
+                )
                 yield Button(
                     "LOAD code from file",
                     id="load-code-btn",
                 )
-                yield Input(
-                    value="<dummy input>",
-                    type="text",
-                    placeholder="Input file path to python code, or empty for default code",
-                    id="code-file-path-input",
-                    validate_on=["changed"],
-                    validators=[Function(self.is_file_path_valid_python,
-                                         "File path does not point to valid Python (.py) file")],
-                )
-            yield Label("", id="coder-path-invalid-reasons")
+                with Vertical(id="coder-path-input-container"):
+                    yield Input(
+                        value="<dummy input>",
+                        type="text",
+                        placeholder="Input file path to python code, or empty for default code",
+                        id="code-file-path-input",
+                        validate_on=["changed"],
+                        validators=[Function(self.is_file_path_valid_python,
+                                             "File path does not point to valid Python (.py) file")],
+                    )
+                    yield Label("", id="coder-path-invalid-reasons")
 
     def _on_mount(self, event: events.Mount) -> None:
         self.load_default_code()
@@ -679,6 +704,25 @@ class Coder(Static):
         self.async_run(asyncio.sleep, seconds)
 
 
+class MotorLoggerHandler(logging.Handler):
+    def __init__(self, logger_widget: RichLog) -> None:
+        super().__init__()
+        self.logger_widget = logger_widget
+
+    def emit(self, record) -> None:
+        self.logger_widget.write(self.colorize(record))
+
+    def colorize(self, record):
+        message = self.format(record)
+        if record.levelno == Loglevel.ERROR.value:
+            return f"[red]{message}[/]"
+        elif record.levelno == Loglevel.WARNING.value:
+            return f"[dark_orange]{message}[/]"
+        elif record.levelno == Loglevel.MOVEMENT.value:
+            return f"[cyan]{message}[/]"
+        return message
+
+
 class DipCoaterApp(App):
     """A Textual App to control a dip coater motor."""
 
@@ -692,11 +736,15 @@ class DipCoaterApp(App):
 
     def __init__(self):
         super().__init__()
+        self.motor_logger_widget = RichLog(markup=True, id="motor-logger")
+        motor_logger_handler = MotorLoggerHandler(self.motor_logger_widget)
+        # TODO: change logger formatting to logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", '%Y%m%d %H:%M:%S') once supported by TMC lib
         self.motor_driver = TMC2209_MotorDriver(stepmode=STEP_MODES[DEFAULT_STEP_MODE],
                                                 current=DEFAULT_CURRENT,
                                                 interpolation=USE_INTERPOLATION,
                                                 spread_cycle=USE_SPREAD_CYCLE,
-                                                loglevel=LOGGING_LEVEL)
+                                                loglevel=DEFAULT_LOGGING_LEVEL,
+                                                log_handlers=[motor_logger_handler])
 
     def on_mount(self):
         # on_mount() is called after compose(), so the RichLog is known
@@ -720,11 +768,16 @@ class DipCoaterApp(App):
                 with Horizontal():
                     with Vertical(id="left-side-advanced"):
                         yield AdvancedSettings(self.motor_driver)
-                        yield RichLog(markup=True, id="motor-logger")       # TODO: write motor logs to here
+                        yield self.motor_logger_widget
                     with Vertical(id="right-side-advanced"):
                         yield StatusAdvanced(id="status-advanced")
+                        yield Button("Reset to defaults", id="reset-to-defaults-btn", variant="error")
             with TabPane("Coder", id="coder-tab"):
                 yield Coder()
+
+    @on(Button.Pressed, "#reset-to-defaults-btn")
+    def reset_to_defaults(self):
+        self.query_one(AdvancedSettings).reset_settings_to_default()
 
     def action_toggle_dark(self) -> None:
         """An action to toggle dark mode."""
@@ -744,15 +797,15 @@ def clamp(value, min_value, max_value):
 
 
 def main():
-    global LOGGING_LEVEL
+    global DEFAULT_LOGGING_LEVEL
     parser = argparse.ArgumentParser(description='Process logging level.')
-    parser.add_argument('-l', '--log-level', type=str, default='ERROR',
+    parser.add_argument('-l', '--log-level', type=str, default=DEFAULT_LOGGING_LEVEL.name,
                         choices=['NONE', 'ERROR', 'INFO', 'DEBUG', 'MOVEMENT', 'ALL'],
                         help='Set the logging level')
     args = parser.parse_args()
 
     # Convert string level to the appropriate value in your Loglevel enum
-    LOGGING_LEVEL = getattr(Loglevel, args.log_level)
+    DEFAULT_LOGGING_LEVEL = getattr(Loglevel, args.log_level)
 
     app = DipCoaterApp()
     package_version = version("dip-coater")

@@ -13,20 +13,7 @@ Status {
     width: 74%;
 }
 
-#left-side-advanced {
-    width: 69%;
-}
-
-#right-side-advanced {
-    width: 30%;
-}
-
 Status {
-    border: solid $panel;
-    height: 100%;
-}
-
-StatusAdvanced {
     border: solid $panel;
     height: 100%;
 }
@@ -143,8 +130,16 @@ DistanceControls {
     background: $success;
 }
 
+#left-side-advanced {
+    width: 69%;
+}
+
+#right-side-advanced {
+    width: 30%;
+}
+
 AdvancedSettings {
-    height: 16;
+    height: 13;
     .input-fields {
         content-align: left top;
         margin-left: 2;
@@ -171,15 +166,26 @@ AdvancedSettings {
         border: none;
     }
 
-    #reset-to-defaults-btn {
+    #logging-level-select {
         height: 3;
         border: none;
     }
 }
 
+StatusAdvanced {
+    border: solid $panel;
+    height: 80%;
+}
+
+#reset-to-defaults-btn {
+    height: 3;
+    border: none;
+    margin-left: 1;
+    margin-top: 1;
+}
+
 #motor-logger {
     background: $panel;
-    height: 30%;
     margin-top: 1;
 }
 
@@ -202,9 +208,18 @@ Coder {
         padding: 0;
     }
 
-    #file-path-import-container {
-        height: 3;
+    #run-and-load-code-container {
+        height: 4;
         width: 100%;
+    }
+
+    #run-code-btn {
+        height: 3;
+        margin-right: 2;
+    }
+
+    #load-code-btn {
+        height: 3;
     }
 
     #code-file-path-input {
@@ -219,6 +234,10 @@ Coder {
 
     #code-file-path-input.-invalid {
         border: solid red;
+    }
+
+    #coder-path-invalid-reasons {
+        margin-left: 1;
     }
 }
 
