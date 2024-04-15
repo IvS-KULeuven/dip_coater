@@ -2,6 +2,7 @@ from TMC_2209.TMC_2209_StepperDriver import *
 from TMC_2209._TMC_2209_logger import Loglevel
 from TMC_2209._TMC_2209_move import MovementAbsRel
 import time
+from RPi import GPIO
 
 # ======== CONSTANTS ========
 TRANS_PER_REV = 8  # The vertical translation in mm of the coater for one revolution of the motor
@@ -21,6 +22,7 @@ class TMC2209_MotorDriver:
         :param log_handlers: The log handlers to use for the motor driver (default: None = log to console)
         """
         # GPIO pins
+        GPIO.setmode(GPIO.BCM)
         en_pin = 21
         step_pin = 16
         dir_pin = 26
