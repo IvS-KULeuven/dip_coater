@@ -486,13 +486,25 @@ class AdvancedSettings(Static):
                              allow_blank=False,
                              name="Select logging level",
                              id="logging-level-select")
-            yield Button("Reset to defaults", id="reset-to-defaults-btn", variant="error")
 
     def _on_mount(self, event: events.Mount) -> None:
         self.app.query_one(StatusAdvanced).acceleration = f"Acceleration: {self.acceleration} mm/s\u00b2"
         self.app.query_one(StatusAdvanced).motor_current = f"Motor current: {self.motor_current} mA"
         self.app.query_one(StatusAdvanced).interpolate = f"Interpolation: {self.interpolate}"
         self.app.query_one(StatusAdvanced).spread_cycle = f"Spread Cycle: {self.spread_cycle}"
+
+    def reset_settings_to_default(self):
+        self.query_one(StepMode).set_stepmode(STEP_MODES[DEFAULT_STEP_MODE], STEP_MODE_LABELS[DEFAULT_STEP_MODE])
+        self.query_one(StepMode).query_one(f"#{DEFAULT_STEP_MODE}", RadioButton).value = True
+        self.set_acceleration(DEFAULT_ACCELERATION)
+        self.query_one("#acceleration-input", Input).value = f"{DEFAULT_ACCELERATION}"
+        self.set_motor_current(DEFAULT_CURRENT)
+        self.query_one("#motor-current-input", Input).value = f"{DEFAULT_CURRENT}"
+        self.set_interpolate(USE_INTERPOLATION)
+        self.query_one("#interpolation-checkbox", Checkbox).value = USE_INTERPOLATION
+        self.set_spread_cycle(USE_SPREAD_CYCLE)
+        self.query_one("#spread-cycle-checkbox", Checkbox).value = USE_SPREAD_CYCLE
+        self.query_one("#logging-level-select", Select).value = DEFAULT_LOGGING_LEVEL.value
 
     @staticmethod
     def create_log_level_options() -> list:
@@ -527,20 +539,6 @@ class AdvancedSettings(Static):
     def action_set_loglevel(self, event: Select.Changed):
         level = Loglevel(event.value)
         self.set_loglevel(level)
-
-    @on(Button.Pressed, "#reset-to-defaults-btn")
-    def reset_to_defaults(self):
-        self.query_one(StepMode).set_stepmode(STEP_MODES[DEFAULT_STEP_MODE], STEP_MODE_LABELS[DEFAULT_STEP_MODE])
-        self.query_one(StepMode).query_one(f"#{DEFAULT_STEP_MODE}", RadioButton).value = True
-        self.set_acceleration(DEFAULT_ACCELERATION)
-        self.query_one("#acceleration-input", Input).value = f"{DEFAULT_ACCELERATION}"
-        self.set_motor_current(DEFAULT_CURRENT)
-        self.query_one("#motor-current-input", Input).value = f"{DEFAULT_CURRENT}"
-        self.set_interpolate(USE_INTERPOLATION)
-        self.query_one("#interpolation-checkbox", Checkbox).value = USE_INTERPOLATION
-        self.set_spread_cycle(USE_SPREAD_CYCLE)
-        self.query_one("#spread-cycle-checkbox", Checkbox).value = USE_SPREAD_CYCLE
-        self.query_one("#logging-level-select", Select).value = DEFAULT_LOGGING_LEVEL.value
 
     def set_acceleration(self, acceleration: float):
         validated_acceleration = clamp(acceleration, MIN_ACCELERATION, MAX_ACCELERATION)
@@ -772,8 +770,13 @@ class DipCoaterApp(App):
                         yield self.motor_logger_widget
                     with Vertical(id="right-side-advanced"):
                         yield StatusAdvanced(id="status-advanced")
+                        yield Button("Reset to defaults", id="reset-to-defaults-btn", variant="error")
             with TabPane("Coder", id="coder-tab"):
                 yield Coder()
+
+    @on(Button.Pressed, "#reset-to-defaults-btn")
+    def reset_to_defaults(self):
+        self.query_one(AdvancedSettings).reset_settings_to_default()
 
     def action_toggle_dark(self) -> None:
         """An action to toggle dark mode."""
