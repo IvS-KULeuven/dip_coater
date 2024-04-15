@@ -738,6 +738,7 @@ class DipCoaterApp(App):
         super().__init__()
         self.motor_logger_widget = RichLog(markup=True, id="motor-logger")
         motor_logger_handler = MotorLoggerHandler(self.motor_logger_widget)
+        # TODO: change logger formatting to logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", '%Y%m%d %H:%M:%S') once supported by TMC lib
         self.motor_driver = TMC2209_MotorDriver(stepmode=STEP_MODES[DEFAULT_STEP_MODE],
                                                 current=DEFAULT_CURRENT,
                                                 interpolation=USE_INTERPOLATION,
