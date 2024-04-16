@@ -7,6 +7,9 @@ def set_current(self, run_current, hold_current_multiplier = 0.5, hold_current_d
 def set_interpolation(self, en):
     pass
 
+def get_spreadcycle(self):
+    return 0
+
 def set_spreadcycle(self,en_spread):
     pass
 

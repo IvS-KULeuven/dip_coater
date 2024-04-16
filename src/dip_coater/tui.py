@@ -157,6 +157,7 @@ class MotorControls(Static):
         yield Button("Move DOWN ↓", id="move-down", variant="primary")
         yield Button("ENABLE motor", id="enable-motor", variant="success")
         yield Button("DISABLE motor", id="disable-motor", variant="error")
+        yield Button("Do HOMING", id="do-homing")
 
     @property
     def motor_state(self):
@@ -228,6 +229,17 @@ class MotorControls(Static):
             self._motor_state = "disabled"
             log.write(f"[dark_orange]Motor is now disabled.[/]")
             self.app.query_one(Status).motor = "Motor: [dark_orange]DISABLED[/]"
+
+    @on(Button.Pressed, "#do-homing")
+    async def do_homing_action(self):
+        log = self.app.query_one("#logger", RichLog)
+        if self._motor_state == "enabled":
+            log.write("Doing homing...")
+            await asyncio.sleep(0.1)
+            self.motor_driver.do_homing()
+            log.write("-> Finished homing.")
+        else:
+            log.write("[red]We cannot do homing when the motor is disabled[/]")
 
 
 class SpeedControls(Widget):

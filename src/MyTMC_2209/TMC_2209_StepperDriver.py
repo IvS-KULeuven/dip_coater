@@ -1,7 +1,7 @@
 from ._TMC_2209_logger import TMC_logger, Loglevel
 
 class TMC_2209:
-    from ._TMC_2209_comm import (set_direction_reg, set_current, set_interpolation, set_spreadcycle,
+    from ._TMC_2209_comm import (set_direction_reg, set_current, set_interpolation, get_spreadcycle, set_spreadcycle,
                                  set_microstepping_resolution, set_internal_rsense)
 
     from ._TMC_2209_move import (set_max_speed, set_acceleration, run_to_position_revolutions, set_movement_abs_rel)
@@ -28,3 +28,6 @@ class TMC_2209:
 
     def read_steps_per_rev(self):
         return 200
+
+    def do_homing(self, diag_pin, revolutions=10, threshold=None, speed_rpm=None):
+        pass

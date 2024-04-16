@@ -24,12 +24,13 @@ class TMC2209_MotorDriver:
         """
         # GPIO pins
         GPIO.setmode(GPIO.BCM)
-        en_pin = 21
-        step_pin = 16
-        dir_pin = 20
+        self.en_pin = 21
+        self.step_pin = 16
+        self.dir_pin = 20
+        self.diag_pin = 26
 
         # Motor driver
-        self.tmc = TMC_2209(en_pin, step_pin, dir_pin, loglevel=loglevel, log_handlers=log_handlers)
+        self.tmc = TMC_2209(self.en_pin, self.step_pin, self.dir_pin, loglevel=loglevel, log_handlers=log_handlers)
 
         # Set motor driver settings
         self.tmc.set_vactual(False)      # Motor is not controlled by UART
@@ -130,6 +131,24 @@ class TMC2209_MotorDriver:
         :param acceleration_mm_s2: The acceleration/deceleration to use for the movement in mm/s^2 (default: 0)
         """
         self.drive_motor(-distance_mm, speed_mm_s, acceleration_mm_s2)
+
+    def do_homing(self, revolutions: int = 25, threshold: int = 100, speed_rpm: float = 75):
+        """ Perform the homing routine for the motor driver using StallGuard
+
+        :param revolutions: The number of revolutions to perform the homing routine. (Default: 25; the max stroke of the
+        guide is 100 mm, so 25 revolutions should be enough to reach the top or bottom)
+        :param threshold: The threshold to use for the homing routine (default: None)
+        :param speed_rpm: The speed to use for the homing routine in RPM (default: 75 rot/min = 5 mm/s)
+        """
+        # Homing sets the spreadcycle to StealthChop, so we need to store the original setting and restore it afterwards
+        spread_cycle = self.tmc.get_spreadcycle()
+        self.tmc.do_homing(
+            diag_pin=self.diag_pin,
+            revolutions=revolutions,
+            threshold=threshold,
+            speed_rpm=speed_rpm
+        )
+        self.tmc.set_spreadcycle(spread_cycle)
 
     def cleanup(self):
         """ Clean up the motor driver for shutdown"""
