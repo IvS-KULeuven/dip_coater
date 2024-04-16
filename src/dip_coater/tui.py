@@ -107,7 +107,7 @@ DEFAULT_STEP_MODE = "I8"
 
 # Current settings (in mA)
 DEFAULT_CURRENT = 1000
-MIN_CURRENT = 100
+MIN_CURRENT = 10
 MAX_CURRENT = 2000  # Absolute max limit for TMC2209!
 
 # Homing settings
@@ -686,13 +686,17 @@ class AdvancedSettings(Static):
     def submit_acceleration_input(self):
         acceleration_input = self.query_one("#acceleration-input", Input)
         acceleration = float(acceleration_input.value)
-        self.set_acceleration(acceleration)
+        acceleration_validated = clamp(acceleration, MIN_ACCELERATION, MAX_ACCELERATION)
+        acceleration_input.value = f"{acceleration_validated}"
+        self.set_acceleration(acceleration_validated)
 
     @on(Input.Submitted, "#motor-current-input")
     def submit_motor_current_input(self):
         motor_current_input = self.query_one("#motor-current-input", Input)
         motor_current = int(motor_current_input.value)
-        self.set_motor_current(motor_current)
+        motor_current_validated = clamp(motor_current, MIN_CURRENT, MAX_CURRENT)
+        motor_current_input.value = f"{motor_current_validated}"
+        self.set_motor_current(motor_current_validated)
 
     @on(Checkbox.Changed, "#invert-motor-checkbox")
     def toggle_invert_motor(self, event: Checkbox.Changed):
