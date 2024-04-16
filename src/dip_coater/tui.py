@@ -746,7 +746,7 @@ class AdvancedSettings(Static):
     async def test_stallguard_threshold(self):
         log = self.app.query_one("#logger", RichLog)
         log.write("[cyan]Testing StallGuard threshold...[/]")
-        self.motor_driver.test_stallguard_threshold(200)
+        self.motor_driver.test_stallguard_threshold()
         log.write("[cyan]-> Finished testing StallGuard threshold.[/]")
 
     @on(Select.Changed, "#logging-level-select")

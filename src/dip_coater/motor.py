@@ -148,7 +148,7 @@ class TMC2209_MotorDriver:
         )
         self.tmc.set_spreadcycle(spread_cycle)
 
-    def test_stallguard_threshold(self, steps: int):
+    def test_stallguard_threshold(self, steps: int = None):
         """test method for tuning stallguard threshold
 
         run this function with your motor settings and your motor load
@@ -156,6 +156,9 @@ class TMC2209_MotorDriver:
 
         :param steps: number of steps to move the motor
         """
+        if steps is None:
+            # Perform 2 revolutions
+            steps = 2 * self.tmc.read_steps_per_rev()
         self.tmc.test_stallguard_threshold(steps)
 
     def cleanup(self):
