@@ -20,13 +20,14 @@ Status {
 
 StepMode {
     align-vertical: middle;
-    height: 6;
+    height: 5;
+    margin-bottom: 1;
 
     #step-mode {
         layout: horizontal;
         width: 100%;
         overflow: auto;
-        height: 5;
+        height: 4;
         margin: 0;
     }
 
@@ -139,7 +140,7 @@ DistanceControls {
 }
 
 AdvancedSettings {
-    height: 15;
+    height: 20;
     .input-fields {
         content-align: left top;
         margin-left: 2;
@@ -150,7 +151,7 @@ AdvancedSettings {
     }
 
     #invert-motor-checkbox {
-        margin-bottom: 1;
+        margin-right: 2;
     }
 
     #interpolation-container {
@@ -173,6 +174,11 @@ AdvancedSettings {
     #logging-level-select {
         height: 3;
         border: none;
+    }
+
+    .rule {
+        border: none;
+        margin-bottom: 1;
     }
 }
 

@@ -252,10 +252,13 @@ class MotorControls(Static):
     async def do_homing_action(self):
         log = self.app.query_one("#logger", RichLog)
         if self._motor_state == "enabled":
-            log.write("Doing homing...")
+            revs = self.app.query_one(AdvancedSettings).homing_revs
+            threshold = self.app.query_one(AdvancedSettings).homing_threshold
+            speed = self.app.query_one(AdvancedSettings).homing_speed
+            log.write(f"[cyan]Doing homing ({revs=}, {threshold=}, {speed=} RPM)...[/]")
             self.set_motor_state("homing")
             await asyncio.sleep(0.1)
-            self.motor_driver.do_homing(HOMING_REVOLUTIONS, HOMING_THRESHOLD, HOMING_SPEED_RPM)
+            self.motor_driver.do_homing(revs, threshold, speed)
             log.write("-> Finished homing.")
             self.set_motor_state("enabled")
         elif self._motor_state == "homing":
@@ -419,18 +422,28 @@ class StatusAdvanced(Static):
     step_mode = reactive("Step Mode: ")
     acceleration = reactive("Acceleration: ")
     motor_current = reactive("Motor current: ")
+
     invert_motor_direction = reactive("Invert motor direction: ")
     interpolate = reactive("Interpolation: ")
     spread_cycle = reactive("Spread Cycle: ")
+
+    homing_revs = reactive("Homing revolutions: ")
+    homing_threshold = reactive("Homing threshold: ")
+    homing_speed = reactive("Homing speed: ")
 
     def compose(self) -> ComposeResult:
         with Vertical():
             yield Label(id="status-step-mode")
             yield Label(id="status-acceleration")
             yield Label(id="status-motor-current")
+            yield Rule()
             yield Label(id="status-invert-motor-direction")
             yield Label(id="status-interpolate")
             yield Label(id="status-spread-cycle")
+            yield Rule()
+            yield Label(id="status-homing-revolutions")
+            yield Label(id="status-homing-threshold")
+            yield Label(id="status-homing-speed")
 
     def watch_step_mode(self, step_mode: str):
         self.query_one("#status-step-mode", Label).update(step_mode)
@@ -467,6 +480,24 @@ class StatusAdvanced(Static):
 
     def update_spread_cycle(self, spread_cycle: bool):
         self.spread_cycle = f"Spread Cycle: {spread_cycle}"
+
+    def watch_homing_revs(self, homing_revs: str):
+        self.query_one("#status-homing-revolutions", Label).update(homing_revs)
+
+    def update_homing_revs(self, homing_revs: int):
+        self.homing_revs = f"Homing revolutions: {homing_revs}"
+
+    def watch_homing_threshold(self, homing_threshold: str):
+        self.query_one("#status-homing-threshold", Label).update(homing_threshold)
+
+    def update_homing_threshold(self, homing_threshold: int):
+        self.homing_threshold = f"Homing threshold: {homing_threshold}"
+
+    def watch_homing_speed(self, homing_speed: str):
+        self.query_one("#status-homing-speed", Label).update(homing_speed)
+
+    def update_homing_speed(self, homing_speed: float):
+        self.homing_speed = f"Homing speed: {homing_speed} RPM"
 
 
 class HelpCommand(Provider):
@@ -515,6 +546,9 @@ class AdvancedSettings(Static):
     invert_motor_direction = reactive(INVERT_MOTOR_DIRECTION)
     interpolate = reactive(USE_INTERPOLATION)
     spread_cycle = reactive(USE_SPREAD_CYCLE)
+    homing_revs = reactive(HOMING_REVOLUTIONS)
+    homing_threshold = reactive(HOMING_THRESHOLD)
+    homing_speed = reactive(HOMING_SPEED_RPM)
 
     def __init__(self, motor_driver: TMC2209_MotorDriver):
         super().__init__()
@@ -548,12 +582,48 @@ class AdvancedSettings(Static):
                         classes="input-fields",
                     )
                     yield Label("mA", id="motor-current-unit")
-            yield Checkbox("Invert motor direction", value=INVERT_MOTOR_DIRECTION, id="invert-motor-checkbox",
-                           classes="checkbox")
             with Horizontal(id="interpolation-container"):
+                yield Checkbox("Invert motor direction", value=INVERT_MOTOR_DIRECTION, id="invert-motor-checkbox",
+                               classes="checkbox")
                 yield Checkbox("Interpolation", value=self.interpolate, id="interpolation-checkbox", classes="checkbox")
                 yield Checkbox("Spread Cycle (T)/Stealth Chop (F)", value=self.spread_cycle, id="spread-cycle-checkbox", classes="checkbox")
-            #yield Rule()
+            yield Rule(classes="rule")
+            with Horizontal(id="homing-container"):
+                with Horizontal():
+                    yield Label("Homing revolutions: ", id="homing-revolutions-label")
+                    yield Input(
+                        value=f"{self.homing_revs}",
+                        type="number",
+                        placeholder="Homing revolutions",
+                        id="homing-revolutions-input",
+                        validate_on=["submitted"],
+                        validators=[Number(minimum=1)],
+                        classes="input-fields",
+                    )
+                with Horizontal():
+                    yield Label("Homing threshold: ", id="homing-threshold-label")
+                    yield Input(
+                        value=f"{self.homing_threshold}",
+                        type="number",
+                        placeholder="Homing threshold",
+                        id="homing-threshold-input",
+                        validate_on=["submitted"],
+                        validators=[Number(minimum=1, maximum=255)],
+                        classes="input-fields",
+                    )
+                with Horizontal():
+                    yield Label("Homing speed: ", id="homing-speed-label")
+                    yield Input(
+                        value=f"{self.homing_speed}",
+                        type="number",
+                        placeholder="Homing speed (RPM)",
+                        id="homing-speed-input",
+                        validate_on=["submitted"],
+                        validators=[Number(minimum=1)],
+                        classes="input-fields",
+                    )
+                    yield Label("RPM", id="homing-speed-unit")
+            yield Rule(classes="rule")
             with Horizontal():
                 yield Label("Logging level: ", id="logging-level-label")
                 options = self.create_log_level_options()
@@ -566,9 +636,14 @@ class AdvancedSettings(Static):
     def _on_mount(self, event: events.Mount) -> None:
         self.app.query_one(StatusAdvanced).update_acceleration(self.acceleration)
         self.app.query_one(StatusAdvanced).update_motor_current(self.motor_current)
+
         self.app.query_one(StatusAdvanced).update_invert_motor_direction(self.invert_motor_direction)
         self.app.query_one(StatusAdvanced).update_interpolate(self.interpolate)
         self.app.query_one(StatusAdvanced).update_spread_cycle(self.spread_cycle)
+
+        self.app.query_one(StatusAdvanced).update_homing_revs(self.homing_revs)
+        self.app.query_one(StatusAdvanced).update_homing_threshold(self.homing_threshold)
+        self.app.query_one(StatusAdvanced).update_homing_speed(self.homing_speed)
 
     def reset_settings_to_default(self):
         self.query_one(StepMode).set_stepmode(STEP_MODES[DEFAULT_STEP_MODE], STEP_MODE_LABELS[DEFAULT_STEP_MODE])
@@ -577,12 +652,21 @@ class AdvancedSettings(Static):
         self.query_one("#acceleration-input", Input).value = f"{DEFAULT_ACCELERATION}"
         self.set_motor_current(DEFAULT_CURRENT)
         self.query_one("#motor-current-input", Input).value = f"{DEFAULT_CURRENT}"
+
         self.set_invert_motor_direction(INVERT_MOTOR_DIRECTION)
         self.query_one("#invert-motor-checkbox", Checkbox).value = INVERT_MOTOR_DIRECTION
         self.set_interpolate(USE_INTERPOLATION)
         self.query_one("#interpolation-checkbox", Checkbox).value = USE_INTERPOLATION
         self.set_spread_cycle(USE_SPREAD_CYCLE)
         self.query_one("#spread-cycle-checkbox", Checkbox).value = USE_SPREAD_CYCLE
+
+        self.set_homing_revs(HOMING_REVOLUTIONS)
+        self.query_one("#homing-revolutions-input", Input).value = f"{HOMING_REVOLUTIONS}"
+        self.set_homing_threshold(HOMING_THRESHOLD)
+        self.query_one("#homing-threshold-input", Input).value = f"{HOMING_THRESHOLD}"
+        self.set_homing_speed(HOMING_SPEED_RPM)
+        self.query_one("#homing-speed-input", Input).value = f"{HOMING_SPEED_RPM}"
+
         self.query_one("#logging-level-select", Select).value = DEFAULT_LOGGING_LEVEL.value
 
     @staticmethod
@@ -648,6 +732,18 @@ class AdvancedSettings(Static):
         self.spread_cycle = spread_cycle
         self.motor_driver.set_spreadcycle(self.spread_cycle)
         self.app.query_one(StatusAdvanced).update_spread_cycle(self.spread_cycle)
+
+    def set_homing_revs(self, homing_revs: int):
+        self.homing_revs = homing_revs
+        self.app.query_one(StatusAdvanced).update_homing_revs(self.homing_revs)
+
+    def set_homing_threshold(self, homing_threshold: int):
+        self.homing_threshold = homing_threshold
+        self.app.query_one(StatusAdvanced).update_homing_threshold(self.homing_threshold)
+
+    def set_homing_speed(self, homing_speed: float):
+        self.homing_speed = homing_speed
+        self.app.query_one(StatusAdvanced).update_homing_speed(self.homing_speed)
 
     def set_loglevel(self, level: Loglevel):
         self.motor_driver.set_loglevel(level)
