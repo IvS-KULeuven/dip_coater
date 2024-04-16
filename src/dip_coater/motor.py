@@ -142,9 +142,11 @@ class TMC2209_MotorDriver:
         """
         # Homing sets the spreadcycle to StealthChop, so we need to store the original setting and restore it afterwards
         spread_cycle = self.tmc.get_spreadcycle()
-        self.tmc.do_homing2(
+        self.tmc.do_homing(
+            diag_pin=self.diag_pin,
             revolutions=revolutions,
             threshold=threshold,
+            speed_rpm=speed_rpm
         )
         self.tmc.set_spreadcycle(spread_cycle)
 
