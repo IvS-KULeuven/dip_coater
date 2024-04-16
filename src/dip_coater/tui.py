@@ -106,8 +106,8 @@ STEP_MODE_LABELS = {
 DEFAULT_STEP_MODE = "I8"
 
 # Current settings (in mA)
-DEFAULT_CURRENT = 1000
-MIN_CURRENT = 10
+DEFAULT_CURRENT = 50
+MIN_CURRENT = 31    # Minimum current that can be sensed by the TMC2209
 MAX_CURRENT = 2000  # Absolute max limit for TMC2209!
 
 # Homing settings
