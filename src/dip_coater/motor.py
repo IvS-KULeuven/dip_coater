@@ -5,7 +5,7 @@ import time
 from RPi import GPIO
 
 # ======== CONSTANTS ========
-TRANS_PER_REV = 8  # The vertical translation in mm of the coater for one revolution of the motor
+TRANS_PER_REV = 4  # The vertical translation in mm of the coater for one revolution of the motor
 
 
 class TMC2209_MotorDriver:
