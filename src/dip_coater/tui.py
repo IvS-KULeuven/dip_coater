@@ -110,6 +110,12 @@ DEFAULT_CURRENT = 1000
 MIN_CURRENT = 100
 MAX_CURRENT = 2000  # Absolute max limit for TMC2209!
 
+# Homing settings
+#HOMING_REVOLUTIONS = 25
+HOMING_REVOLUTIONS = 5  # For testing
+HOMING_THRESHOLD = 100
+HOMING_SPEED_RPM = 75
+
 # Other motor settings
 INVERT_MOTOR_DIRECTION = False
 USE_SPREAD_CYCLE = False
@@ -249,7 +255,7 @@ class MotorControls(Static):
             log.write("Doing homing...")
             self.set_motor_state("homing")
             await asyncio.sleep(0.1)
-            self.motor_driver.do_homing()
+            self.motor_driver.do_homing(HOMING_REVOLUTIONS, HOMING_THRESHOLD, HOMING_SPEED_RPM)
             log.write("-> Finished homing.")
             self.set_motor_state("enabled")
         elif self._motor_state == "homing":
