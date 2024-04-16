@@ -149,7 +149,7 @@ class StepMode(Static):
 class MotorControls(Static):
     def __init__(self, motor_driver: TMC2209_MotorDriver):
         super().__init__()
-        self._motor_state: str = "disabled"     # TODO: add motor state 'MOVING;
+        self._motor_state: str = "disabled"
         self.motor_driver = motor_driver
 
     def compose(self) -> ComposeResult:
@@ -174,6 +174,10 @@ class MotorControls(Static):
         step_mode = widget.step_mode
         return distance_mm, speed_mm_s, accel_mm_s2, step_mode
 
+    def set_motor_state(self, state: str):
+        self._motor_state = state
+        self.app.query_one(Status).update_motor_state(self._motor_state)
+
     @on(Button.Pressed, "#move-up")
     async def move_up_action(self):
         distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
@@ -187,9 +191,11 @@ class MotorControls(Static):
                 acceleration_mm_s2 = def_accel
             log.write(
                 f"Moving up ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s\u00b2, {step_mode=} step mode).")
+            self.set_motor_state("moving")
             await asyncio.sleep(0.1)
             self.motor_driver.move_up(distance_mm, speed_mm_s, acceleration_mm_s2)
             log.write(f"-> Finished moving up.")
+            self.set_motor_state("enabled")
         else:
             log.write("[red]We cannot move up when the motor is disabled[/]")
 
@@ -206,9 +212,11 @@ class MotorControls(Static):
                 acceleration_mm_s2 = def_accel
             log.write(
                 f"Moving down ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s\u00b2, {step_mode=} step mode).")
+            self.set_motor_state("moving")
             await asyncio.sleep(0.1)
             self.motor_driver.move_down(distance_mm, speed_mm_s, acceleration_mm_s2)
             log.write(f"-> Finished moving down.")
+            self.set_motor_state("enabled")
         else:
             log.write("[red]We cannot move down when the motor is disabled[/]")
 
@@ -217,27 +225,36 @@ class MotorControls(Static):
         log = self.app.query_one("#logger", RichLog)
         if self._motor_state == "disabled":
             self.motor_driver.enable_motor()
-            self._motor_state = "enabled"
+            self.set_motor_state("enabled")
             log.write(f"[green]Motor is now enabled.[/]")
-            self.app.query_one(Status).motor = "Motor: [green]ENABLED[/]"
 
     @on(Button.Pressed, "#disable-motor")
     async def disable_motor_action(self):
         log = self.app.query_one("#logger", RichLog)
-        if self._motor_state == "enabled":
+        if self._motor_state == "homing":
+            log.write("[red]We cannot disable the motor while homing is in progress[/]")
+            return
+        elif self._motor_state == "moving":
+            log.write("[red]We cannot disable the motor while homing is moving[/]")
+            return
+        elif self._motor_state == "enabled":
             self.motor_driver.disable_motor()
-            self._motor_state = "disabled"
+            self.set_motor_state("disabled")
             log.write(f"[dark_orange]Motor is now disabled.[/]")
-            self.app.query_one(Status).motor = "Motor: [dark_orange]DISABLED[/]"
 
     @on(Button.Pressed, "#do-homing")
     async def do_homing_action(self):
         log = self.app.query_one("#logger", RichLog)
         if self._motor_state == "enabled":
             log.write("Doing homing...")
+            self.set_motor_state("homing")
             await asyncio.sleep(0.1)
             self.motor_driver.do_homing()
             log.write("-> Finished homing.")
+            self.set_motor_state("enabled")
+        elif self._motor_state == "homing":
+            # Do nothing when already homing
+            return
         else:
             log.write("[red]We cannot do homing when the motor is disabled[/]")
 
@@ -367,8 +384,7 @@ class Status(Static):
 
     def on_mount(self):
         motor_state = self.app.query_one(MotorControls).motor_state
-        color = "green" if motor_state == "enabled" else "dark_orange"
-        self.motor = f"Motor: [{color}]{motor_state.upper()}[/]"
+        self.update_motor_state(motor_state)
 
     def watch_speed(self, speed: str):
         self.query_one("#status-speed", Label).update(speed)
@@ -378,6 +394,19 @@ class Status(Static):
 
     def watch_motor(self, motor: str):
         self.query_one("#status-motor", Label).update(motor)
+
+    def update_motor_state(self, motor_state: str):
+        if motor_state == "enabled":
+            color = "green"
+        elif motor_state == "disabled":
+            color = "dark_orange"
+        elif motor_state == "homing":
+            color = "cyan"
+        elif motor_state == "moving":
+            color = "blue"
+        else:
+            color = "red"
+        self.motor = f"Motor: [{color}]{motor_state.upper()}[/]"
 
 
 class StatusAdvanced(Static):
