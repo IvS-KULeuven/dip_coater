@@ -111,6 +111,7 @@ MIN_CURRENT = 100
 MAX_CURRENT = 2000  # Absolute max limit for TMC2209!
 
 # Other motor settings
+INVERT_MOTOR_DIRECTION = True
 USE_SPREAD_CYCLE = False
 USE_INTERPOLATION = True
 
@@ -369,6 +370,7 @@ class StatusAdvanced(Static):
     step_mode = reactive("Step Mode: ")
     acceleration = reactive("Acceleration: ")
     motor_current = reactive("Motor current: ")
+    invert_motor_direction = reactive("Invert motor direction: ")
     interpolate = reactive("Interpolation: ")
     spread_cycle = reactive("Spread Cycle: ")
 
@@ -377,23 +379,45 @@ class StatusAdvanced(Static):
             yield Label(id="status-step-mode")
             yield Label(id="status-acceleration")
             yield Label(id="status-motor-current")
+            yield Label(id="status-invert-motor-direction")
             yield Label(id="status-interpolate")
             yield Label(id="status-spread-cycle")
 
     def watch_step_mode(self, step_mode: str):
         self.query_one("#status-step-mode", Label).update(step_mode)
 
+    def update_step_mode(self, step_mode: str):
+        self.step_mode = f"Step Mode: {step_mode}"
+
     def watch_acceleration(self, acceleration: str):
         self.query_one("#status-acceleration", Label).update(acceleration)
+
+    def update_acceleration(self, acceleration: float):
+        self.acceleration = f"Acceleration: {acceleration} mm/s\u00b2"
 
     def watch_motor_current(self, motor_current: str):
         self.query_one("#status-motor-current", Label).update(motor_current)
 
+    def update_motor_current(self, motor_current: int):
+        self.motor_current = f"Motor current: {motor_current} mA"
+
+    def watch_invert_motor_direction(self, invert_direction: str):
+        self.query_one("#status-invert-motor-direction", Label).update(invert_direction)
+
+    def update_invert_motor_direction(self, invert_direction: bool):
+        self.invert_motor_direction = f"Invert motor direction: {invert_direction}"
+
     def watch_interpolate(self, interpolate: str):
         self.query_one("#status-interpolate", Label).update(interpolate)
 
+    def update_interpolate(self, interpolate: bool):
+        self.interpolate = f"Interpolation: {interpolate}"
+
     def watch_spread_cycle(self, spread_cycle: str):
         self.query_one("#status-spread-cycle", Label).update(spread_cycle)
+
+    def update_spread_cycle(self, spread_cycle: bool):
+        self.spread_cycle = f"Spread Cycle: {spread_cycle}"
 
 
 class HelpCommand(Provider):
@@ -439,6 +463,7 @@ class HelpScreen(ModalScreen[None]):
 class AdvancedSettings(Static):
     acceleration = reactive(DEFAULT_ACCELERATION)
     motor_current = reactive(DEFAULT_CURRENT)
+    invert_motor_direction = reactive(INVERT_MOTOR_DIRECTION)
     interpolate = reactive(USE_INTERPOLATION)
     spread_cycle = reactive(USE_SPREAD_CYCLE)
 
@@ -474,6 +499,8 @@ class AdvancedSettings(Static):
                         classes="input-fields",
                     )
                     yield Label("mA", id="motor-current-unit")
+            yield Checkbox("Invert motor direction", value=INVERT_MOTOR_DIRECTION, id="invert-motor-checkbox",
+                           classes="checkbox")
             with Horizontal(id="interpolation-container"):
                 yield Checkbox("Interpolation", value=self.interpolate, id="interpolation-checkbox", classes="checkbox")
                 yield Checkbox("Spread Cycle (T)/Stealth Chop (F)", value=self.spread_cycle, id="spread-cycle-checkbox", classes="checkbox")
@@ -488,10 +515,11 @@ class AdvancedSettings(Static):
                              id="logging-level-select")
 
     def _on_mount(self, event: events.Mount) -> None:
-        self.app.query_one(StatusAdvanced).acceleration = f"Acceleration: {self.acceleration} mm/s\u00b2"
-        self.app.query_one(StatusAdvanced).motor_current = f"Motor current: {self.motor_current} mA"
-        self.app.query_one(StatusAdvanced).interpolate = f"Interpolation: {self.interpolate}"
-        self.app.query_one(StatusAdvanced).spread_cycle = f"Spread Cycle: {self.spread_cycle}"
+        self.app.query_one(StatusAdvanced).update_acceleration(self.acceleration)
+        self.app.query_one(StatusAdvanced).update_motor_current(self.motor_current)
+        self.app.query_one(StatusAdvanced).update_invert_motor_direction(self.invert_motor_direction)
+        self.app.query_one(StatusAdvanced).update_interpolate(self.interpolate)
+        self.app.query_one(StatusAdvanced).update_spread_cycle(self.spread_cycle)
 
     def reset_settings_to_default(self):
         self.query_one(StepMode).set_stepmode(STEP_MODES[DEFAULT_STEP_MODE], STEP_MODE_LABELS[DEFAULT_STEP_MODE])
@@ -500,6 +528,8 @@ class AdvancedSettings(Static):
         self.query_one("#acceleration-input", Input).value = f"{DEFAULT_ACCELERATION}"
         self.set_motor_current(DEFAULT_CURRENT)
         self.query_one("#motor-current-input", Input).value = f"{DEFAULT_CURRENT}"
+        self.set_invert_motor_direction(INVERT_MOTOR_DIRECTION)
+        self.query_one("#invert-motor-checkbox", Checkbox).value = INVERT_MOTOR_DIRECTION
         self.set_interpolate(USE_INTERPOLATION)
         self.query_one("#interpolation-checkbox", Checkbox).value = USE_INTERPOLATION
         self.set_spread_cycle(USE_SPREAD_CYCLE)
@@ -525,6 +555,11 @@ class AdvancedSettings(Static):
         motor_current = int(motor_current_input.value)
         self.set_motor_current(motor_current)
 
+    @on(Checkbox.Changed, "#invert-motor-checkbox")
+    def toggle_invert_motor(self, event: Checkbox.Changed):
+        invert_motor = event.checkbox.value
+        self.set_invert_motor_direction(invert_motor)
+
     @on(Checkbox.Changed, "#interpolation-checkbox")
     def toggle_interpolation(self, event: Checkbox.Changed):
         interpolate = event.checkbox.value
@@ -543,22 +578,27 @@ class AdvancedSettings(Static):
     def set_acceleration(self, acceleration: float):
         validated_acceleration = clamp(acceleration, MIN_ACCELERATION, MAX_ACCELERATION)
         self.acceleration = round(validated_acceleration, 1)
-        self.app.query_one(StatusAdvanced).acceleration = f"Acceleration: {self.acceleration} mm/s\u00b2"
+        self.app.query_one(StatusAdvanced).update_acceleration(self.acceleration)
 
     def set_motor_current(self, motor_current: int):
         self.motor_current = clamp(motor_current, MIN_CURRENT, MAX_CURRENT)
         self.motor_driver.set_current(self.motor_current)
-        self.app.query_one(StatusAdvanced).motor_current = f"Motor current: {self.motor_current} mA"
+        self.app.query_one(StatusAdvanced).update_motor_current(self.motor_current)
+
+    def set_invert_motor_direction(self, invert_direction: bool):
+        self.invert_motor_direction = invert_direction
+        self.motor_driver.set_direction(self.invert_motor_direction)
+        self.app.query_one(StatusAdvanced).update_invert_motor_direction(self.invert_motor_direction)
 
     def set_interpolate(self, interpolate: bool):
         self.interpolate = interpolate
         self.motor_driver.set_interpolation(self.interpolate)
-        self.app.query_one(StatusAdvanced).interpolate = f"Interpolation: {self.interpolate}"
+        self.app.query_one(StatusAdvanced).update_interpolate(self.interpolate)
 
     def set_spread_cycle(self, spread_cycle: bool):
         self.spread_cycle = spread_cycle
         self.motor_driver.set_spreadcycle(self.spread_cycle)
-        self.app.query_one(StatusAdvanced).spread_cycle = f"Spread Cycle: {self.spread_cycle}"
+        self.app.query_one(StatusAdvanced).update_spread_cycle(self.spread_cycle)
 
     def set_loglevel(self, level: Loglevel):
         self.motor_driver.set_loglevel(level)
@@ -741,6 +781,7 @@ class DipCoaterApp(App):
         # TODO: change logger formatting to logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", '%Y%m%d %H:%M:%S') once supported by TMC lib
         self.motor_driver = TMC2209_MotorDriver(stepmode=STEP_MODES[DEFAULT_STEP_MODE],
                                                 current=DEFAULT_CURRENT,
+                                                invert_direction=INVERT_MOTOR_DIRECTION,
                                                 interpolation=USE_INTERPOLATION,
                                                 spread_cycle=USE_SPREAD_CYCLE,
                                                 loglevel=DEFAULT_LOGGING_LEVEL,

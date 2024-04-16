@@ -10,12 +10,13 @@ TRANS_PER_REV = 8  # The vertical translation in mm of the coater for one revolu
 
 class TMC2209_MotorDriver:
     """ Class to control the TMC2209 motor driver for the dip coater"""
-    def __init__(self, stepmode: int = 8, current: int = 1000, interpolation: bool = True, spread_cycle: bool = False,
-                 loglevel: Loglevel = Loglevel.ERROR, log_handlers: list = None):
+    def __init__(self, stepmode: int = 8, current: int = 1000, invert_direction: bool = False, interpolation: bool = True,
+                 spread_cycle: bool = False, loglevel: Loglevel = Loglevel.ERROR, log_handlers: list = None):
         """ Initialize the motor driver
 
         :param stepmode: The step mode to set (1, 2, 4, 8, 16, 32, 64, 128, 256)
         :param current: The current to set for the motor driver in mA
+        :param invert_direction: Whether to invert the direction of the motor (default: False)
         :param interpolation: Whether to use interpolation for the motor driver
         :param spreadcycle: Whether to use spread_cycle for the motor driver (true) or stealthchop (false)
         :param loglevel: The log level to set for the motor driver (NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL)
@@ -32,7 +33,7 @@ class TMC2209_MotorDriver:
 
         # Set motor driver settings
         self.tmc.set_vactual(False)      # Motor is not controlled by UART
-        self.tmc.set_direction_reg(True)
+        self.tmc.set_direction_reg(invert_direction)
         self.tmc.set_current(current, pdn_disable=False)    # mA
         self.tmc.set_interpolation(interpolation)
         self.tmc.set_spreadcycle(spread_cycle)  # True: spreadcycle, False: stealthchop
@@ -60,6 +61,13 @@ class TMC2209_MotorDriver:
         :param current: The current to set for the motor driver in mA
         """
         self.tmc.set_current(current, pdn_disable=False)
+
+    def set_direction(self, invert_direction: bool = False):
+        """ Set the direction of the motor driver
+
+        :param invert_direction: Whether to invert the direction of the motor (default: False)
+        """
+        self.tmc.set_direction_reg(invert_direction)
 
     def set_interpolation(self, interpolation: bool = True):
         """ Set the interpolation setting of the motor driver

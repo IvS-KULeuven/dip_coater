@@ -139,7 +139,7 @@ DistanceControls {
 }
 
 AdvancedSettings {
-    height: 13;
+    height: 15;
     .input-fields {
         content-align: left top;
         margin-left: 2;
@@ -147,6 +147,10 @@ AdvancedSettings {
         height: 1;
         padding: 0;
         border: none;
+    }
+
+    #invert-motor-checkbox {
+        margin-bottom: 1;
     }
 
     #interpolation-container {
