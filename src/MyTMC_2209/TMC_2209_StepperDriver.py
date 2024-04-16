@@ -32,5 +32,30 @@ class TMC_2209:
         return 200
 
     def do_homing(self, diag_pin, revolutions=10, threshold=None, speed_rpm=None):
+        """homes the motor in the given direction using stallguard.
+        this method is using vactual to move the motor and an interrupt on the DIAG pin
+
+        Args:
+            diag_pin (int): DIAG pin number
+            revolutions (int): max number of revolutions. Can be negative for inverse direction
+                (Default value = 10)
+            threshold (int): StallGuard detection threshold (Default value = None)
+            speed_rpm (float):speed in revolutions per minute (Default value = None)
+
+        Returns:
+            not homing_failed (bool): true when homing was successful
+        """
+        # Simulate the homing process
+        time.sleep(5)
+
+    def do_homing2(self, revolutions, threshold=None):
+        """homes the motor in the given direction using stallguard
+        old function, uses STEP/DIR to move the motor and pulls the StallGuard result
+        from the interface
+
+        Args:
+            revolutions (int): max number of revolutions. Can be negative for inverse direction
+            threshold (int, optional): StallGuard detection threshold (Default value = None)
+        """
         # Simulate the homing process
         time.sleep(5)
