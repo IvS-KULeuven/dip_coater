@@ -112,7 +112,11 @@ class TMC2209_MotorDriver:
         acceleration = rpss * self.tmc.read_steps_per_rev()
         self.tmc.set_max_speed(max_speed)
         self.tmc.set_acceleration(acceleration)
-        self.tmc.run_to_position_revolutions(revs)
+        self.tmc.run_to_position_revolutions_threaded(revs)
+
+    def wait_for_motor_done(self):
+        """ Wait for the motor to finish moving """
+        self.tmc.wait_for_movement_finished_threaded()
 
     def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0):
         """ Move the coater up by the given distance at the given speed
@@ -131,6 +135,10 @@ class TMC2209_MotorDriver:
         :param acceleration_mm_s2: The acceleration/deceleration to use for the movement in mm/s^2 (default: 0)
         """
         self.drive_motor(-distance_mm, speed_mm_s, acceleration_mm_s2)
+
+    def stop_motor(self):
+        """ Stop the motor when it is moving """
+        self.tmc.stop()
 
     def do_homing(self, revolutions: int = 25, threshold: int = 100, speed_rpm: float = 75):
         """ Perform the homing routine for the motor driver using StallGuard

@@ -15,5 +15,11 @@ def set_acceleration(self, acceleration):
 def run_to_position_revolutions(self, revolutions, movement_abs_rel = None):
     time.sleep(1)   # Simulate the movement
 
+def run_to_position_revolutions_threaded(self, revolutions, movement_abs_rel = None):
+    pass
+
+def wait_for_movement_finished_threaded(self):
+    pass
+
 def set_movement_abs_rel(self, movement_abs_rel):
     pass

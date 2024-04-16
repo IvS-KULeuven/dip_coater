@@ -206,6 +206,7 @@ class MotorControls(Static):
             self.set_motor_state("moving")
             await asyncio.sleep(0.1)
             self.motor_driver.move_up(distance_mm, speed_mm_s, acceleration_mm_s2)
+            self.motor_driver.wait_for_motor_done()
             log.write(f"-> Finished moving up.")
             self.set_motor_state("enabled")
         else:
@@ -227,6 +228,7 @@ class MotorControls(Static):
             self.set_motor_state("moving")
             await asyncio.sleep(0.1)
             self.motor_driver.move_down(distance_mm, speed_mm_s, acceleration_mm_s2)
+            self.motor_driver.wait_for_motor_done()
             log.write(f"-> Finished moving down.")
             self.set_motor_state("enabled")
         else:
