@@ -26,7 +26,7 @@ class TMC2209_MotorDriver:
         GPIO.setmode(GPIO.BCM)
         en_pin = 21
         step_pin = 16
-        dir_pin = 26
+        dir_pin = 20
 
         # Motor driver
         self.tmc = TMC_2209(en_pin, step_pin, dir_pin, loglevel=loglevel, log_handlers=log_handlers)
