@@ -111,7 +111,7 @@ MIN_CURRENT = 100
 MAX_CURRENT = 2000  # Absolute max limit for TMC2209!
 
 # Other motor settings
-INVERT_MOTOR_DIRECTION = True
+INVERT_MOTOR_DIRECTION = False
 USE_SPREAD_CYCLE = False
 USE_INTERPOLATION = True
 
