@@ -113,8 +113,14 @@ MAX_CURRENT = 2000  # Absolute max limit for TMC2209!
 # Homing settings
 #HOMING_REVOLUTIONS = 25
 HOMING_REVOLUTIONS = 5  # For testing
+HOMING_MIN_REVOLUTIONS = 1
+HOMING_MAX_REVOLUTIONS = 100
 HOMING_THRESHOLD = 100
+HOMING_MIN_THRESHOLD = 1
+HOMING_MAX_THRESHOLD = 255
 HOMING_SPEED_RPM = 75
+HOMING_MIN_SPEED = 7.5
+HOMING_MAX_SPEED = 150
 
 # Other motor settings
 INVERT_MOTOR_DIRECTION = False
@@ -597,7 +603,7 @@ class AdvancedSettings(Static):
                         placeholder="Homing revolutions",
                         id="homing-revolutions-input",
                         validate_on=["submitted"],
-                        validators=[Number(minimum=1)],
+                        validators=[Number(minimum=HOMING_MIN_REVOLUTIONS, maximum=HOMING_MAX_REVOLUTIONS)],
                         classes="input-fields",
                     )
                 with Horizontal():
@@ -608,7 +614,7 @@ class AdvancedSettings(Static):
                         placeholder="Homing threshold",
                         id="homing-threshold-input",
                         validate_on=["submitted"],
-                        validators=[Number(minimum=1, maximum=255)],
+                        validators=[Number(minimum=HOMING_MIN_THRESHOLD, maximum=HOMING_MAX_THRESHOLD)],
                         classes="input-fields",
                     )
                 with Horizontal():
@@ -619,7 +625,7 @@ class AdvancedSettings(Static):
                         placeholder="Homing speed (RPM)",
                         id="homing-speed-input",
                         validate_on=["submitted"],
-                        validators=[Number(minimum=1)],
+                        validators=[Number(minimum=HOMING_MIN_SPEED, maximum=HOMING_MAX_SPEED)],
                         classes="input-fields",
                     )
                     yield Label("RPM", id="homing-speed-unit")
@@ -702,6 +708,30 @@ class AdvancedSettings(Static):
     def toggle_spread_cycle(self, event: Checkbox.Changed):
         spread_cycle = event.checkbox.value
         self.set_spread_cycle(spread_cycle)
+
+    @on(Input.Submitted, "#homing-revolutions-input")
+    def submit_homing_revs_input(self):
+        homing_revs_input = self.query_one("#homing-revolutions-input", Input)
+        homing_revs = int(homing_revs_input.value)
+        homing_revs_validated = clamp(homing_revs, HOMING_MIN_REVOLUTIONS, HOMING_MAX_REVOLUTIONS)
+        homing_revs_input.value = f"{homing_revs_validated}"
+        self.set_homing_revs(homing_revs_validated)
+
+    @on(Input.Submitted, "#homing-threshold-input")
+    def submit_homing_threshold_input(self):
+        homing_threshold_input = self.query_one("#homing-threshold-input", Input)
+        homing_threshold = int(homing_threshold_input.value)
+        homing_threshold_validated = clamp(homing_threshold, HOMING_MIN_THRESHOLD, HOMING_MAX_THRESHOLD)
+        homing_threshold_input.value = f"{homing_threshold_validated}"
+        self.set_homing_threshold(homing_threshold_validated)
+
+    @on(Input.Submitted, "#homing-speed-input")
+    def submit_homing_speed_input(self):
+        homing_speed_input = self.query_one("#homing-speed-input", Input)
+        homing_speed = float(homing_speed_input.value)
+        homing_speed_validated = clamp(homing_speed, HOMING_MIN_SPEED, HOMING_MAX_SPEED)
+        homing_speed_input.value = f"{homing_speed_validated}"
+        self.set_homing_speed(homing_speed_validated)
 
     @on(Select.Changed, "#logging-level-select")
     def action_set_loglevel(self, event: Select.Changed):
