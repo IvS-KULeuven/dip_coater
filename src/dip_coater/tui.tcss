@@ -140,7 +140,7 @@ DistanceControls {
 }
 
 AdvancedSettings {
-    height: 20;
+    height: 23;
     .input-fields {
         content-align: left top;
         margin-left: 2;

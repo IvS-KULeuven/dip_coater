@@ -8,6 +8,10 @@ class TMC_2209:
 
     from ._TMC_2209_move import (set_max_speed, set_acceleration, run_to_position_revolutions, set_movement_abs_rel)
 
+    from ._TMC_2209_test import (
+        test_stallguard_threshold
+    )
+
     def __init__(self, pin_en, pin_step=-1, pin_dir=-1, baudrate=115200, serialport="/dev/serial0",
                  driver_address=0, gpio_mode=None, loglevel=None, logprefix=None,
                  log_handlers=None, skip_uart_init=False):

@@ -106,7 +106,7 @@ STEP_MODE_LABELS = {
 DEFAULT_STEP_MODE = "I8"
 
 # Current settings (in mA)
-DEFAULT_CURRENT = 50
+DEFAULT_CURRENT = 31    # The linear guide does not use much current. In fact, at 31 mA, the motor only stalls when you push REALLY hard on the rail block. Therefore, use the lowest value so the motor definitely stops when it reaches the bottom or top.
 MIN_CURRENT = 31    # Minimum current that can be sensed by the TMC2209
 MAX_CURRENT = 2000  # Absolute max limit for TMC2209!
 
@@ -593,7 +593,9 @@ class AdvancedSettings(Static):
                                classes="checkbox")
                 yield Checkbox("Interpolation", value=self.interpolate, id="interpolation-checkbox", classes="checkbox")
                 yield Checkbox("Spread Cycle (T)/Stealth Chop (F)", value=self.spread_cycle, id="spread-cycle-checkbox", classes="checkbox")
+
             yield Rule(classes="rule")
+
             with Horizontal(id="homing-container"):
                 with Horizontal():
                     yield Label("Homing revolutions: ", id="homing-revolutions-label")
@@ -629,7 +631,10 @@ class AdvancedSettings(Static):
                         classes="input-fields",
                     )
                     yield Label("RPM", id="homing-speed-unit")
+            yield Button("Test StallGuard Threshold", id="test-stallguard-threshold-btn")
+
             yield Rule(classes="rule")
+
             with Horizontal():
                 yield Label("Logging level: ", id="logging-level-label")
                 options = self.create_log_level_options()
@@ -736,6 +741,13 @@ class AdvancedSettings(Static):
         homing_speed_validated = clamp(homing_speed, HOMING_MIN_SPEED, HOMING_MAX_SPEED)
         homing_speed_input.value = f"{homing_speed_validated}"
         self.set_homing_speed(homing_speed_validated)
+
+    @on(Button.Pressed, "#test-stallguard-threshold-btn")
+    async def test_stallguard_threshold(self):
+        log = self.app.query_one("#logger", RichLog)
+        log.write("[cyan]Testing StallGuard threshold...[/]")
+        self.motor_driver.test_stallguard_threshold(200)
+        log.write("[cyan]-> Finished testing StallGuard threshold.[/]")
 
     @on(Select.Changed, "#logging-level-select")
     def action_set_loglevel(self, event: Select.Changed):
