@@ -204,6 +204,10 @@ class TMC2209_MotorDriver:
                 self.move_down(10, speed_mm_s)
                 self.wait_for_motor_done()
 
+        # If the limit switch is still triggered after moving away, raise an error
+        if home_triggered:
+            raise ValueError("The home switch is still triggered after backing off. Please check the limit switches.")
+
         # Move the coater towards the home switch and wait for the home switch to be triggered
         self.homing_found = False
         GPIO.add_event_detect(home_pin, home_trigger_event, callback=self._stop_homing_callback, bouncetime=500)
