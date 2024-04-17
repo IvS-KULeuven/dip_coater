@@ -189,6 +189,7 @@ class TMC2209_MotorDriver:
         home_triggered = GPIO.input(home_pin) == 1 if home_switch_nc else GPIO.input(home_pin) == 0
         other_triggered = GPIO.input(other_pin) == 1 if other_switch_nc else GPIO.input(other_pin) == 0
         home_trigger_event = GPIO.RISING if home_switch_nc else GPIO.FALLING
+        other_trigger_event = GPIO.RISING if other_switch_nc else GPIO.FALLING
 
         # The home switch is already pressed
         if home_triggered:
@@ -204,9 +205,11 @@ class TMC2209_MotorDriver:
         # Move the coater towards the home switch and wait for the home switch to be triggered
         self.homing_found = False
         GPIO.add_event_detect(home_pin, home_trigger_event, callback=self._stop_homing_callback, bouncetime=100)
+        GPIO.add_event_detect(other_pin, other_trigger_event, callback=self._stop_homing_callback_other_pin, bouncetime=100)
         self.drive_motor(distance_mm, speed_mm_s)
         self.wait_for_motor_done()
         GPIO.remove_event_detect(home_pin)
+        GPIO.remove_event_detect(other_pin)
 
         return self.homing_found
 
@@ -214,6 +217,11 @@ class TMC2209_MotorDriver:
         self.homing_found = True
         self.stop_motor(StopMode.HARDSTOP)
         self.tmc.set_current_position(0)
+
+    def _stop_homing_callback_other_pin(self, other_pin):
+        self.homing_found = False
+        self.stop_motor(StopMode.HARDSTOP)
+        raise ValueError("The other limit switch was triggered. Please check the limit switches.")
 
     def do_stallguard_homing(self, revolutions: int = 25, threshold: int = 100, speed_mm_s: float = 2):
         """ Perform the homing routine for the motor driver using StallGuard
