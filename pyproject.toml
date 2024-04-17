@@ -29,7 +29,7 @@ dependencies = [
 repository = "https://github.com/IvS-KULeuven/dip_coater"
 
 [project.optional-dependencies]
-rpi = ["RPi.GPIO", "TMC-2209-Raspberry-Pi>=0.4.4"]
+rpi = ["RPi.GPIO", "TMC-2209-Raspberry-Pi>=0.4.5"]
 
 [project.scripts]
 dip-coater = "dip_coater.tui:main"
