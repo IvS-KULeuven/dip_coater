@@ -127,6 +127,7 @@ HOMING_MAX_THRESHOLD = 255
 HOMING_SPEED_MM_S = 2
 HOMING_MIN_SPEED = 0.2
 HOMING_MAX_SPEED = 5
+HOME_UP = True      # Home the motor upwards (True) or downwards (False)
 
 # Other motor settings
 INVERT_MOTOR_DIRECTION = False
@@ -284,8 +285,9 @@ class MotorControls(Static):
         self.set_motor_state("homing")
         await asyncio.sleep(0.1)
         try:
+            distance = HOMING_MAX_DISTANCE if HOME_UP else -HOMING_MAX_DISTANCE
             homing_found = self.motor_driver.do_limit_switch_homing(LIMIT_SWITCH_UP_PIN, LIMIT_SWITCH_DOWN_PIN,
-                                                                      HOMING_MAX_DISTANCE, speed)
+                                                                    distance, speed)
             if homing_found:
                 log.write("-> Finished homing.")
             else:
