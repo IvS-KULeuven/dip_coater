@@ -1,6 +1,6 @@
 from TMC_2209.TMC_2209_StepperDriver import *
 from TMC_2209._TMC_2209_logger import Loglevel
-from TMC_2209._TMC_2209_move import MovementAbsRel
+from TMC_2209._TMC_2209_move import MovementAbsRel, StopMode
 import time
 from RPi import GPIO
 
@@ -9,6 +9,8 @@ TRANS_PER_REV = 4  # The vertical translation in mm of the coater for one revolu
 
 
 class TMC2209_MotorDriver:
+    homing_found = False
+
     """ Class to control the TMC2209 motor driver for the dip coater"""
     def __init__(self, stepmode: int = 8, current: int = 1000, invert_direction: bool = False, interpolation: bool = True,
                  spread_cycle: bool = False, loglevel: Loglevel = Loglevel.ERROR, log_handlers: list = None):
@@ -136,20 +138,84 @@ class TMC2209_MotorDriver:
         """
         self.drive_motor(-distance_mm, speed_mm_s, acceleration_mm_s2)
 
-    def stop_motor(self):
-        """ Stop the motor when it is moving """
-        self.tmc.stop()
+    def stop_motor(self, stop_mode: StopMode = StopMode.HARDSTOP):
+        """ Stop the motor when it is moving
 
-    def do_homing(self, revolutions: int = 25, threshold: int = 100, speed_rpm: float = 75):
+        :param stop_mode: The stop mode to use (SOFTSTOP, HARDSTOP)
+        """
+        self.tmc.stop(stop_mode)
+
+    def bind_limit_switch(self, limit_switch_pin: int, NC: bool = True):
+        """ Bind a limit switch to stop the motor driver if it is triggered.
+
+        :param limit_switch_pin: The GPIO pin of the limit switch
+        :param NC: Whether the limit switch is normally closed (NC) or normally open (NO) (default: True)
+            For safety reasons, it is recommended to use NC limit switches
+        """
+        GPIO.setup(limit_switch_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        GPIO.remove_event_detect(limit_switch_pin)
+        event = GPIO.FALLING if NC else GPIO.RISING
+        GPIO.add_event_detect(limit_switch_pin, event, callback=self._stop_motor_callback, bouncetime=100)
+
+    def _stop_motor_callback(self, pin_number):
+        self.stop_motor(StopMode.HARDSTOP)
+
+    def do_limit_switch_homing(self, limit_switch_up_pin: int, limit_switch_down_pin: int, distance_mm: float,
+                               speed_mm_s: float = 2):
+        """ Perform the homing routine for the motor driver using limit switches
+
+        :param limit_switch_up_pin: The GPIO pin of the NC (normally closed) limit switch at the top of the guide
+        :param limit_switch_down_pin: The GPIO pin of the NC (normally closed)  limit switch at the bottom of the guide
+        :param distance_mm: The maximal distance to move the coater in mm (positive for up, negative for down)
+        :param speed_mm_s: The speed to use for the homing routine in mm/s (default: 2 mm/s)
+        """
+        # Set up the limit switches IO
+        GPIO.setup(limit_switch_up_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        GPIO.setup(limit_switch_down_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        GPIO.remove_event_detect(limit_switch_up_pin)
+        GPIO.remove_event_detect(limit_switch_down_pin)
+
+        # Check whether the homing is done with the top or bottom limit switch
+        home_down = distance_mm <= 0
+        home_pin = limit_switch_down_pin if home_down else limit_switch_up_pin
+        other_pin = limit_switch_up_pin if home_down else limit_switch_down_pin
+
+        # The home switch is already pressed
+        if GPIO.input(home_pin) == 0:
+            if GPIO.input(other_pin) == 0:
+                raise ValueError("Both limit switches are triggered. Please check the limit switches.")
+
+            # Move the coater away from the home switch to start the homing routine
+            if home_down:
+                self.move_up(10, speed_mm_s)
+            else:
+                self.move_down(10, speed_mm_s)
+
+        # Move the coater towards the home switch and wait for the home switch to be triggered
+        self.homing_found = False
+        GPIO.add_event_detect(home_pin, GPIO.FALLING, callback=self._stop_homing_callback, bouncetime=100)
+        self.drive_motor(distance_mm, speed_mm_s)
+        self.wait_for_motor_done()
+        GPIO.remove_event_detect(home_pin)
+
+        return self.homing_found
+
+    def _stop_homing_callback(self, home_pin):
+        self.homing_found = True
+        self.stop_motor(StopMode.HARDSTOP)
+        self.tmc.set_current_position(0)
+
+    def do_stallguard_homing(self, revolutions: int = 25, threshold: int = 100, speed_mm_s: float = 2):
         """ Perform the homing routine for the motor driver using StallGuard
 
         :param revolutions: The number of revolutions to perform the homing routine. (Default: 25; the max stroke of the
         guide is 100 mm, so 25 revolutions should be enough to reach the top or bottom)
         :param threshold: The threshold to use for the homing routine (default: None)
-        :param speed_rpm: The speed to use for the homing routine in RPM (default: 75 rot/min = 5 mm/s)
+        :param speed_mm_s: The speed to use for the homing routine in mm/s (default: 2 mm/s)
         """
         # Homing sets the spreadcycle to StealthChop, so we need to store the original setting and restore it afterwards
         spread_cycle = self.tmc.get_spreadcycle()
+        speed_rpm = speed_mm_s / TRANS_PER_REV * 60
         self.tmc.do_homing(
             diag_pin=self.diag_pin,
             revolutions=revolutions,
@@ -157,6 +223,13 @@ class TMC2209_MotorDriver:
             speed_rpm=speed_rpm
         )
         self.tmc.set_spreadcycle(spread_cycle)
+
+    def is_homing_found(self):
+        """ Check whether the motor driver is homed
+
+        :return: True if the motor driver is homed, False otherwise
+        """
+        return self.homing_found
 
     def test_stallguard_threshold(self, steps: int = None):
         """test method for tuning stallguard threshold

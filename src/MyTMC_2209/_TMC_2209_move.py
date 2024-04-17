@@ -6,6 +6,13 @@ class MovementAbsRel(Enum):
     ABSOLUTE = 0
     RELATIVE = 1
 
+class StopMode(Enum):
+    """stopmode"""
+    NO = 0
+    SOFTSTOP = 1
+    HARDSTOP = 2
+
+
 def set_max_speed(self, speed):
     pass
 
@@ -22,4 +29,20 @@ def wait_for_movement_finished_threaded(self):
     pass
 
 def set_movement_abs_rel(self, movement_abs_rel):
+    pass
+
+def get_current_position(self):
+    """returns the current motor position in µsteps
+
+    Returns:
+        bool: current motor position
+    """
+    return 0
+
+def set_current_position(self, new_pos):
+    """overwrites the current motor position in µsteps
+
+    Args:
+        new_pos (bool): new position of the motor in µsteps
+    """
     pass

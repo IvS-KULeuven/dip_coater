@@ -110,17 +110,22 @@ DEFAULT_CURRENT = 31    # The linear guide does not use much current. In fact, a
 MIN_CURRENT = 31    # Minimum current that can be sensed by the TMC2209
 MAX_CURRENT = 2000  # Absolute max limit for TMC2209!
 
+# Limit switch settings
+LIMIT_SWITCH_UP_PIN = 6
+LIMIT_SWITCH_DOWN_PIN = 12
+
 # Homing settings
 #HOMING_REVOLUTIONS = 25
 HOMING_REVOLUTIONS = 5  # For testing
+HOMING_MAX_DISTANCE = 100   # mm
 HOMING_MIN_REVOLUTIONS = 1
 HOMING_MAX_REVOLUTIONS = 100
 HOMING_THRESHOLD = 100
 HOMING_MIN_THRESHOLD = 1
 HOMING_MAX_THRESHOLD = 255
-HOMING_SPEED_RPM = 75
-HOMING_MIN_SPEED = 7.5
-HOMING_MAX_SPEED = 150
+HOMING_SPEED_MM_S = 2
+HOMING_MIN_SPEED = 0.2
+HOMING_MAX_SPEED = 5
 
 # Other motor settings
 INVERT_MOTOR_DIRECTION = False
@@ -162,6 +167,7 @@ class MotorControls(Static):
     def __init__(self, motor_driver: TMC2209_MotorDriver):
         super().__init__()
         self._motor_state: str = "disabled"
+        self.homing_found = False
         self.motor_driver = motor_driver
 
     def compose(self) -> ComposeResult:
@@ -170,6 +176,9 @@ class MotorControls(Static):
         yield Button("ENABLE motor", id="enable-motor", variant="success")
         yield Button("DISABLE motor", id="disable-motor", variant="error")
         yield Button("Do HOMING", id="do-homing")
+
+    def _on_mount(self, event: events.Mount) -> None:
+        self.app.query_one(Status).update_homing_found(self.homing_found)
 
     @property
     def motor_state(self):
@@ -239,6 +248,7 @@ class MotorControls(Static):
         log = self.app.query_one("#logger", RichLog)
         if self._motor_state == "disabled":
             self.motor_driver.enable_motor()
+            self.bind_limit_switches()
             self.set_motor_state("enabled")
             log.write(f"[green]Motor is now enabled.[/]")
 
@@ -260,20 +270,39 @@ class MotorControls(Static):
     async def do_homing_action(self):
         log = self.app.query_one("#logger", RichLog)
         if self._motor_state == "enabled":
-            revs = self.app.query_one(AdvancedSettings).homing_revs
-            threshold = self.app.query_one(AdvancedSettings).homing_threshold
-            speed = self.app.query_one(AdvancedSettings).homing_speed
-            log.write(f"[cyan]Doing homing ({revs=}, {threshold=}, {speed=} RPM)...[/]")
-            self.set_motor_state("homing")
-            await asyncio.sleep(0.1)
-            self.motor_driver.do_homing(revs, threshold, speed)
-            log.write("-> Finished homing.")
-            self.set_motor_state("enabled")
+            await self.perform_homing(log)
         elif self._motor_state == "homing":
             # Do nothing when already homing
             return
         else:
             log.write("[red]We cannot do homing when the motor is disabled[/]")
+
+    async def perform_homing(self, log: RichLog):
+        speed = self.app.query_one(AdvancedSettings).homing_speed
+        log.write(f"[cyan]Starting limit switch homing ({speed=} RPM)...[/]")
+        self.set_motor_state("homing")
+        await asyncio.sleep(0.1)
+        try:
+            homing_found = self.motor_driver.do_limit_switch_homing(LIMIT_SWITCH_UP_PIN, LIMIT_SWITCH_DOWN_PIN,
+                                                                      HOMING_MAX_DISTANCE, speed)
+            if homing_found:
+                log.write("-> Finished homing.")
+            else:
+                log.write("[red]Homing failed[/]")
+            self.set_homing_found(homing_found)
+        except ValueError as e:
+            log.write(f"[red]{e}[/]")
+        self.set_motor_state("enabled")
+        self.bind_limit_switches()  # Re-bind the limit switches after homing
+
+    def set_homing_found(self, homing_found: bool):
+        self.homing_found = homing_found
+        self.app.query_one(Status).update_homing_found(self.homing_found)
+
+    def bind_limit_switches(self):
+        """ Bind the limit switches to stop the motor driver."""
+        self.motor_driver.bind_limit_switch(LIMIT_SWITCH_UP_PIN, NC=True)
+        self.motor_driver.bind_limit_switch(LIMIT_SWITCH_DOWN_PIN, NC=True)
 
 
 class SpeedControls(Widget):
@@ -329,7 +358,7 @@ class SpeedControls(Widget):
     def watch_speed(self, speed: float):
         speed_input = self.query_one("#speed-input", Input)
         speed_input.value = f"{speed}"
-        self.app.query_one(Status).speed = f"Speed: {speed} mm/s"
+        self.app.query_one(Status).update_speed(speed)
 
 
 class DistanceControls(Static):
@@ -385,18 +414,20 @@ class DistanceControls(Static):
     def watch_distance(self, distance: float):
         distance_input = self.query_one("#distance-input", Input)
         distance_input.value = f"{distance}"
-        self.app.query_one(Status).distance = f"Distance: {distance} mm"
+        self.app.query_one(Status).update_distance(distance)
 
 
 class Status(Static):
     speed = reactive("Speed: ")
     distance = reactive("Distance: ")
+    homing_found = reactive("Homing found: ")
     motor = reactive("Motor: ")
 
     def compose(self) -> ComposeResult:
         with Vertical():
             yield Label(id="status-speed")
             yield Label(id="status-distance")
+            yield Label(id="status-homing-found")
             yield Label(id="status-motor")
 
     def on_mount(self):
@@ -406,8 +437,20 @@ class Status(Static):
     def watch_speed(self, speed: str):
         self.query_one("#status-speed", Label).update(speed)
 
+    def update_speed(self, speed: float):
+        self.speed = f"Speed: {speed} mm/s"
+
     def watch_distance(self, distance: str):
         self.query_one("#status-distance", Label).update(distance)
+
+    def update_distance(self, distance: float):
+        self.distance = f"Distance: {distance} mm"
+
+    def watch_homing_found(self, homing_found: str):
+        self.query_one("#status-homing-found", Label).update(homing_found)
+
+    def update_homing_found(self, homing_finished: bool):
+        self.homing_found = f"Homing found: {homing_finished}"
 
     def watch_motor(self, motor: str):
         self.query_one("#status-motor", Label).update(motor)
@@ -436,7 +479,7 @@ class StatusAdvanced(Static):
     spread_cycle = reactive("Spread Cycle: ")
 
     homing_revs = reactive("Homing revolutions: ")
-    homing_threshold = reactive("Homing threshold: ")
+    homing_threshold = reactive("Homing StallGuard threshold: ")
     homing_speed = reactive("Homing speed: ")
 
     def compose(self) -> ComposeResult:
@@ -499,13 +542,13 @@ class StatusAdvanced(Static):
         self.query_one("#status-homing-threshold", Label).update(homing_threshold)
 
     def update_homing_threshold(self, homing_threshold: int):
-        self.homing_threshold = f"Homing threshold: {homing_threshold}"
+        self.homing_threshold = f"Homing StallGuard threshold: {homing_threshold}"
 
     def watch_homing_speed(self, homing_speed: str):
         self.query_one("#status-homing-speed", Label).update(homing_speed)
 
     def update_homing_speed(self, homing_speed: float):
-        self.homing_speed = f"Homing speed: {homing_speed} RPM"
+        self.homing_speed = f"Homing speed: {homing_speed} mm/s"
 
 
 class HelpCommand(Provider):
@@ -556,7 +599,7 @@ class AdvancedSettings(Static):
     spread_cycle = reactive(USE_SPREAD_CYCLE)
     homing_revs = reactive(HOMING_REVOLUTIONS)
     homing_threshold = reactive(HOMING_THRESHOLD)
-    homing_speed = reactive(HOMING_SPEED_RPM)
+    homing_speed = reactive(HOMING_SPEED_MM_S)
 
     def __init__(self, motor_driver: TMC2209_MotorDriver):
         super().__init__()
@@ -677,8 +720,8 @@ class AdvancedSettings(Static):
         self.query_one("#homing-revolutions-input", Input).value = f"{HOMING_REVOLUTIONS}"
         self.set_homing_threshold(HOMING_THRESHOLD)
         self.query_one("#homing-threshold-input", Input).value = f"{HOMING_THRESHOLD}"
-        self.set_homing_speed(HOMING_SPEED_RPM)
-        self.query_one("#homing-speed-input", Input).value = f"{HOMING_SPEED_RPM}"
+        self.set_homing_speed(HOMING_SPEED_MM_S)
+        self.query_one("#homing-speed-input", Input).value = f"{HOMING_SPEED_MM_S}"
 
         self.query_one("#logging-level-select", Select).value = DEFAULT_LOGGING_LEVEL.value
 
