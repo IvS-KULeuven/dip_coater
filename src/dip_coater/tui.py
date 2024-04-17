@@ -56,6 +56,7 @@ except ModuleNotFoundError:
     sys.modules["TMC_2209"] = TMC_2209
 
 from TMC_2209._TMC_2209_logger import Loglevel
+from TMC_2209._TMC_2209_move import MovementAbsRel, StopMode
 from dip_coater.motor import TMC2209_MotorDriver
 
 # Logging settings
@@ -217,8 +218,11 @@ class MotorControls(Static):
             self.set_motor_state("moving")
             await asyncio.sleep(0.1)
             self.motor_driver.move_up(distance_mm, speed_mm_s, acceleration_mm_s2)
-            self.motor_driver.wait_for_motor_done()
-            log.write(f"-> Finished moving up.")
+            stop = self.motor_driver.wait_for_motor_done()
+            if stop == StopMode.NO:
+                log.write(f"-> Finished moving up.")
+            else:
+                log.write(f"[red]-> Stopped moving up.[/]")
             self.set_motor_state("enabled")
         else:
             log.write("[red]We cannot move up when the motor is disabled[/]")
@@ -239,8 +243,11 @@ class MotorControls(Static):
             self.set_motor_state("moving")
             await asyncio.sleep(0.1)
             self.motor_driver.move_down(distance_mm, speed_mm_s, acceleration_mm_s2)
-            self.motor_driver.wait_for_motor_done()
-            log.write(f"-> Finished moving down.")
+            stop = self.motor_driver.wait_for_motor_done()
+            if stop == StopMode.NO:
+                log.write(f"-> Finished moving down.")
+            else:
+                log.write(f"[red]-> Stopped moving down.[/]")
             self.set_motor_state("enabled")
         else:
             log.write("[red]We cannot move down when the motor is disabled[/]")
