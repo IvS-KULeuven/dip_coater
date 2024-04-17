@@ -204,8 +204,8 @@ class TMC2209_MotorDriver:
 
         # Move the coater towards the home switch and wait for the home switch to be triggered
         self.homing_found = False
-        GPIO.add_event_detect(home_pin, home_trigger_event, callback=self._stop_homing_callback, bouncetime=100)
-        GPIO.add_event_detect(other_pin, other_trigger_event, callback=self._stop_homing_callback_other_pin, bouncetime=100)
+        GPIO.add_event_detect(home_pin, home_trigger_event, callback=self._stop_homing_callback, bouncetime=500)
+        GPIO.add_event_detect(other_pin, other_trigger_event, callback=self._stop_homing_callback_other_pin, bouncetime=500)
         self.drive_motor(distance_mm, speed_mm_s)
         self.wait_for_motor_done()
         GPIO.remove_event_detect(home_pin)
