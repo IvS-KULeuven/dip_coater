@@ -154,20 +154,23 @@ class TMC2209_MotorDriver:
         """
         GPIO.setup(limit_switch_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.remove_event_detect(limit_switch_pin)
-        event = GPIO.FALLING if NC else GPIO.RISING
+        event = GPIO.RISING if NC else GPIO.FALLING
         GPIO.add_event_detect(limit_switch_pin, event, callback=self._stop_motor_callback, bouncetime=100)
 
     def _stop_motor_callback(self, pin_number):
         self.stop_motor(StopMode.HARDSTOP)
 
-    def do_limit_switch_homing(self, limit_switch_up_pin: int, limit_switch_down_pin: int, distance_mm: float,
-                               speed_mm_s: float = 2):
+    def do_limit_switch_homing(self, limit_switch_up_pin: int, limit_switch_down_pin: int,
+                               distance_mm: float, speed_mm_s: float = 2,
+                               switch_up_nc: bool = True, switch_down_nc: bool = True):
         """ Perform the homing routine for the motor driver using limit switches
 
         :param limit_switch_up_pin: The GPIO pin of the NC (normally closed) limit switch at the top of the guide
         :param limit_switch_down_pin: The GPIO pin of the NC (normally closed)  limit switch at the bottom of the guide
         :param distance_mm: The maximal distance to move the coater in mm (positive for up, negative for down)
         :param speed_mm_s: The speed to use for the homing routine in mm/s (default: 2 mm/s)
+        :param switch_up_nc: Whether the top limit switch is normally closed (NC) or normally open (NO) (default: True)
+        :param switch_down_nc: Whether the bottom limit switch is normally closed (NC) or normally open (NO) (default: True)
         """
         # Set up the limit switches IO
         GPIO.setup(limit_switch_up_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -180,9 +183,16 @@ class TMC2209_MotorDriver:
         home_pin = limit_switch_down_pin if home_down else limit_switch_up_pin
         other_pin = limit_switch_up_pin if home_down else limit_switch_down_pin
 
+        # Get the condition for the limit switches (when they are triggered)
+        home_switch_nc = switch_down_nc if home_down else switch_up_nc
+        other_switch_nc = switch_up_nc if home_down else switch_down_nc
+        home_triggered = GPIO.input(home_pin) == 1 if home_switch_nc else GPIO.input(home_pin) == 0
+        other_triggered = GPIO.input(other_pin) == 1 if other_switch_nc else GPIO.input(other_pin) == 0
+        home_trigger_event = GPIO.RISING if home_switch_nc else GPIO.FALLING
+
         # The home switch is already pressed
-        if GPIO.input(home_pin) == 0:
-            if GPIO.input(other_pin) == 0:
+        if home_triggered:
+            if other_triggered:
                 raise ValueError("Both limit switches are triggered. Please check the limit switches.")
 
             # Move the coater away from the home switch to start the homing routine
@@ -193,7 +203,7 @@ class TMC2209_MotorDriver:
 
         # Move the coater towards the home switch and wait for the home switch to be triggered
         self.homing_found = False
-        GPIO.add_event_detect(home_pin, GPIO.FALLING, callback=self._stop_homing_callback, bouncetime=100)
+        GPIO.add_event_detect(home_pin, home_trigger_event, callback=self._stop_homing_callback, bouncetime=100)
         self.drive_motor(distance_mm, speed_mm_s)
         self.wait_for_motor_done()
         GPIO.remove_event_detect(home_pin)
