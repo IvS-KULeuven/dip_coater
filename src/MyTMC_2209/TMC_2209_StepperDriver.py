@@ -1,6 +1,7 @@
 from ._TMC_2209_logger import TMC_logger, Loglevel
 
 import time
+import logging
 
 class TMC_2209:
     from ._TMC_2209_comm import (set_direction_reg, set_current, set_interpolation, get_spreadcycle, set_spreadcycle,
@@ -16,8 +17,9 @@ class TMC_2209:
 
     def __init__(self, pin_en, pin_step=-1, pin_dir=-1, baudrate=115200, serialport="/dev/serial0",
                  driver_address=0, gpio_mode=None, loglevel=None, logprefix=None,
-                 log_handlers=None, skip_uart_init=False):
-        self.tmc_logger = TMC_logger(loglevel, logprefix, log_handlers)
+                 log_handlers: list = None, log_formatter: logging.Formatter = None,
+                 skip_uart_init: bool = False):
+        self.tmc_logger = TMC_logger(loglevel, logprefix, log_handlers, log_formatter)
 
         self.tmc_logger.log("Using mock TMC library", Loglevel.WARNING)
         self.tmc_logger.log("Init", Loglevel.INFO)

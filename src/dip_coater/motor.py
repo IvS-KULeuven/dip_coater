@@ -2,6 +2,7 @@ from TMC_2209.TMC_2209_StepperDriver import *
 from TMC_2209._TMC_2209_logger import Loglevel
 from TMC_2209._TMC_2209_move import MovementAbsRel, StopMode
 import time
+import logging
 from RPi import GPIO
 
 # ======== CONSTANTS ========
@@ -13,7 +14,8 @@ class TMC2209_MotorDriver:
 
     """ Class to control the TMC2209 motor driver for the dip coater"""
     def __init__(self, stepmode: int = 8, current: int = 1000, invert_direction: bool = False, interpolation: bool = True,
-                 spread_cycle: bool = False, loglevel: Loglevel = Loglevel.ERROR, log_handlers: list = None):
+                 spread_cycle: bool = False, loglevel: Loglevel = Loglevel.ERROR, log_handlers: list = None,
+                 log_formatter: logging.Formatter = None):
         """ Initialize the motor driver
 
         :param stepmode: The step mode to set (1, 2, 4, 8, 16, 32, 64, 128, 256)
@@ -23,6 +25,7 @@ class TMC2209_MotorDriver:
         :param spreadcycle: Whether to use spread_cycle for the motor driver (true) or stealthchop (false)
         :param loglevel: The log level to set for the motor driver (NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL)
         :param log_handlers: The log handlers to use for the motor driver (default: None = log to console)
+        :param log_formatter: The log formatter log the motor driver messages with (default: None = use default formatter)
         """
         # GPIO pins
         GPIO.setmode(GPIO.BCM)
@@ -32,7 +35,8 @@ class TMC2209_MotorDriver:
         self.diag_pin = 26
 
         # Motor driver
-        self.tmc = TMC_2209(self.en_pin, self.step_pin, self.dir_pin, loglevel=loglevel, log_handlers=log_handlers)
+        self.tmc = TMC_2209(self.en_pin, self.step_pin, self.dir_pin, loglevel=loglevel, log_handlers=log_handlers,
+                            log_formatter=log_formatter)
 
         # Set motor driver settings
         self.tmc.set_vactual(False)      # Motor is not controlled by UART

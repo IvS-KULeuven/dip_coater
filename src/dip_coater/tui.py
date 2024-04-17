@@ -1028,14 +1028,15 @@ class DipCoaterApp(App):
         super().__init__()
         self.motor_logger_widget = RichLog(markup=True, id="motor-logger")
         motor_logger_handler = MotorLoggerHandler(self.motor_logger_widget)
-        # TODO: change logger formatting to logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", '%Y%m%d %H:%M:%S') once supported by TMC lib
+        logging_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", "%Y%m%d %H:%M:%S")
         self.motor_driver = TMC2209_MotorDriver(stepmode=STEP_MODES[DEFAULT_STEP_MODE],
                                                 current=DEFAULT_CURRENT,
                                                 invert_direction=INVERT_MOTOR_DIRECTION,
                                                 interpolation=USE_INTERPOLATION,
                                                 spread_cycle=USE_SPREAD_CYCLE,
                                                 loglevel=DEFAULT_LOGGING_LEVEL,
-                                                log_handlers=[motor_logger_handler])
+                                                log_handlers=[motor_logger_handler],
+                                                log_formatter=logging_format)
 
     def on_mount(self):
         # on_mount() is called after compose(), so the RichLog is known
