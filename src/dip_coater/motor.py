@@ -197,9 +197,9 @@ class TMC2209_MotorDriver:
 
             # Move the coater away from the home switch to start the homing routine
             if home_down:
-                self.move_up(10, speed_mm_s)
+                self.move_down(distance_mm, speed_mm_s)
             else:
-                self.move_down(10, speed_mm_s)
+                self.move_up(distance_mm, speed_mm_s)
 
         # Move the coater towards the home switch and wait for the home switch to be triggered
         self.homing_found = False
