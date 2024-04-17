@@ -33,6 +33,7 @@ from textual.widgets import Checkbox
 from textual.widgets import Select
 from textual.widgets import Rule
 from textual.validation import Number, Function
+from textual.binding import Binding
 from importlib.metadata import version
 
 import argparse
@@ -1004,9 +1005,13 @@ class DipCoaterApp(App):
 
     CSS_PATH = "tui.tcss"
     BINDINGS = [
-        ("d", "toggle_dark", "Toggle dark mode"),
-        ("q", "request_quit", "Quit"),
-        ("h", "show_help", "Help"),
+        Binding("t", "toggle_dark", "Toggle dark mode"),
+        Binding("q", "request_quit", "Quit"),
+        Binding("h", "show_help", "Help"),
+        Binding("w", "move_up", "Move up", show=False),
+        Binding("s", "move_down", "Move down", show=False),
+        Binding("a", "enable_motor", "Enable the motor", show=False),
+        Binding("d", "disable_motor", "Disable the motor", show=False),
     ]
     COMMANDS = App.COMMANDS | {HelpCommand}
 
@@ -1064,8 +1069,20 @@ class DipCoaterApp(App):
         self.motor_driver.cleanup()
         self.app.exit()
 
-    def action_show_help(self):
+    def action_show_help(self) -> None:
         self.push_screen(HelpScreen())
+
+    async def action_move_up(self) -> None:
+        await self.query_one(MotorControls).move_up_action()
+
+    async def action_move_down(self) -> None:
+        await self.query_one(MotorControls).move_down_action()
+
+    async def action_enable_motor(self) -> None:
+        await self.query_one(MotorControls).enable_motor_action()
+
+    async def action_disable_motor(self) -> None:
+        await self.query_one(MotorControls).disable_motor_action()
 
 
 def clamp(value, min_value, max_value):
