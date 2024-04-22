@@ -239,7 +239,7 @@ class MotorControls(Static):
             if acceleration_mm_s2 is None:
                 acceleration_mm_s2 = def_accel
             log.write(
-                f"Moving down ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s\u00b2, {step_mode=} step mode).")
+                f"Moving down ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s\u00b2, {step_mode=} µs).")
             self.set_motor_state("moving")
             await asyncio.sleep(0.1)
             self.motor_driver.move_down(distance_mm, speed_mm_s, acceleration_mm_s2)
