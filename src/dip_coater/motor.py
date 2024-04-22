@@ -209,6 +209,7 @@ class TMC2209_MotorDriver:
                 self.wait_for_motor_done()
 
         # If the limit switch is still triggered after moving away, raise an error
+        home_triggered = GPIO.input(home_pin) == 1 if home_switch_nc else GPIO.input(home_pin) == 0
         if home_triggered:
             raise ValueError("The home switch is still triggered after backing off. Please check the limit switches.")
 
