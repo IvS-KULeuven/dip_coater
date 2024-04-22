@@ -108,7 +108,7 @@ STEP_MODE_LABELS = {
 DEFAULT_STEP_MODE = "I8"
 
 # Current settings (in mA)
-DEFAULT_CURRENT = 150    # The linear guide does not use much current. In fact, at 31 mA, the motor only stalls when you push REALLY hard on the rail block. Therefore, use the lowest value so the motor definitely stops when it reaches the bottom or top.
+DEFAULT_CURRENT = 1200
 MIN_CURRENT = 31    # Minimum current that can be sensed by the TMC2209
 MAX_CURRENT = 2000  # Absolute max limit for TMC2209!
 
