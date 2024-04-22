@@ -55,6 +55,7 @@ except ModuleNotFoundError:
     import MyTMC_2209 as TMC_2209
     sys.modules["TMC_2209"] = TMC_2209
 
+from RPi import GPIO
 from TMC_2209._TMC_2209_logger import Loglevel
 from TMC_2209._TMC_2209_move import MovementAbsRel, StopMode
 from dip_coater.motor import TMC2209_MotorDriver
@@ -114,7 +115,9 @@ MAX_CURRENT = 2000  # Absolute max limit for TMC2209!
 
 # Limit switch settings
 LIMIT_SWITCH_UP_PIN = 6
+LIMIT_SWITCH_UP_NC = True       # Normally closed (NC) or normally open (NO)
 LIMIT_SWITCH_DOWN_PIN = 12
+LIMIT_SWITCH_DOWN_NC = True     # Normally closed (NC) or normally open (NO)
 
 # Homing settings
 #HOMING_REVOLUTIONS = 25
@@ -182,6 +185,8 @@ class MotorControls(Static):
 
     def _on_mount(self, event: events.Mount) -> None:
         self.app.query_one(Status).update_homing_found(self.homing_found)
+        self.update_limit_switch_up_status(LIMIT_SWITCH_UP_PIN)
+        self.update_limit_switch_down_status(LIMIT_SWITCH_DOWN_PIN)
 
     @property
     def motor_state(self):
@@ -309,10 +314,20 @@ class MotorControls(Static):
         self.homing_found = homing_found
         self.app.query_one(Status).update_homing_found(self.homing_found)
 
+    def update_limit_switch_up_status(self, pin_number):
+        triggered = GPIO.input(pin_number) == 1 if LIMIT_SWITCH_UP_NC else GPIO.input(pin_number) == 0
+        self.app.query_one(Status).update_limit_switch_up(triggered)
+
+    def update_limit_switch_down_status(self, pin_number):
+        triggered = GPIO.input(pin_number) == 1 if LIMIT_SWITCH_DOWN_NC else GPIO.input(pin_number) == 0
+        self.app.query_one(Status).update_limit_switch_down(triggered)
+
     def bind_limit_switches(self):
         """ Bind the limit switches to stop the motor driver."""
-        self.motor_driver.bind_limit_switch(LIMIT_SWITCH_UP_PIN, NC=True)
-        self.motor_driver.bind_limit_switch(LIMIT_SWITCH_DOWN_PIN, NC=True)
+        self.motor_driver.bind_limit_switch(LIMIT_SWITCH_UP_PIN, NC=LIMIT_SWITCH_UP_NC)
+        GPIO.add_event_callback(LIMIT_SWITCH_UP_PIN, self.update_limit_switch_up_status)
+        self.motor_driver.bind_limit_switch(LIMIT_SWITCH_DOWN_PIN, NC=LIMIT_SWITCH_DOWN_NC)
+        GPIO.add_event_callback(LIMIT_SWITCH_DOWN_PIN, self.update_limit_switch_down_status)
 
 
 class SpeedControls(Widget):
@@ -431,6 +446,8 @@ class Status(Static):
     speed = reactive("Speed: ")
     distance = reactive("Distance: ")
     homing_found = reactive("Homing found: ")
+    limit_switch_up = reactive("Limit switch up: ")
+    limit_switch_down = reactive("Limit switch down: ")
     motor = reactive("Motor: ")
 
     def compose(self) -> ComposeResult:
@@ -438,6 +455,9 @@ class Status(Static):
             yield Label(id="status-speed")
             yield Label(id="status-distance")
             yield Label(id="status-homing-found")
+            yield Label(id="status-limit-switch-up")
+            yield Label(id="status-limit-switch-down")
+            yield Rule()
             yield Label(id="status-motor")
 
     def on_mount(self):
@@ -461,6 +481,20 @@ class Status(Static):
 
     def update_homing_found(self, homing_finished: bool):
         self.homing_found = f"Homing found: {homing_finished}"
+
+    def watch_limit_switch_up(self, limit_switch_up: str):
+        self.query_one("#status-limit-switch-up", Label).update(limit_switch_up)
+
+    def update_limit_switch_up(self, limit_switch_up: bool):
+        str_limit_switch_up = "[dark_orange]Triggered[/]" if limit_switch_up else "Open"
+        self.limit_switch_up = f"Limit switch up: {str_limit_switch_up}"
+
+    def watch_limit_switch_down(self, limit_switch_down: str):
+        self.query_one("#status-limit-switch-down", Label).update(limit_switch_down)
+
+    def update_limit_switch_down(self, limit_switch_down: bool):
+        str_limit_switch_down = "[dark_orange]Triggered[/]" if limit_switch_down else "Open"
+        self.limit_switch_down = f"Limit switch down: {str_limit_switch_down}"
 
     def watch_motor(self, motor: str):
         self.query_one("#status-motor", Label).update(motor)
