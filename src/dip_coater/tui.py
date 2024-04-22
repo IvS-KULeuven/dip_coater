@@ -210,16 +210,6 @@ class MotorControls(Static):
         self._motor_state = state
         self.app.query_one(Status).update_motor_state(self._motor_state)
 
-    def setup_limit_switches_io(self):
-        self._setup_limit_switch_io(LIMIT_SWITCH_UP_PIN, LIMIT_SWITCH_UP_NC)
-        self._setup_limit_switch_io(LIMIT_SWITCH_DOWN_PIN, LIMIT_SWITCH_DOWN_NC)
-
-    @staticmethod
-    def _setup_limit_switch_io(limit_switch_pin, limit_switch_nc=True):
-        GPIO.setup(limit_switch_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.remove_event_detect(limit_switch_pin)
-        GPIO.add_event_detect(limit_switch_pin, GPIO.BOTH)
-
     @on(Button.Pressed, "#move-up")
     async def move_up_action(self):
         distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
@@ -326,6 +316,16 @@ class MotorControls(Static):
     def set_homing_found(self, homing_found: bool):
         self.homing_found = homing_found
         self.app.query_one(Status).update_homing_found(self.homing_found)
+
+    def setup_limit_switches_io(self):
+        self._setup_limit_switch_io(LIMIT_SWITCH_UP_PIN, LIMIT_SWITCH_UP_NC)
+        self._setup_limit_switch_io(LIMIT_SWITCH_DOWN_PIN, LIMIT_SWITCH_DOWN_NC)
+
+    @staticmethod
+    def _setup_limit_switch_io(limit_switch_pin, limit_switch_nc=True, bouncetime=5):
+        GPIO.setup(limit_switch_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        GPIO.remove_event_detect(limit_switch_pin)
+        GPIO.add_event_detect(limit_switch_pin, GPIO.BOTH, bouncetime=bouncetime)
 
     def update_limit_switch_up_status(self, pin_number):
         triggered = GPIO.input(pin_number) == 1 if LIMIT_SWITCH_UP_NC else GPIO.input(pin_number) == 0

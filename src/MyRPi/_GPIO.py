@@ -28,7 +28,7 @@ def setup(*args, **kwargs):
 def cleanup():
     ...
 
-def add_event_callback (channel, callback, bouncetime=None):
+def add_event_callback (channel, callback):
     ...
 
 def add_event_detect (channel, edge, callback=None, bouncetime=None):

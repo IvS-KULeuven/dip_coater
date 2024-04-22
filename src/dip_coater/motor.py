@@ -162,7 +162,7 @@ class TMC2209_MotorDriver:
         """
         event = GPIO.RISING if NC else GPIO.FALLING
         self.limit_switch_bindings[limit_switch_pin] = event
-        GPIO.add_event_callback(limit_switch_pin, callback=self._stop_motor_callback, bouncetime=5)
+        GPIO.add_event_callback(limit_switch_pin, callback=self._stop_motor_callback)
 
     def _stop_motor_callback(self, pin_number):
         if self._wait_for_debounce(pin_number):
