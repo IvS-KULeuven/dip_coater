@@ -121,8 +121,11 @@ class TMC2209_MotorDriver:
         self.tmc.run_to_position_revolutions_threaded(revs)
 
     def wait_for_motor_done(self):
-        """ Wait for the motor to finish moving """
-        self.tmc.wait_for_movement_finished_threaded()
+        """ Wait for the motor to finish moving
+
+        :return: The StopMode of the movement (StopMode.NO for normal stop, other StopMode for early stop)
+        """
+        return self.tmc.wait_for_movement_finished_threaded()
 
     def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0):
         """ Move the coater up by the given distance at the given speed
