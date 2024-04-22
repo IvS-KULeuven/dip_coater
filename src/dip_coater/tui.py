@@ -302,7 +302,7 @@ class MotorControls(Static):
 
     async def perform_homing(self, log: RichLog):
         speed = self.app.query_one(AdvancedSettings).homing_speed
-        log.write(f"[cyan]Starting limit switch homing ({speed=} RPM)...[/]")
+        log.write(f"[cyan]Starting limit switch homing ({speed=} mm/s)...[/]")
         self.set_motor_state("homing")
         await asyncio.sleep(0.1)
         try:
