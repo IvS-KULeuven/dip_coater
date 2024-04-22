@@ -3,6 +3,7 @@ from TMC_2209._TMC_2209_logger import Loglevel
 from TMC_2209._TMC_2209_move import MovementAbsRel, StopMode
 import time
 import logging
+import asyncio
 from RPi import GPIO
 
 # ======== CONSTANTS ========
@@ -126,12 +127,21 @@ class TMC2209_MotorDriver:
         self.tmc.set_acceleration(acceleration)
         self.tmc.run_to_position_revolutions_threaded(revs)
 
-    def wait_for_motor_done(self):
+    def wait_for_motor_done(self) -> StopMode:
         """ Wait for the motor to finish moving
 
         :return: The StopMode of the movement (StopMode.NO for normal stop, other StopMode for early stop)
         """
         return self.tmc.wait_for_movement_finished_threaded()
+
+    async def wait_for_motor_done_async(self) -> StopMode:
+        """ Wait for the motor to finish moving asynchronously
+
+        :return: The StopMode of the movement (StopMode.NO for normal stop, other StopMode for early stop)
+        """
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, self.wait_for_motor_done)
+        return result
 
     def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0, limit_switch_pins: list = None):
         """ Move the coater up by the given distance at the given speed
@@ -175,7 +185,7 @@ class TMC2209_MotorDriver:
         if self._wait_for_debounce(pin_number):
             self.stop_motor(StopMode.HARDSTOP)
 
-    def _wait_for_debounce(self, pin_number, debounce_time_ms=10):
+    def _wait_for_debounce(self, pin_number, debounce_time_ms=10) -> bool:
         """ Wait for the debounce time of the limit switch
 
         :param pin_number: The GPIO pin of the limit switch
@@ -186,7 +196,13 @@ class TMC2209_MotorDriver:
         time.sleep(debounce_time_ms / 1000)
         return self._is_limit_switch_triggered(pin_number)
 
-    def _is_limit_switch_triggered(self, pin_number):
+    def _is_limit_switch_triggered(self, pin_number) -> bool:
+        """ Check whether the limit switch is triggered
+
+        :param pin_number: The GPIO pin of the limit switch
+
+        :return: True if the limit switch is triggered (pressed), False otherwise
+        """
         event = self.limit_switch_bindings[pin_number]
         if event == GPIO.RISING:
             return GPIO.input(pin_number) == 1
@@ -197,7 +213,7 @@ class TMC2209_MotorDriver:
 
     def do_limit_switch_homing(self, limit_switch_up_pin: int, limit_switch_down_pin: int,
                                distance_mm: float, speed_mm_s: float = 2,
-                               switch_up_nc: bool = True, switch_down_nc: bool = True):
+                               switch_up_nc: bool = True, switch_down_nc: bool = True) -> bool:
         """ Perform the homing routine for the motor driver using limit switches
 
         !!! Removes the existing limit switch event bindings !!!
@@ -208,6 +224,8 @@ class TMC2209_MotorDriver:
         :param speed_mm_s: The speed to use for the homing routine in mm/s (default: 2 mm/s)
         :param switch_up_nc: Whether the top limit switch is normally closed (NC) or normally open (NO) (default: True)
         :param switch_down_nc: Whether the bottom limit switch is normally closed (NC) or normally open (NO) (default: True)
+
+        :return: True if the homing routine was successful, False otherwise
         """
         # Set up the limit switches IO
         GPIO.remove_event_detect(limit_switch_up_pin)
@@ -286,7 +304,7 @@ class TMC2209_MotorDriver:
         )
         self.tmc.set_spreadcycle(spread_cycle)
 
-    def is_homing_found(self):
+    def is_homing_found(self) -> bool:
         """ Check whether the motor driver is homed
 
         :return: True if the motor driver is homed, False otherwise
@@ -306,13 +324,27 @@ class TMC2209_MotorDriver:
             steps = 2 * self.tmc.read_steps_per_rev()
         self.tmc.test_stallguard_threshold(steps)
 
+    def get_current_position(self, homed_up: bool = True):
+        """ Get the current position of the motor in mm
+
+        :param homed_up: Whether the motor is homed up (True) or down (False)
+
+        :return: The current position of the motor in mm, or None if the motor is not homed
+        """
+        if not self.homing_found:
+            return None
+        pos = (self.tmc.get_current_position() / self.tmc.read_steps_per_rev()) * TRANS_PER_REV
+        if not homed_up:
+            pos = -pos
+        return pos
+
     def cleanup(self):
         """ Clean up the motor driver for shutdown"""
         self.disable_motor()
         del self.tmc
 
     @staticmethod
-    def calculate_revs_rps_and_rpss(distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0):
+    def calculate_revs_rps_and_rpss(distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0) -> tuple:
         """ Calculate how many revolutions the motor should turn at what speed to
             achieve the desired vertical distance translation at the speed.
 

@@ -39,6 +39,7 @@ from importlib.metadata import version
 import argparse
 import asyncio
 import logging
+import threading
 
 # Mock the import of RPi when the package is not available
 try:
@@ -59,6 +60,7 @@ from RPi import GPIO
 from TMC_2209._TMC_2209_logger import Loglevel
 from TMC_2209._TMC_2209_move import MovementAbsRel, StopMode
 from dip_coater.motor import TMC2209_MotorDriver
+from dip_coater.threading_util import StoppableThreadTimer, AsyncioStoppableTimer
 
 # Logging settings
 STEP_MODE_WRITE_TO_LOG = False
@@ -225,7 +227,7 @@ class MotorControls(Static):
             await asyncio.sleep(0.1)
             try:
                 self.motor_driver.move_up(distance_mm, speed_mm_s, acceleration_mm_s2, [LIMIT_SWITCH_UP_PIN])
-                stop = self.motor_driver.wait_for_motor_done()
+                stop = await self.motor_driver.wait_for_motor_done_async()
                 if stop == StopMode.NO:
                     log.write(f"-> Finished moving up.")
                 else:
@@ -254,7 +256,7 @@ class MotorControls(Static):
             await asyncio.sleep(0.1)
             try:
                 self.motor_driver.move_down(distance_mm, speed_mm_s, acceleration_mm_s2, [LIMIT_SWITCH_DOWN_PIN])
-                stop = self.motor_driver.wait_for_motor_done()
+                stop = await self.motor_driver.wait_for_motor_done_async()
                 if stop == StopMode.NO:
                     log.write(f"-> Finished moving down.")
                 else:
@@ -470,6 +472,13 @@ class Status(Static):
     limit_switch_up = reactive("Limit switch up: ")
     limit_switch_down = reactive("Limit switch down: ")
     motor = reactive("Motor: ")
+    position = reactive("Position: ")
+
+    position_thread = None
+
+    def __init__(self, motor_driver: TMC2209_MotorDriver, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.motor_driver = motor_driver
 
     def compose(self) -> ComposeResult:
         with Vertical():
@@ -480,10 +489,13 @@ class Status(Static):
             yield Label(id="status-limit-switch-down")
             yield Rule()
             yield Label(id="status-motor")
+            yield Label(id="status-position")
 
     def on_mount(self):
         motor_state = self.app.query_one(MotorControls).motor_state
         self.update_motor_state(motor_state)
+        self.position_thread = AsyncioStoppableTimer(0.5, self.fetch_new_position)
+        self.position_thread.start()
 
     def watch_speed(self, speed: str):
         self.query_one("#status-speed", Label).update(speed)
@@ -532,6 +544,24 @@ class Status(Static):
         else:
             color = "red"
         self.motor = f"Motor: [{color}]{motor_state.upper()}[/]"
+
+    def watch_position(self, position: str):
+        self.query_one("#status-position", Label).update(position)
+
+    async def fetch_new_position(self):
+        position = self.motor_driver.get_current_position()
+        await self.update_position(position)
+
+    async def update_position(self, position_mm: float):
+        if position_mm is None:
+            self.position = "Position: UNKNOWN (do homing first)"
+        else:
+            self.position = f"Position: {position_mm} mm"
+        await asyncio.sleep(0.1)
+
+    def on_unmount(self):
+        if self.position_thread is not None:
+            self.position_thread.stop()
 
 
 class StatusAdvanced(Static):
@@ -1110,7 +1140,7 @@ class DipCoaterApp(App):
                         yield MotorControls(self.motor_driver)
                         yield RichLog(markup=True, id="logger")
                     with Vertical(id="right-side"):
-                        yield Status(id="status")
+                        yield Status(self.motor_driver, id="status")
             with TabPane("Advanced", id="advanced-tab"):
                 with Horizontal():
                     with Vertical(id="left-side-advanced"):
@@ -1148,6 +1178,9 @@ class DipCoaterApp(App):
 
     async def action_disable_motor(self) -> None:
         await self.query_one(MotorControls).disable_motor_action()
+
+
+""" Utility functions """
 
 
 def clamp(value, min_value, max_value):
