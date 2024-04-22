@@ -160,11 +160,9 @@ class TMC2209_MotorDriver:
         :param NC: Whether the limit switch is normally closed (NC) or normally open (NO) (default: True)
             For safety reasons, it is recommended to use NC limit switches
         """
-        GPIO.setup(limit_switch_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.remove_event_detect(limit_switch_pin)
         event = GPIO.RISING if NC else GPIO.FALLING
         self.limit_switch_bindings[limit_switch_pin] = event
-        GPIO.add_event_detect(limit_switch_pin, GPIO.BOTH, callback=self._stop_motor_callback, bouncetime=5)
+        GPIO.add_event_callback(limit_switch_pin, callback=self._stop_motor_callback, bouncetime=5)
 
     def _stop_motor_callback(self, pin_number):
         if self._wait_for_debounce(pin_number):
