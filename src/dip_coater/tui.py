@@ -79,7 +79,7 @@ MAX_DISTANCE = 250
 MIN_DISTANCE = 0
 
 # Acceleration settings (mm/s^2)
-DEFAULT_ACCELERATION = 20
+DEFAULT_ACCELERATION = 30
 MIN_ACCELERATION = 0.5
 MAX_ACCELERATION = 50
 
@@ -109,7 +109,7 @@ STEP_MODE_LABELS = {
 DEFAULT_STEP_MODE = "I8"
 
 # Current settings (in mA)
-DEFAULT_CURRENT = 1200
+DEFAULT_CURRENT = 1500
 MIN_CURRENT = 31    # Minimum current that can be sensed by the TMC2209
 MAX_CURRENT = 2000  # Absolute max limit for TMC2209!
 
