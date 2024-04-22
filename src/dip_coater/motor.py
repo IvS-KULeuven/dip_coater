@@ -107,13 +107,18 @@ class TMC2209_MotorDriver:
         """ Disarm the motor """
         self.tmc.set_motor_enabled(False)
 
-    def drive_motor(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0):
+    def drive_motor(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0, limit_switch_pins: list = None):
         """ Drive the motor to move the coater up or down by the given distance at the given speed
 
         :param distance_mm: The distance to move the coater in mm (positive for up, negative for down)
         :param speed_mm_s: The speed at which to move the coater in mm/s (always positive)
         :param acceleration_mm_s2: The acceleration/deceleration to use for the movement in mm/s^2 (default: 0)
+        :param limit_switch_pins: The GPIO pins of the limit switches to use for stopping the motor (default: None)
         """
+        if limit_switch_pins is not None:
+            for pin in limit_switch_pins:
+                if self._is_limit_switch_triggered(pin):
+                    raise ValueError(f"Limit switch on pin {pin} is triggered. Please check the limit switches.")
         revs, rps, rpss = self.calculate_revs_rps_and_rpss(distance_mm, speed_mm_s, acceleration_mm_s2)
         max_speed = rps * self.tmc.read_steps_per_rev()
         acceleration = rpss * self.tmc.read_steps_per_rev()
@@ -128,23 +133,25 @@ class TMC2209_MotorDriver:
         """
         return self.tmc.wait_for_movement_finished_threaded()
 
-    def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0):
+    def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0, limit_switch_pins: list = None):
         """ Move the coater up by the given distance at the given speed
 
         :param distance_mm: The distance to move the coater up in mm
         :param speed_mm_s: The speed at which to move the coater up in mm/s
         :param acceleration_mm_s2: The acceleration/deceleration to use for the movement in mm/s^2 (default: 0)
+        :param limit_switch_pins: The GPIO pins of the limit switches to use for stopping the motor (default: None)
         """
-        self.drive_motor(distance_mm, speed_mm_s, acceleration_mm_s2)
+        self.drive_motor(distance_mm, speed_mm_s, acceleration_mm_s2, limit_switch_pins)
 
-    def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0):
+    def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0, limit_switch_pins: list = None):
         """ Move the coater down by the given distance at the given speed
 
         :param distance_mm: The distance to move the coater down in mm
         :param speed_mm_s: The speed at which to move the coater down in mm/s
         :param acceleration_mm_s2: The acceleration/deceleration to use for the movement in mm/s^2 (default: 0)
+        :param limit_switch_pins: The GPIO pins of the limit switches to use for stopping the motor (default: None)
         """
-        self.drive_motor(-distance_mm, speed_mm_s, acceleration_mm_s2)
+        self.drive_motor(-distance_mm, speed_mm_s, acceleration_mm_s2, limit_switch_pins)
 
     def stop_motor(self, stop_mode: StopMode = StopMode.HARDSTOP):
         """ Stop the motor when it is moving
@@ -176,8 +183,11 @@ class TMC2209_MotorDriver:
 
         :return: True if the limit switch is triggered, False otherwise
         """
-        event = self.limit_switch_bindings[pin_number]
         time.sleep(debounce_time_ms / 1000)
+        return self._is_limit_switch_triggered(pin_number)
+
+    def _is_limit_switch_triggered(self, pin_number):
+        event = self.limit_switch_bindings[pin_number]
         if event == GPIO.RISING:
             return GPIO.input(pin_number) == 1
         elif event == GPIO.FALLING:

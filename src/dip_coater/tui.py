@@ -225,13 +225,17 @@ class MotorControls(Static):
                 f"Moving up ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s\u00b2, {step_mode=} µs).")
             self.set_motor_state("moving")
             await asyncio.sleep(0.1)
-            self.motor_driver.move_up(distance_mm, speed_mm_s, acceleration_mm_s2)
-            stop = self.motor_driver.wait_for_motor_done()
-            if stop == StopMode.NO:
-                log.write(f"-> Finished moving up.")
-            else:
-                log.write(f"[red]-> Stopped moving up {stop}.[/]")
-            self.set_motor_state("enabled")
+            try:
+                self.motor_driver.move_up(distance_mm, speed_mm_s, acceleration_mm_s2, [LIMIT_SWITCH_UP_PIN])
+                stop = self.motor_driver.wait_for_motor_done()
+                if stop == StopMode.NO:
+                    log.write(f"-> Finished moving up.")
+                else:
+                    log.write(f"[red]-> Stopped moving up {stop}.[/]")
+                self.set_motor_state("enabled")
+            except ValueError as e:
+                log.write(f"[red]{e}[/]")
+                self.set_motor_state("enabled")
         else:
             log.write("[red]We cannot move up when the motor is disabled[/]")
 
@@ -250,13 +254,17 @@ class MotorControls(Static):
                 f"Moving down ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s\u00b2, {step_mode=} µs).")
             self.set_motor_state("moving")
             await asyncio.sleep(0.1)
-            self.motor_driver.move_down(distance_mm, speed_mm_s, acceleration_mm_s2)
-            stop = self.motor_driver.wait_for_motor_done()
-            if stop == StopMode.NO:
-                log.write(f"-> Finished moving down.")
-            else:
-                log.write(f"[red]-> Stopped moving down {stop}.[/]")
-            self.set_motor_state("enabled")
+            try:
+                self.motor_driver.move_down(distance_mm, speed_mm_s, acceleration_mm_s2, [LIMIT_SWITCH_DOWN_PIN])
+                stop = self.motor_driver.wait_for_motor_done()
+                if stop == StopMode.NO:
+                    log.write(f"-> Finished moving down.")
+                else:
+                    log.write(f"[red]-> Stopped moving down {stop}.[/]")
+                self.set_motor_state("enabled")
+            except ValueError as e:
+                log.write(f"[red]{e}[/]")
+                self.set_motor_state("enabled")
         else:
             log.write("[red]We cannot move down when the motor is disabled[/]")
 
