@@ -222,7 +222,7 @@ class MotorControls(Static):
             if stop == StopMode.NO:
                 log.write(f"-> Finished moving up.")
             else:
-                log.write(f"[red]-> Stopped moving up.[/]")
+                log.write(f"[red]-> Stopped moving up {stop}.[/]")
             self.set_motor_state("enabled")
         else:
             log.write("[red]We cannot move up when the motor is disabled[/]")
@@ -247,7 +247,7 @@ class MotorControls(Static):
             if stop == StopMode.NO:
                 log.write(f"-> Finished moving down.")
             else:
-                log.write(f"[red]-> Stopped moving down.[/]")
+                log.write(f"[red]-> Stopped moving down {stop}.[/]")
             self.set_motor_state("enabled")
         else:
             log.write("[red]We cannot move down when the motor is disabled[/]")
