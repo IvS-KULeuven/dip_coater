@@ -116,9 +116,9 @@ MIN_CURRENT = 31    # Minimum current that can be sensed by the TMC2209
 MAX_CURRENT = 2000  # Absolute max limit for TMC2209!
 
 # Limit switch settings
-LIMIT_SWITCH_UP_PIN = 6
+LIMIT_SWITCH_UP_PIN = 19
 LIMIT_SWITCH_UP_NC = True       # Normally closed (NC) or normally open (NO)
-LIMIT_SWITCH_DOWN_PIN = 12
+LIMIT_SWITCH_DOWN_PIN = 26
 LIMIT_SWITCH_DOWN_NC = True     # Normally closed (NC) or normally open (NO)
 
 # Homing settings
