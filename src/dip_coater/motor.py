@@ -11,6 +11,7 @@ TRANS_PER_REV = 4  # The vertical translation in mm of the coater for one revolu
 
 class TMC2209_MotorDriver:
     homing_found = False
+    limit_switch_bindings = {}      # Stores the limit switch pin and the corresponding edge trigger event
 
     """ Class to control the TMC2209 motor driver for the dip coater"""
     def __init__(self, stepmode: int = 8, current: int = 1000, invert_direction: bool = False, interpolation: bool = True,
@@ -162,10 +163,29 @@ class TMC2209_MotorDriver:
         GPIO.setup(limit_switch_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.remove_event_detect(limit_switch_pin)
         event = GPIO.RISING if NC else GPIO.FALLING
+        self.limit_switch_bindings[limit_switch_pin] = event
         GPIO.add_event_detect(limit_switch_pin, event, callback=self._stop_motor_callback, bouncetime=10)
 
     def _stop_motor_callback(self, pin_number):
-        self.stop_motor(StopMode.HARDSTOP)
+        if self._wait_for_debounce(pin_number):
+            self.stop_motor(StopMode.HARDSTOP)
+
+    def _wait_for_debounce(self, pin_number, debounce_time_ms=10):
+        """ Wait for the debounce time of the limit switch
+
+        :param pin_number: The GPIO pin of the limit switch
+        :param debounce_time_ms: The debounce time in ms
+
+        :return: True if the limit switch is triggered, False otherwise
+        """
+        event = self.limit_switch_bindings[pin_number]
+        time.sleep(debounce_time_ms / 1000)
+        if event == GPIO.RISING:
+            return GPIO.input(pin_number) == 1
+        elif event == GPIO.FALLING:
+            return GPIO.input(pin_number) == 0
+        else:
+            return False
 
     def do_limit_switch_homing(self, limit_switch_up_pin: int, limit_switch_down_pin: int,
                                distance_mm: float, speed_mm_s: float = 2,
