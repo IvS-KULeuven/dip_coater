@@ -200,6 +200,8 @@ class TMC2209_MotorDriver:
                                switch_up_nc: bool = True, switch_down_nc: bool = True):
         """ Perform the homing routine for the motor driver using limit switches
 
+        !!! Removes the existing limit switch event bindings !!!
+
         :param limit_switch_up_pin: The GPIO pin of the NC (normally closed) limit switch at the top of the guide
         :param limit_switch_down_pin: The GPIO pin of the NC (normally closed)  limit switch at the bottom of the guide
         :param distance_mm: The maximal distance to move the coater in mm (positive for up, negative for down)
@@ -208,8 +210,6 @@ class TMC2209_MotorDriver:
         :param switch_down_nc: Whether the bottom limit switch is normally closed (NC) or normally open (NO) (default: True)
         """
         # Set up the limit switches IO
-        GPIO.setup(limit_switch_up_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.setup(limit_switch_down_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.remove_event_detect(limit_switch_up_pin)
         GPIO.remove_event_detect(limit_switch_down_pin)
 
@@ -246,8 +246,8 @@ class TMC2209_MotorDriver:
 
         # Move the coater towards the home switch and wait for the home switch to be triggered
         self.homing_found = False
-        GPIO.add_event_detect(home_pin, home_trigger_event, callback=self._stop_homing_callback, bouncetime=500)
-        GPIO.add_event_detect(other_pin, other_trigger_event, callback=self._stop_homing_callback_other_pin, bouncetime=500)
+        GPIO.add_event_detect(home_pin, home_trigger_event, callback=self._stop_homing_callback, bouncetime=5)
+        GPIO.add_event_detect(other_pin, other_trigger_event, callback=self._stop_homing_callback_other_pin, bouncetime=5)
         self.drive_motor(distance_mm, speed_mm_s)
         self.wait_for_motor_done()
         GPIO.remove_event_detect(home_pin)
@@ -256,14 +256,16 @@ class TMC2209_MotorDriver:
         return self.homing_found
 
     def _stop_homing_callback(self, home_pin):
-        self.homing_found = True
-        self.stop_motor(StopMode.HARDSTOP)
-        self.tmc.set_current_position(0)
+        if self._wait_for_debounce(home_pin):
+            self.homing_found = True
+            self.stop_motor(StopMode.HARDSTOP)
+            self.tmc.set_current_position(0)
 
     def _stop_homing_callback_other_pin(self, other_pin):
-        self.homing_found = False
-        self.stop_motor(StopMode.HARDSTOP)
-        raise ValueError("The other limit switch was triggered. Please check the limit switches.")
+        if self._wait_for_debounce(other_pin):
+            self.homing_found = False
+            self.stop_motor(StopMode.HARDSTOP)
+            raise ValueError("The other limit switch was triggered. Please check the limit switches.")
 
     def do_stallguard_homing(self, revolutions: int = 25, threshold: int = 100, speed_mm_s: float = 2):
         """ Perform the homing routine for the motor driver using StallGuard

@@ -186,9 +186,7 @@ class MotorControls(Static):
     def _on_mount(self, event: events.Mount) -> None:
         self.app.query_one(Status).update_homing_found(self.homing_found)
         self.setup_limit_switches_io()
-        GPIO.add_event_callback(LIMIT_SWITCH_UP_PIN, self.update_limit_switch_up_status)
         self.update_limit_switch_up_status(LIMIT_SWITCH_UP_PIN)
-        GPIO.add_event_callback(LIMIT_SWITCH_DOWN_PIN, self.update_limit_switch_down_status)
         self.update_limit_switch_down_status(LIMIT_SWITCH_DOWN_PIN)
 
     @property
@@ -318,6 +316,8 @@ class MotorControls(Static):
             self.set_homing_found(homing_found)
         except ValueError as e:
             log.write(f"[red]{e}[/]")
+        finally:
+            self.setup_limit_switches_io()  # Re-bind the limit switches after homing
         self.set_motor_state("enabled")
         self.bind_limit_switches_to_motor()  # Re-bind the limit switches after homing
 
@@ -327,7 +327,9 @@ class MotorControls(Static):
 
     def setup_limit_switches_io(self):
         self._setup_limit_switch_io(LIMIT_SWITCH_UP_PIN, LIMIT_SWITCH_UP_NC)
+        GPIO.add_event_callback(LIMIT_SWITCH_UP_PIN, self.update_limit_switch_up_status)
         self._setup_limit_switch_io(LIMIT_SWITCH_DOWN_PIN, LIMIT_SWITCH_DOWN_NC)
+        GPIO.add_event_callback(LIMIT_SWITCH_DOWN_PIN, self.update_limit_switch_down_status)
 
     @staticmethod
     def _setup_limit_switch_io(limit_switch_pin, limit_switch_nc=True, bouncetime=5):
