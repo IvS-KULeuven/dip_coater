@@ -185,7 +185,9 @@ class MotorControls(Static):
 
     def _on_mount(self, event: events.Mount) -> None:
         self.app.query_one(Status).update_homing_found(self.homing_found)
+        GPIO.setup(LIMIT_SWITCH_UP_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         self.update_limit_switch_up_status(LIMIT_SWITCH_UP_PIN)
+        GPIO.setup(LIMIT_SWITCH_DOWN_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         self.update_limit_switch_down_status(LIMIT_SWITCH_DOWN_PIN)
 
     @property
