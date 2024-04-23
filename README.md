@@ -12,8 +12,8 @@ Always install in a dedicated virtual environment!
 $ cd </path/to/dip-coater>
 $ python3 -m venv venv --prompt=dip-coater
 $ source venv/bin/activate
-$ pip install --upgrade pip setuptools wheel
-$ pip install -e .
+$ python3 -m pip install --upgrade pip setuptools wheel
+$ python3 -m pip install -e .
 ```
 
 On a Raspberry Pi, install the project together with the RPi package:
