@@ -271,6 +271,15 @@ class TMC2209_MotorDriver:
         GPIO.remove_event_detect(home_pin)
         GPIO.remove_event_detect(other_pin)
 
+        # Move the coater away from the home switch if homing was found
+        if self.homing_found:
+            if home_down:
+                self.move_up(10, speed_mm_s)
+                self.wait_for_motor_done()
+            else:
+                self.move_down(10, speed_mm_s)
+                self.wait_for_motor_done()
+
         return self.homing_found
 
     def _stop_homing_callback(self, home_pin):
