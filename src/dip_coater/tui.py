@@ -300,22 +300,24 @@ class MotorControls(Static):
 
     @on(Button.Pressed, "#do-homing")
     async def do_homing_action(self):
-        log = self.app.query_one("#logger", RichLog)
         if self._motor_state == "enabled":
-            await self.perform_homing(log)
+            await self.perform_homing()
         elif self._motor_state == "homing":
             # Do nothing when already homing
             return
         else:
+            log = self.app.query_one("#logger", RichLog)
             log.write("[red]We cannot do homing when the motor is disabled[/]")
 
-    async def perform_homing(self, log: RichLog):
+    async def perform_homing(self, home_up: bool = HOME_UP):
+        log = self.app.query_one("#logger", RichLog)
         speed = self.app.query_one(AdvancedSettings).homing_speed
+
         log.write(f"[cyan]Starting limit switch homing ({speed=} mm/s)...[/]")
         self.set_motor_state("homing")
         await asyncio.sleep(0.1)
         try:
-            distance = HOMING_MAX_DISTANCE if HOME_UP else -HOMING_MAX_DISTANCE
+            distance = HOMING_MAX_DISTANCE if home_up else -HOMING_MAX_DISTANCE
             homing_found = self.motor_driver.do_limit_switch_homing(LIMIT_SWITCH_UP_PIN, LIMIT_SWITCH_DOWN_PIN,
                                                                     distance, speed)
             if homing_found:
@@ -529,9 +531,15 @@ class PositionControls(Static):
             self.set_position(pos)
 
     @on(Button.Pressed, "#move-to-position-btn")
-    async def move_to_position(self):
+    async def move_to_position_action(self):
         pos = float(self.position)
-        self.motor_driver.run_to_position(pos, HOME_UP)
+        speed = self.app.query_one(SpeedControls).speed
+        accel = self.app.query_one(AdvancedSettings).acceleration
+        await self.move_to_position(pos, speed, accel)
+
+    async def move_to_position(self, position_mm: float, speed_mm_s: float = None, acceleration_mm_s2: float = None,
+                               home_up: bool = HOME_UP):
+        self.motor_driver.run_to_position(position_mm, speed_mm_s, acceleration_mm_s2, home_up)
 
     def set_position(self, position: float):
         validated_position = clamp(position, MIN_POSITION, MAX_POSITION)
@@ -1155,6 +1163,14 @@ class Coder(Static):
         # NOTE: We are purposely not changing the distance, speed and acceleration settings here,
         # as this may be undesirable in some cases.
         self.async_run(self.app.query_one(MotorControls).move_down, distance_mm, speed_mm_s, acceleration_mm_s2)
+
+    def home_motor(self, home_up: bool = HOME_UP):
+        self.async_run(self.app.query_one(MotorControls).perform_homing, home_up)
+
+    def move_to_position(self, position_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None,
+                         home_up: bool = HOME_UP):
+        self.async_run(self.app.query_one(PositionControls).move_to_position, position_mm, speed_mm_s,
+                       acceleration_mm_s2, home_up)
 
     def sleep(self, seconds: float):
         log = self.app.query_one("#logger", RichLog)

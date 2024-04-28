@@ -120,12 +120,32 @@ class TMC2209_MotorDriver:
             for pin in limit_switch_pins:
                 if self._is_limit_switch_triggered(pin):
                     raise ValueError(f"Limit switch on pin {pin} is triggered. Please check the limit switches.")
-        revs, rps, rpss = self.calculate_revs_rps_and_rpss(distance_mm, speed_mm_s, acceleration_mm_s2)
-        max_speed = rps * self.tmc.read_steps_per_rev()
-        acceleration = rpss * self.tmc.read_steps_per_rev()
-        self.tmc.set_max_speed(max_speed)
-        self.tmc.set_acceleration(acceleration)
+        revs = self.calculate_revs_from_distance(distance_mm)
+        self.set_speed(speed_mm_s)
+        self.set_acceleration(acceleration_mm_s2)
         self.tmc.run_to_position_revolutions_threaded(revs)
+
+    def set_speed(self, speed_mm_s: float):
+        """ Set the speed at which to move the coater
+
+        :param speed_mm_s: The speed at which to move the coater in mm/s
+        """
+        if speed_mm_s is None:
+            return
+        rps = self.calculate_rps_from_speed(speed_mm_s)
+        max_speed = rps * self.tmc.read_steps_per_rev()
+        self.tmc.set_max_speed(max_speed)
+
+    def set_acceleration(self, acceleration_mm_s2: float):
+        """ Set the acceleration at which to move the coater
+
+        :param acceleration_mm_s2: The acceleration/deceleration to use for the movement in mm/s^2
+        """
+        if acceleration_mm_s2 is None:
+            return
+        rpss = self.calculate_rpss_from_acceleration(acceleration_mm_s2)
+        acceleration = rpss * self.tmc.read_steps_per_rev()
+        self.tmc.set_acceleration(acceleration)
 
     def wait_for_motor_done(self) -> StopMode:
         """ Wait for the motor to finish moving
@@ -347,10 +367,13 @@ class TMC2209_MotorDriver:
             pos = -pos
         return pos
 
-    def run_to_position(self, position_mm: float, homed_up: bool = True):
+    def run_to_position(self, position_mm: float, speed_mm_s: float = None, acceleration_mm_s2: float = None,
+                        homed_up: bool = True):
         """ Set the current position of the motor in mm
 
         :param position_mm: The position to set the motor to in mm
+        :param speed_mm_s: The speed at which to move the motor to the position in mm/s (default: None = use current speed)
+        :param acceleration_mm_s2: The acceleration to use for the movement in mm/s^2 (default: None = use current acceleration)
         :param homed_up: Whether the motor is homed up (True) or down (False)
         """
         if not self.homing_found:
@@ -359,6 +382,8 @@ class TMC2209_MotorDriver:
         if homed_up:
             position_steps = -position_steps
 
+        self.set_speed(speed_mm_s)
+        self.set_acceleration(acceleration_mm_s2)
         self.tmc.run_to_position_steps_threaded(position_steps, movement_abs_rel=MovementAbsRel.ABSOLUTE)
 
 
@@ -368,21 +393,34 @@ class TMC2209_MotorDriver:
         del self.tmc
 
     @staticmethod
-    def calculate_revs_rps_and_rpss(distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0) -> tuple:
-        """ Calculate how many revolutions the motor should turn at what speed to
-            achieve the desired vertical distance translation at the speed.
+    def calculate_revs_from_distance(distance_mm: float) -> float:
+        """ Transform distance from the linear to the angular domain
 
         :param distance_mm: The distance to move the coater in mm (positive for up, negative for down)
+
+        :return: The number of revolutions to achieve the desired distance
+        """
+        return distance_mm / TRANS_PER_REV
+
+    @staticmethod
+    def calculate_rps_from_speed(speed_mm_s: float) -> float:
+        """ Transform speed from the linear to the angular domain
+
         :param speed_mm_s: The speed at which to move the coater in mm/s (always positive)
+
+        :return: The number of revolutions per second to achieve the desired speed
+        """
+        return speed_mm_s / TRANS_PER_REV
+
+    @staticmethod
+    def calculate_rpss_from_acceleration(acceleration_mm_s2: float = 0) -> float:
+        """ Transform acceleration from the linear to the angular domain
+
         :param acceleration_mm_s2: The acceleration/deceleration to use for the movement in mm/s^2 (default: 0)
 
-        :return: The number of revolutions, revolutions per second, and revolutions per second per second (acceleration)
-        to achieve the desired movement
+        :return: The number of revolutions per second per second to achieve the desired acceleration
         """
-        revs = distance_mm / TRANS_PER_REV
-        rps = speed_mm_s / TRANS_PER_REV
-        rpss = acceleration_mm_s2 / TRANS_PER_REV
-        return revs, rps, rpss
+        return acceleration_mm_s2 / TRANS_PER_REV
 
 
 if __name__ == "__main__":
