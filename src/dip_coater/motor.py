@@ -347,6 +347,21 @@ class TMC2209_MotorDriver:
             pos = -pos
         return pos
 
+    def run_to_position(self, position_mm: float, homed_up: bool = True):
+        """ Set the current position of the motor in mm
+
+        :param position_mm: The position to set the motor to in mm
+        :param homed_up: Whether the motor is homed up (True) or down (False)
+        """
+        if not self.homing_found:
+            raise ValueError("The motor is not homed.")
+        position_steps = round((position_mm / TRANS_PER_REV) * self.tmc.read_steps_per_rev())
+        if homed_up:
+            position_steps = -position_steps
+
+        self.tmc.run_to_position_steps_threaded(position_steps, movement_abs_rel=MovementAbsRel.ABSOLUTE)
+
+
     def cleanup(self):
         """ Clean up the motor driver for shutdown"""
         self.disable_motor()

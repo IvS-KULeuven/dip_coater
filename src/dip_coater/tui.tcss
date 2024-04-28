@@ -127,6 +127,47 @@ DistanceControls {
     }
 }
 
+PositionControls {
+    margin-right: 0;
+    margin-left: 0;
+    height: 2;
+    #distance-label {
+        width: 10;
+    }
+    .btn-position {
+         content-align: center middle;
+        margin-right: 0;
+        margin-left: 0;
+        border: none;
+        min-width: 0;
+        padding: 0;
+    }
+    .btn-position-control {
+        width: 7;
+    }
+    #position-down-fine {
+        margin-right: 2;
+        margin-left: 1;
+    }
+    #position-up-fine {
+        margin-right: 1;
+    }
+    #set-to-current-pos-btn {
+        margin-left: 1;
+    }
+    #position-input {
+        content-align: left top;
+        margin-left: 2;
+        width: 7;
+        height: 1;
+        padding: 0;
+        border: none;
+    }
+    #move-to-position-btn {
+        margin-left: 1;
+    }
+}
+
 .selected {
     background: $success;
 }

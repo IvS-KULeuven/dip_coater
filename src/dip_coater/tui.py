@@ -77,8 +77,15 @@ MIN_SPEED = 0.01
 DEFAULT_DISTANCE = 10
 DISTANCE_STEP_COARSE = 5
 DISTANCE_STEP_FINE = 1
-MAX_DISTANCE = 250
+MAX_DISTANCE = 100
 MIN_DISTANCE = 0
+
+# Position settings (mm)
+DEFAULT_POSITION = 10
+POSITION_STEP_COARSE = 5
+POSITION_STEP_FINE = 1
+MAX_POSITION = 100
+MIN_POSITION = 0
 
 # Acceleration settings (mm/s^2)
 DEFAULT_ACCELERATION = 30
@@ -326,6 +333,7 @@ class MotorControls(Static):
     def set_homing_found(self, homing_found: bool):
         self.homing_found = homing_found
         self.app.query_one(Status).update_homing_found(self.homing_found)
+        self.app.query_one(PositionControls).update_button_states(homing_found)
 
     def setup_limit_switches_io(self):
         self._setup_limit_switch_io(LIMIT_SWITCH_UP_PIN, LIMIT_SWITCH_UP_NC)
@@ -450,7 +458,7 @@ class DistanceControls(Static):
         self.set_distance(new_distance)
 
     @on(Input.Submitted, "#distance-input")
-    def submit_speed_input(self):
+    def submit_distance_input(self):
         distance_input = self.query_one("#distance-input", Input)
         distance = float(distance_input.value)
         self.set_distance(distance)
@@ -463,6 +471,85 @@ class DistanceControls(Static):
         distance_input = self.query_one("#distance-input", Input)
         distance_input.value = f"{distance}"
         self.app.query_one(Status).update_distance(distance)
+
+
+class PositionControls(Static):
+    position = reactive("0")
+
+    def __init__(self, motor_driver: TMC2209_MotorDriver):
+        super().__init__()
+        self.motor_driver = motor_driver
+
+    def compose(self) -> ComposeResult:
+        with Horizontal():
+            yield Label("Position: ", id="position-label")
+            yield Button(f"-- {DISTANCE_STEP_COARSE}", id="position-down-coarse", classes="btn-position-control btn-position")
+            yield Button(f"- {DISTANCE_STEP_FINE}", id="position-down-fine", classes="btn-position-control btn-position")
+            yield Button(f"+ {DISTANCE_STEP_FINE}", id="position-up-fine", classes="btn-position-control btn-position")
+            yield Button(f"++ {DISTANCE_STEP_COARSE}", id="position-up-coarse", classes="btn-position-control btn-position")
+            yield Button("Set to current position", id="set-to-current-pos-btn", classes="btn-position")
+            yield Input(
+                value="0",
+                type="number",
+                placeholder="Position (mm)",
+                id="position-input",
+                validate_on=["submitted"],
+                validators=[Number(minimum=0, maximum=250)],
+            )
+            yield Label("mm", id="position-unit")
+            yield Button("Move to position", id="move-to-position-btn", variant="primary", classes="btn-position")
+
+    def _on_mount(self, event: events.Mount) -> None:
+        self.update_button_states(self.motor_driver.is_homing_found())
+
+    @on(Button.Pressed, "#position-down-coarse")
+    def decrease_position_coarse(self):
+        new_position = self.position - POSITION_STEP_COARSE
+        self.set_position(new_position)
+
+    @on(Button.Pressed, "#position-down-fine")
+    def decrease_distance_fine(self):
+        new_position = self.position - POSITION_STEP_FINE
+        self.set_position(new_position)
+
+    @on(Button.Pressed, "#position-up-fine")
+    def increase_position_fine(self):
+        new_position = self.position + POSITION_STEP_FINE
+        self.set_position(new_position)
+
+    @on(Button.Pressed, "#position-up-coarse")
+    def increase_position_coarse(self):
+        new_position = self.position + POSITION_STEP_COARSE
+        self.set_position(new_position)
+
+    @on(Button.Pressed, "#set-to-current-pos-btn")
+    def set_to_current_position(self):
+        pos = self.motor_driver.get_current_position()
+        if pos is not None:
+            self.set_position(pos)
+
+    @on(Button.Pressed, "#move-to-position-btn")
+    async def move_to_position(self):
+        pos = float(self.position)
+        self.motor_driver.run_to_position(pos, HOME_UP)
+
+    def set_position(self, position: float):
+        validated_position = clamp(position, MIN_POSITION, MAX_POSITION)
+        self.position = round(validated_position, 1)
+
+    def watch_position(self, position: float):
+        distance_input = self.query_one("#position-input", Input)
+        distance_input.value = f"{position}"
+
+    @on(Input.Submitted, "#position-input")
+    def submit_position_input(self):
+        position_input = self.query_one("#position-input", Input)
+        position = float(position_input.value)
+        self.set_position(position)
+
+    def update_button_states(self, homing_found):
+        self.query_one("#set-to-current-pos-btn", Button).disabled = not homing_found
+        self.query_one("#move-to-position-btn", Button).disabled = not homing_found
 
 
 class Status(Static):
@@ -1137,6 +1224,7 @@ class DipCoaterApp(App):
                     with Vertical(id="left-side"):
                         yield SpeedControls()
                         yield DistanceControls()
+                        yield PositionControls(self.motor_driver)
                         yield MotorControls(self.motor_driver)
                         yield RichLog(markup=True, id="logger")
                     with Vertical(id="right-side"):
