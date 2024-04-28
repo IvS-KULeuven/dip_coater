@@ -39,7 +39,7 @@ from importlib.metadata import version
 import argparse
 import asyncio
 import logging
-import threading
+import json
 
 # Mock the import of RPi when the package is not available
 try:
@@ -146,6 +146,9 @@ HOME_UP = True      # Home the motor upwards (True) or downwards (False)
 INVERT_MOTOR_DIRECTION = False
 USE_SPREAD_CYCLE = False
 USE_INTERPOLATION = True
+
+# Application config file
+CONFIG_FILE = "dip_coater_config.json"
 
 
 class StepMode(Static):
@@ -1083,8 +1086,9 @@ class Coder(Static):
                     yield Label("", id="coder-path-invalid-reasons")
 
     def _on_mount(self, event: events.Mount) -> None:
-        self.load_default_code()
-        self.query_one("#code-file-path-input", Input).value = ""
+        config_file_path = config_load_coder_filepath()
+        self.query_one("#code-file-path-input", Input).value = config_file_path
+        self.load_code_from_file(config_file_path)
 
     @on(Button.Pressed, "#run-code-btn")
     async def run_code(self):
@@ -1123,6 +1127,10 @@ class Coder(Static):
         if not self.is_file_path_valid_python(file_path):
             return
 
+        self.load_code_from_file(file_path)
+        config_save_coder_filepath(file_path)
+
+    def load_code_from_file(self, file_path: str):
         if file_path is None or file_path == "":
             self.load_default_code()
         else:
@@ -1300,6 +1308,23 @@ class DipCoaterApp(App):
 def clamp(value, min_value, max_value):
     """Clamp a value between a minimum and maximum value."""
     return max(min(value, max_value), min_value)
+
+
+def config_save_coder_filepath(filepath: str):
+    data = {'coder_filepath': filepath}
+    with open(CONFIG_FILE, "w") as file:
+        json.dump(data, file)
+
+
+def config_load_coder_filepath():
+    try:
+        with open(CONFIG_FILE, "r") as file:
+            data = json.load(file)
+            return data.get('coder_filepath')
+    except FileNotFoundError:
+        return ""
+    except json.JSONDecodeError:        # JSON file is empty or corrupted
+        return ""
 
 
 def main():

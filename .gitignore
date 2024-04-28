@@ -157,3 +157,4 @@ cython_debug/
 # macOS
 **/.DS_Store
 
+dip_coater_config.json
