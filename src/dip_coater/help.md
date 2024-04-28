@@ -54,11 +54,18 @@ following functions (the so-called 'Coder API'):
 - `self.move_down(distance_mm, speed_mm_s, acceleration_mm_s=None)`: move the motor down by supplying the following parameters:
   - `distance_mm`: the distance in mm to move down
   - `speed_mm_s`: the speed in mm/s to move down
-  - `acceleration_mm_s`: the acceleration in mm/s^2 to move down (optional, leave empty for default acceleration)
+  - `acceleration_mm_s`: (optional) the acceleration in mm/s^2 to move down (leave empty for default acceleration)
 - `self.move_up(distance_mm, speed_mm_s, acceleration_mm_s=None)`: move the motor up by supplying the following parameters:
   - `distance_mm`: the distance in mm to move up
   - `speed_mm_s`: the speed in mm/s to move up
-  - `acceleration_mm_s`: the acceleration in mm/s^2 to move up (optional, leave empty for default acceleration)
+  - `acceleration_mm_s`: (optional) the acceleration in mm/s^2 to move up (leave empty for default acceleration)
+- `self.home_motor(home_up=True)`: home the motor, necessary for moving to absolute positions
+  - `home_up` (optional) if the motor was homed at the top limit switch, set to `True`, if homed using the bottom limit switch, set `False`
+- `self.move_to_position(self, position_mm, speed_mm_s=None, acceleration_mm_s2=None, home_up=True)`: move the motor to an absolute position in mm
+  - `position_mm`: the absolute position in mm to move to
+  - `speed_mm_s`: (optional) the speed in mm/s to move to the absolute position (leave empty to use the last set speed)
+  - `acceleration_mm_s2`: (optional) the acceleration in mm/s^2 to move to the absolute position (leave empty to use the last set acceleration)
+  - `home_up`: (optional) if the motor was homed at the top limit switch, set to `True`, if homed using the bottom limit switch, set `False`
 - `self.sleep(seconds)`: wait for a number of seconds
 
 For example, to move the motor down by 10 mm at a speed of 5 mm/s, then wait 5 seconds, and then move up by 10 mm at 2 mm/s,
