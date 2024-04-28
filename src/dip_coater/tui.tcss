@@ -45,6 +45,10 @@ MotorControls {
     Button {
         margin: 0 1 1 1;
     }
+
+    #stop-motor {
+        margin-left: 2;
+    }
 }
 
 HelpScreen {

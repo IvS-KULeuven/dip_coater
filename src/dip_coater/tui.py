@@ -191,6 +191,7 @@ class MotorControls(Static):
         yield Button("ENABLE motor", id="enable-motor", variant="success")
         yield Button("DISABLE motor", id="disable-motor", variant="error")
         yield Button("Do HOMING", id="do-homing")
+        yield Button("STOP moving", id="stop-moving", variant="error")
 
     def _on_mount(self, event: events.Mount) -> None:
         self.app.query_one(Status).update_homing_found(self.homing_found)
@@ -308,6 +309,15 @@ class MotorControls(Static):
         else:
             log = self.app.query_one("#logger", RichLog)
             log.write("[red]We cannot do homing when the motor is disabled[/]")
+
+    @on(Button.Pressed, "#stop-moving")
+    async def stop_moving_action(self):
+        log = self.app.query_one("#logger", RichLog)
+        if self._motor_state == "moving":
+            self.motor_driver.stop_motor()
+            log.write("[dark_orange]Motor movement stopped.[/]")
+        else:
+            log.write("[red]No movement to stop[/]")
 
     async def perform_homing(self, home_up: bool = HOME_UP):
         log = self.app.query_one("#logger", RichLog)
