@@ -343,7 +343,7 @@ class TMC2209_MotorDriver:
         if not self.homing_found:
             return None
         pos = (self.tmc.get_current_position() / self.tmc.read_steps_per_rev()) * TRANS_PER_REV
-        if not homed_up:
+        if homed_up:
             pos = -pos
         return pos
 
