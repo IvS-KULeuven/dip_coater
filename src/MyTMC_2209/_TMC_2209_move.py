@@ -25,6 +25,9 @@ def run_to_position_revolutions(self, revolutions, movement_abs_rel = None):
 def run_to_position_revolutions_threaded(self, revolutions, movement_abs_rel = None):
     pass
 
+def run_to_position_steps_threaded(self, steps, movement_abs_rel = None):
+    pass
+
 def wait_for_movement_finished_threaded(self):
     return StopMode.NO
 
