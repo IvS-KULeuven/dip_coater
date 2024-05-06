@@ -108,3 +108,20 @@ STEP | GPIO9 of Raspberry Pi            | moves the motor one step per pulse
 DIR | GPIO10 of Raspberry Pi           | set the direction of the motor
 DIAG | GPIO5 of Raspberry Pi            | for StallGuard
 
+## Troubleshooting
+
+When installing this package on a Raspberry Pi, it may not be set up correctly for the TMC2209 driver library.
+(see this page for more information: [TMC_2209_Raspberry_Pi](https://github.com/Chr157i4n/TMC2209_Raspberry_Pi?tab=readme-ov-file#troubleshoot)).
+To fix this, you can run the following commands in the terminal:
+
+```bash
+sudo raspi-config
+```
+
+There go to '3 Interface Options' -> 'P3 Serial Port'
+Would you like a login shell to be accessible over serial? No
+Would you like the serial port hardware to be enabled? Yes
+Finish and then reboot
+
+You may need to add your user (pi) to the dialout group with `sudo usermod -a -G dialout pi` and then relog.
+If that does not work, make sure that your user has read/write permissions on the dev file /dev/serial0 by calling `sudo chmod 660 /dev/serial0`.
