@@ -2,9 +2,13 @@
 
 ## Keyboard actions
 
-- `d` toggles dark/light mode
+- `t` toggles dark/light mode
 - `q` quits the application
 - `h` show this help screen (`escape` to exit)
+- `a` enable the motor
+- `d` disable the motor
+- `w` move the motor up
+- `s` move the motor down
 - `tab` will navigate through different input possibilities
 - `return` will accept the currently selected input
 
@@ -16,6 +20,13 @@ The movement speed and the vertical distance is the same for up or down movement
 with the `+` and `-` buttons, or by entering a new value in the text input fields (the widget that displays the 
 speed/distance value) and then pressing the Enter key on your keyboard. The application has defined minimum and maximum 
 values for the speed and distance. You will not be able to go passed these limits.
+
+If you have homed the motor, you can also move the guide to absolute positions. To home the motor, press the `Do HOMING`
+button. This will move the motor upwards, until the top limit switch is triggered. It will then stop and define its current
+position as the absolute 0 position. If you were to move the motor down 10 mm, and then up 3 mm, you would then be at the 7 mm absolute position.
+You can also move the motor to an absolute position by entering the desired position in the text input field and pressing
+the Enter key on your keyboard. The motor will then move to the desired position. ! If the motor is not homed, the position
+control buttons will be disabled and not work.
 
 For high motor speeds (> 10 mm/s) and/or high step mode (> 16), the motor may overshoot (a larger travel distance than 
 the set distance), or not respond as fast as you would expect for the given speed input. This is due to the limitation 
