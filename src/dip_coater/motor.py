@@ -31,7 +31,7 @@ class TMC2209_MotorDriver:
         """
         # GPIO pins
         GPIO.setmode(GPIO.BCM)
-        self.en_pin = 0
+        self.en_pin = 11
         self.step_pin = 9
         self.dir_pin = 10
         self.diag_pin = 5

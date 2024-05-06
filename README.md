@@ -103,7 +103,7 @@ VDD | 3,3V of Raspberry Pi             | optional, for more stable logic voltage
 GND | GND of Raspberry Pi              | GND for VDD and Signals
 VM | 12V (or 24V) of power supply     | power for the motor
 GND | GND of power supply              | power for the motor
-EN | GPIO0 of Raspberry Pi            | enable the motor output
+EN | GPIO11 of Raspberry Pi           | enable the motor output
 STEP | GPIO9 of Raspberry Pi            | moves the motor one step per pulse
 DIR | GPIO10 of Raspberry Pi           | set the direction of the motor
 DIAG | GPIO5 of Raspberry Pi            | for StallGuard
