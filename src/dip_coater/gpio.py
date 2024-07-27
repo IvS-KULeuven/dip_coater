@@ -110,18 +110,19 @@ class GPIOZero(GPIOBase):
         Device.pin_factory = LGPIOFactory()
         self.pins = {}
 
-    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = None, active_state=None):
+    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD=GpioPUD.PUD_UP, active_state: GpioState=None):
         from gpiozero import LED, Button
         if mode == GpioMode.OUT:
             self.pins[pin] = LED(pin)
-        else:
-            if active_state is None:
-                pull_up = pull_up_down == GpioPUD.PUD_UP
-                active_state_value = None
-            else:
-                pull_up = None     # gpiozero doesn't support pull-up/pull-down when an active state is set
-                active_state_value = active_state == GpioState.HIGH
+        # Input
+        if mode == GpioMode.IN:
+            pull_up = True if pull_up_down == GpioPUD.PUD_UP else False if pull_up_down == GpioPUD.PUD_DOWN else None
+            active_state_value = True if active_state == GpioState.HIGH else False if active_state == GpioState.LOW else None
+            pull_up = pull_up if active_state is None else None    # gpiozero doesn't support pull-up/pull-down when an active state is set
             self.pins[pin] = Button(pin, pull_up=pull_up, active_state=active_state_value)
+        # Output
+        else:
+            self.pins[pin] = LED(pin)
 
     def output(self, pin, state: GpioState):
         self.pins[pin].on() if state == GpioState.HIGH else self.pins[pin].off()
