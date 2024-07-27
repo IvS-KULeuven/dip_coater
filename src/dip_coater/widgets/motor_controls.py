@@ -35,7 +35,7 @@ class MotorControls(Static):
         yield Button("ENABLE motor", id="enable-motor", variant="success")
         yield Button("DISABLE motor", id="disable-motor", variant="error")
         yield Button("Do HOMING", id="do-homing")
-        yield Button("STOP moving", id="stop-moving", variant="error")
+        #yield Button("STOP moving", id="stop-moving", variant="error")         Doesn't work currently...
 
     def _on_mount(self, event: events.Mount) -> None:
         self.update_status_widgets()
