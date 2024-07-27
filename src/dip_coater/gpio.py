@@ -105,9 +105,7 @@ class RPiGPIO(GPIOBase):
 
 class GPIOZero(GPIOBase):
     def __init__(self):
-        from gpiozero import Device, LED, Button
-        from gpiozero.pins.native import NativeFactory
-        Device.pin_factory = NativeFactory()
+        from gpiozero import LED, Button
         self.LED = LED
         self.Button = Button
         self.pins = {}

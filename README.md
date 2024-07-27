@@ -125,3 +125,16 @@ Finish and then reboot
 
 You may need to add your user (pi) to the dialout group with `sudo usermod -a -G dialout pi` and then relog.
 If that does not work, make sure that your user has read/write permissions on the dev file /dev/serial0 by calling `sudo chmod 660 /dev/serial0`.
+
+---
+
+*I don't know the IP address of my RPi and the screen doesn't work.*
+
+If the RPi is on the same network as you, you can scan the IPs on your network.
+
+1. Install nmap (`sudo apt install nmap` on Linux, `brew install nmap` on macOS)
+2. Find your network range; Linux: `ip addr show | grep inet`, macOS: `ifconfig | grep "inet " | grep -v 127.0.0.1`
+Look for your network interface and not the IP/subnet.
+3. Scan your network: e.g. `sudo nmap -sn 192.168.1.0/24`
+4. Look for an entry with "Raspberry Pi".
+
