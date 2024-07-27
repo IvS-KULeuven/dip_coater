@@ -159,9 +159,9 @@ class TMC2209_MotorDriver:
 
         :return: The StopMode of the movement (StopMode.NO for normal stop, other StopMode for early stop)
         """
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, self.wait_for_motor_done)
-        return result
+        while self.tmc.distance_to_go() > 0:
+            await asyncio.sleep(0.1)  # Check every 100ms
+        return self.tmc.wait_for_movement_finished_threaded()
 
     def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0, limit_switch_pins: list = None):
         """ Move the coater up by the given distance at the given speed
