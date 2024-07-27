@@ -150,7 +150,7 @@ class GPIOZero(GPIOBase):
             self.pins[pin].when_pressed = wrapped_callback
             self.pins[pin].when_released = wrapped_callback
 
-        if bouncetime:
+        if bouncetime and hasattr(self.pins[pin], 'bounce_time'):
             self.pins[pin].bounce_time = bouncetime / 1000.0  # Convert to seconds
 
     def add_event_callback(self, pin, callback):
