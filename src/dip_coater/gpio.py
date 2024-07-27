@@ -38,7 +38,7 @@ class GpioEdge(IntEnum):
 
 class GPIOBase(ABC):
     @abstractmethod
-    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = GpioPUD.PUD_OFF):
+    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = GpioPUD.PUD_OFF, active_state=None):
         pass
 
     @abstractmethod
@@ -71,7 +71,7 @@ class RPiGPIO(GPIOBase):
         self.GPIO = GPIO
         self.GPIO.setmode(GPIO.BCM)
 
-    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = GpioPUD.PUD_OFF):
+    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = GpioPUD.PUD_OFF, active_state=None):
         gpio_mode = self.GPIO.OUT if mode == GpioMode.OUT else self.GPIO.IN
         gpio_pud = {
             GpioPUD.PUD_OFF: self.GPIO.PUD_OFF,
@@ -110,13 +110,18 @@ class GPIOZero(GPIOBase):
         Device.pin_factory = LGPIOFactory()
         self.pins = {}
 
-    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = GpioPUD.PUD_OFF):
+    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = None, active_state=None):
         from gpiozero import LED, Button
         if mode == GpioMode.OUT:
             self.pins[pin] = LED(pin)
         else:
-            pull_up = pull_up_down == GpioPUD.PUD_UP
-            self.pins[pin] = Button(pin, pull_up=pull_up)
+            if active_state is None:
+                pull_up = pull_up_down == GpioPUD.PUD_UP
+                active_state_value = None
+            else:
+                pull_up = None     # gpiozero doesn't support pull-up/pull-down when an active state is set
+                active_state_value = active_state == GpioState.HIGH
+            self.pins[pin] = Button(pin, pull_up=pull_up, active_state=active_state_value)
 
     def output(self, pin, state: GpioState):
         self.pins[pin].on() if state == GpioState.HIGH else self.pins[pin].off()
@@ -167,8 +172,8 @@ class DummyGPIO(GPIOBase):
         self.events = {}
         self.callbacks = {}
 
-    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = GpioPUD.PUD_OFF):
-        self.pins[pin] = GpioState.LOW
+    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = GpioPUD.PUD_OFF, active_state=None):
+        self.pins[pin] = GpioState.HIGH if active_state == GpioState.LOW else GpioState.LOW
 
     def output(self, pin, state: GpioState):
         self.pins[pin] = state

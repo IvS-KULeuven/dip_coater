@@ -204,7 +204,7 @@ class MotorControls(Static):
         self.GPIO.add_event_callback(LIMIT_SWITCH_DOWN_PIN, self.update_limit_switch_down_status)
 
     def _setup_limit_switch_io(self, limit_switch_pin, limit_switch_nc=True, bouncetime=5):
-        self.GPIO.setup(limit_switch_pin, GpioMode.IN, pull_up_down=GpioPUD.PUD_UP)
+        self.GPIO.setup(limit_switch_pin, GpioMode.IN, pull_up_down=GpioPUD.PUD_UP, active_state=GpioState.LOW if limit_switch_nc else GpioState.HIGH)
         self.GPIO.remove_event_detect(limit_switch_pin)
         self.GPIO.add_event_detect(limit_switch_pin, GpioEdge.BOTH, callback=None, bouncetime=bouncetime)
 
