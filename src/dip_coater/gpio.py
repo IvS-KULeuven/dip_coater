@@ -125,6 +125,14 @@ class GPIOZero(GPIOBase):
         return GpioState.HIGH if self.pins[pin].is_pressed else GpioState.LOW
 
     def add_event_detect(self, pin, edge: GpioEdge, callback, bouncetime=None):
+        from gpiozero import Button
+        if not pin in self.pins:
+            raise ValueError(f"Pin {pin} is not set up")
+        if not callable(callback):
+            raise ValueError("Callback must be callable")
+        if not isinstance(self.pins[pin], Button):
+            raise ValueError("Event detection can only be added to a button")
+
         if edge == GpioEdge.RISING:
             self.pins[pin].when_pressed = callback
         elif edge == GpioEdge.FALLING:
