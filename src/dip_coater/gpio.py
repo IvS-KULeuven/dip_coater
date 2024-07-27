@@ -128,7 +128,7 @@ class GPIOZero(GPIOBase):
         from gpiozero import Button
         if not pin in self.pins:
             raise ValueError(f"Pin {pin} is not set up")
-        if not callable(callback):
+        if callback and not callable(callback):
             raise ValueError("Callback must be callable")
         if not isinstance(self.pins[pin], Button):
             raise ValueError("Event detection can only be added to a button")
