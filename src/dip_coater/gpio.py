@@ -227,8 +227,10 @@ def get_gpio_instance():
     !!! This function should be called only once in the application !!!
     """
     board = get_board_type()
+    print(f"Detected board type: {board}")
 
     if board == Board.RASPBERRY_PI5:
+        print("Attempting to use GPIOZero for Raspberry Pi 5")
         try:
             import gpiozero
             return GPIOZero()
@@ -238,6 +240,7 @@ def get_gpio_instance():
             print("Follow the installation instructions: https://gpiozero.readthedocs.io/en/stable/installing.html")
             raise
     elif board == Board.RASPBERRY_PI:
+        print("Attempting to use RPi.GPIO for Raspberry Pi")
         try:
             import RPi.GPIO
             return RPiGPIO()
@@ -257,3 +260,11 @@ gpio.setup(18, GpioMode.OUT)
 gpio.output(18, GpioState.HIGH)
 gpio.cleanup()
 '''
+
+if __name__ == "__main__":
+    gpio = get_gpio_instance()
+    print("Testing GPIO pin 19")
+    gpio.setup(19, GpioMode.IN)
+    print(gpio.input(19))
+    gpio.cleanup()
+    print("Done")
