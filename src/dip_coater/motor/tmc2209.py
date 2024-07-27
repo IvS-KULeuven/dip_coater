@@ -4,7 +4,8 @@ from TMC_2209._TMC_2209_move import MovementAbsRel, StopMode
 import time
 import logging
 import asyncio
-from RPi import GPIO
+
+from dip_coater.gpio import get_gpio_instance, GpioEdge
 
 # ======== CONSTANTS ========
 TRANS_PER_REV = 4  # The vertical translation in mm of the coater for one revolution of the motor
@@ -29,8 +30,10 @@ class TMC2209_MotorDriver:
         :param log_handlers: The log handlers to use for the motor driver (default: None = log to console)
         :param log_formatter: The log formatter log the motor driver messages with (default: None = use default formatter)
         """
+        # Get the appropriate GPIO instance
+        self.GPIO = get_gpio_instance()
+
         # GPIO pins
-        GPIO.setmode(GPIO.BCM)
         self.en_pin = 11
         self.step_pin = 9
         self.dir_pin = 10
@@ -197,9 +200,9 @@ class TMC2209_MotorDriver:
         :param NC: Whether the limit switch is normally closed (NC) or normally open (NO) (default: True)
             For safety reasons, it is recommended to use NC limit switches
         """
-        event = GPIO.RISING if NC else GPIO.FALLING
+        event = GpioEdge.RISING if NC else GpioEdge.FALLING
         self.limit_switch_bindings[limit_switch_pin] = event
-        GPIO.add_event_callback(limit_switch_pin, callback=self._stop_motor_callback)
+        self.GPIO.add_event_detect(limit_switch_pin, event, callback=self._stop_motor_callback, bouncetime=5)
 
     def _stop_motor_callback(self, pin_number):
         if self._wait_for_debounce(pin_number):
@@ -224,10 +227,10 @@ class TMC2209_MotorDriver:
         :return: True if the limit switch is triggered (pressed), False otherwise
         """
         event = self.limit_switch_bindings[pin_number]
-        if event == GPIO.RISING:
-            return GPIO.input(pin_number) == 1
-        elif event == GPIO.FALLING:
-            return GPIO.input(pin_number) == 0
+        if event == GpioEdge.RISING:
+            return self.GPIO.input(pin_number) == 1
+        elif event == GpioEdge.FALLING:
+            return self.GPIO.input(pin_number) == 0
         else:
             return False
 
@@ -248,8 +251,8 @@ class TMC2209_MotorDriver:
         :return: True if the homing routine was successful, False otherwise
         """
         # Set up the limit switches IO
-        GPIO.remove_event_detect(limit_switch_up_pin)
-        GPIO.remove_event_detect(limit_switch_down_pin)
+        self.GPIO.remove_event_detect(limit_switch_up_pin)
+        self.GPIO.remove_event_detect(limit_switch_down_pin)
 
         # Check whether the homing is done with the top or bottom limit switch
         home_down = distance_mm <= 0
@@ -259,10 +262,10 @@ class TMC2209_MotorDriver:
         # Get the condition for the limit switches (when they are triggered)
         home_switch_nc = switch_down_nc if home_down else switch_up_nc
         other_switch_nc = switch_up_nc if home_down else switch_down_nc
-        home_triggered = GPIO.input(home_pin) == 1 if home_switch_nc else GPIO.input(home_pin) == 0
-        other_triggered = GPIO.input(other_pin) == 1 if other_switch_nc else GPIO.input(other_pin) == 0
-        home_trigger_event = GPIO.RISING if home_switch_nc else GPIO.FALLING
-        other_trigger_event = GPIO.RISING if other_switch_nc else GPIO.FALLING
+        home_triggered = self.GPIO.input(home_pin) == 1 if home_switch_nc else self.GPIO.input(home_pin) == 0
+        other_triggered = self.GPIO.input(other_pin) == 1 if other_switch_nc else self.GPIO.input(other_pin) == 0
+        home_trigger_event = GpioEdge.RISING if home_switch_nc else GpioEdge.FALLING
+        other_trigger_event = GpioEdge.RISING if other_switch_nc else GpioEdge.FALLING
 
         # The home switch is already pressed
         if home_triggered:
@@ -278,18 +281,18 @@ class TMC2209_MotorDriver:
                 self.wait_for_motor_done()
 
         # If the limit switch is still triggered after moving away, raise an error
-        home_triggered = GPIO.input(home_pin) == 1 if home_switch_nc else GPIO.input(home_pin) == 0
+        home_triggered = self.GPIO.input(home_pin) == 1 if home_switch_nc else self.GPIO.input(home_pin) == 0
         if home_triggered:
             raise ValueError("The home switch is still triggered after backing off. Please check the limit switches.")
 
         # Move the coater towards the home switch and wait for the home switch to be triggered
         self.homing_found = False
-        GPIO.add_event_detect(home_pin, home_trigger_event, callback=self._stop_homing_callback, bouncetime=5)
-        GPIO.add_event_detect(other_pin, other_trigger_event, callback=self._stop_homing_callback_other_pin, bouncetime=5)
+        self.GPIO.add_event_detect(home_pin, home_trigger_event, callback=self._stop_homing_callback, bouncetime=5)
+        self.GPIO.add_event_detect(other_pin, other_trigger_event, callback=self._stop_homing_callback_other_pin, bouncetime=5)
         self.drive_motor(distance_mm, speed_mm_s)
         self.wait_for_motor_done()
-        GPIO.remove_event_detect(home_pin)
-        GPIO.remove_event_detect(other_pin)
+        self.GPIO.remove_event_detect(home_pin)
+        self.GPIO.remove_event_detect(other_pin)
 
         # Move the coater away from the home switch if homing was found
         if self.homing_found:
@@ -390,6 +393,7 @@ class TMC2209_MotorDriver:
     def cleanup(self):
         """ Clean up the motor driver for shutdown"""
         self.disable_motor()
+        self.GPIO.cleanup()
         del self.tmc
 
     @staticmethod

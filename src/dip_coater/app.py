@@ -8,14 +8,6 @@ from textual.widgets import Button, Footer, Header, RichLog, TabPane, TabbedCont
 from textual.binding import Binding
 from importlib.metadata import version
 
-# Mock the import of RPi when the package is not available
-try:
-    import RPi
-except ModuleNotFoundError:
-    import sys
-    import MyRPi
-    sys.modules["RPi"] = MyRPi
-
 try:
     import TMC_2209
 except ModuleNotFoundError:

@@ -4,7 +4,6 @@ from textual.app import ComposeResult
 from textual import on, events
 
 import asyncio
-from RPi import GPIO
 
 from dip_coater.constants import (
     LIMIT_SWITCH_UP_PIN, LIMIT_SWITCH_UP_NC,
@@ -18,6 +17,7 @@ from dip_coater.widgets.advanced_settings import AdvancedSettings
 from dip_coater.widgets.step_mode import StepMode
 from dip_coater.widgets.position_controls import PositionControls
 
+from dip_coater.gpio import get_gpio_instance, GpioMode, GpioEdge, GpioPUD
 from dip_coater.app_state import app_state
 from TMC_2209._TMC_2209_move import StopMode
 from dip_coater.motor.tmc2209 import TMC2209_MotorDriver
@@ -27,6 +27,7 @@ class MotorControls(Static):
     def __init__(self, motor_driver: TMC2209_MotorDriver):
         super().__init__()
         self.motor_driver = motor_driver
+        self.GPIO = get_gpio_instance()
         app_state.homing_found = False
 
     def compose(self) -> ComposeResult:
@@ -198,22 +199,21 @@ class MotorControls(Static):
 
     def setup_limit_switches_io(self):
         self._setup_limit_switch_io(LIMIT_SWITCH_UP_PIN, LIMIT_SWITCH_UP_NC)
-        GPIO.add_event_callback(LIMIT_SWITCH_UP_PIN, self.update_limit_switch_up_status)
+        self.GPIO.add_event_callback(LIMIT_SWITCH_UP_PIN, self.update_limit_switch_up_status)
         self._setup_limit_switch_io(LIMIT_SWITCH_DOWN_PIN, LIMIT_SWITCH_DOWN_NC)
-        GPIO.add_event_callback(LIMIT_SWITCH_DOWN_PIN, self.update_limit_switch_down_status)
+        self.GPIO.add_event_callback(LIMIT_SWITCH_DOWN_PIN, self.update_limit_switch_down_status)
 
-    @staticmethod
-    def _setup_limit_switch_io(limit_switch_pin, limit_switch_nc=True, bouncetime=5):
-        GPIO.setup(limit_switch_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.remove_event_detect(limit_switch_pin)
-        GPIO.add_event_detect(limit_switch_pin, GPIO.BOTH, bouncetime=bouncetime)
+    def _setup_limit_switch_io(self, limit_switch_pin, limit_switch_nc=True, bouncetime=5):
+        self.GPIO.setup(limit_switch_pin, GpioMode.IN, pull_up_down=GpioPUD.PUD_UP)
+        self.GPIO.remove_event_detect(limit_switch_pin)
+        self.GPIO.add_event_detect(limit_switch_pin, GpioEdge.BOTH, callback=None, bouncetime=bouncetime)
 
     def update_limit_switch_up_status(self, pin_number):
-        triggered = GPIO.input(pin_number) == 1 if LIMIT_SWITCH_UP_NC else GPIO.input(pin_number) == 0
+        triggered = self.GPIO.input(pin_number) == 1 if LIMIT_SWITCH_UP_NC else self.GPIO.input(pin_number) == 0
         self.app.query_one("#status").update_limit_switch_up(triggered)
 
     def update_limit_switch_down_status(self, pin_number):
-        triggered = GPIO.input(pin_number) == 1 if LIMIT_SWITCH_DOWN_NC else GPIO.input(pin_number) == 0
+        triggered = self.GPIO.input(pin_number) == 1 if LIMIT_SWITCH_DOWN_NC else self.GPIO.input(pin_number) == 0
         self.app.query_one("#status").update_limit_switch_down(triggered)
 
     def bind_limit_switches_to_motor(self):
