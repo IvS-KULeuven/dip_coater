@@ -5,7 +5,7 @@ import time
 import logging
 import asyncio
 
-from dip_coater.gpio import get_gpio_instance, GPIOBase, GpioEdge
+from dip_coater.gpio import get_gpio_instance, GPIOBase, GpioEdge, GpioState
 
 # ======== CONSTANTS ========
 TRANS_PER_REV = 4  # The vertical translation in mm of the coater for one revolution of the motor
@@ -228,9 +228,9 @@ class TMC2209_MotorDriver:
         """
         event = self.limit_switch_bindings[pin_number]
         if event == GpioEdge.RISING:
-            return self.GPIO.input(pin_number) == 1
+            return self.GPIO.input(pin_number) == GpioState.HIGH
         elif event == GpioEdge.FALLING:
-            return self.GPIO.input(pin_number) == 0
+            return self.GPIO.input(pin_number) == GpioState.LOW
         else:
             return False
 
@@ -262,8 +262,8 @@ class TMC2209_MotorDriver:
         # Get the condition for the limit switches (when they are triggered)
         home_switch_nc = switch_down_nc if home_down else switch_up_nc
         other_switch_nc = switch_up_nc if home_down else switch_down_nc
-        home_triggered = self.GPIO.input(home_pin) == 1 if home_switch_nc else self.GPIO.input(home_pin) == 0
-        other_triggered = self.GPIO.input(other_pin) == 1 if other_switch_nc else self.GPIO.input(other_pin) == 0
+        home_triggered = self.GPIO.input(home_pin) == GpioState.HIGH if home_switch_nc else self.GPIO.input(home_pin) == GpioState.LOW
+        other_triggered = self.GPIO.input(other_pin) == GpioState.HIGH if other_switch_nc else self.GPIO.input(other_pin) == GpioState.LOW
         home_trigger_event = GpioEdge.RISING if home_switch_nc else GpioEdge.FALLING
         other_trigger_event = GpioEdge.RISING if other_switch_nc else GpioEdge.FALLING
 
@@ -281,7 +281,7 @@ class TMC2209_MotorDriver:
                 self.wait_for_motor_done()
 
         # If the limit switch is still triggered after moving away, raise an error
-        home_triggered = self.GPIO.input(home_pin) == 1 if home_switch_nc else self.GPIO.input(home_pin) == 0
+        home_triggered = self.GPIO.input(home_pin) == GpioState.HIGH if home_switch_nc else self.GPIO.input(home_pin) == GpioState.LOW
         if home_triggered:
             raise ValueError("The home switch is still triggered after backing off. Please check the limit switches.")
 

@@ -17,7 +17,7 @@ from dip_coater.widgets.advanced_settings import AdvancedSettings
 from dip_coater.widgets.step_mode import StepMode
 from dip_coater.widgets.position_controls import PositionControls
 
-from dip_coater.gpio import GPIOBase, GpioMode, GpioEdge, GpioPUD
+from dip_coater.gpio import GPIOBase, GpioMode, GpioEdge, GpioPUD, GpioState
 from dip_coater.app_state import app_state
 from TMC_2209._TMC_2209_move import StopMode
 from dip_coater.motor.tmc2209 import TMC2209_MotorDriver
@@ -209,11 +209,11 @@ class MotorControls(Static):
         self.GPIO.add_event_detect(limit_switch_pin, GpioEdge.BOTH, callback=None, bouncetime=bouncetime)
 
     def update_limit_switch_up_status(self, pin_number):
-        triggered = self.GPIO.input(pin_number) == 1 if LIMIT_SWITCH_UP_NC else self.GPIO.input(pin_number) == 0
+        triggered = self.GPIO.input(pin_number) == GpioState.HIGH if LIMIT_SWITCH_UP_NC else self.GPIO.input(pin_number) == GpioState.LOW
         self.app.query_one("#status").update_limit_switch_up(triggered)
 
     def update_limit_switch_down_status(self, pin_number):
-        triggered = self.GPIO.input(pin_number) == 1 if LIMIT_SWITCH_DOWN_NC else self.GPIO.input(pin_number) == 0
+        triggered = self.GPIO.input(pin_number) == GpioState.HIGH if LIMIT_SWITCH_DOWN_NC else self.GPIO.input(pin_number) == GpioState.LOW
         self.app.query_one("#status").update_limit_switch_down(triggered)
 
     def bind_limit_switches_to_motor(self):
