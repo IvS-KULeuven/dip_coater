@@ -105,19 +105,18 @@ class RPiGPIO(GPIOBase):
 
 class GPIOZero(GPIOBase):
     def __init__(self):
-        from gpiozero import Device, LED, Button
         from gpiozero.pins.lgpio import LGPIOFactory
-        Device.pin_factory = LGPIOFactory(chip=0)
-        self.LED = LED
-        self.Button = Button
+        from gpiozero import Device
+        Device.pin_factory = LGPIOFactory()
         self.pins = {}
 
     def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = GpioPUD.PUD_OFF):
+        from gpiozero import LED, Button
         if mode == GpioMode.OUT:
-            self.pins[pin] = self.LED(pin)
+            self.pins[pin] = LED(pin)
         else:
             pull_up = pull_up_down == GpioPUD.PUD_UP
-            self.pins[pin] = self.Button(pin, pull_up=pull_up)
+            self.pins[pin] = Button(pin, pull_up=pull_up)
 
     def output(self, pin, state: GpioState):
         self.pins[pin].on() if state == GpioState.HIGH else self.pins[pin].off()
