@@ -32,7 +32,7 @@ repository = "https://github.com/IvS-KULeuven/dip_coater"
 rpi = ["RPi.GPIO", "TMC-2209-Raspberry-Pi>=0.5.1"]
 
 [project.scripts]
-dip-coater = "dip_coater.tui:main"
+dip-coater = "dip_coater.app:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
