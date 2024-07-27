@@ -18,6 +18,7 @@ from dip_coater.widgets.advanced_settings import AdvancedSettings
 from dip_coater.widgets.step_mode import StepMode
 from dip_coater.widgets.position_controls import PositionControls
 
+from dip_coater.app_state import app_state
 from TMC_2209._TMC_2209_move import StopMode
 from dip_coater.motor.tmc2209 import TMC2209_MotorDriver
 
@@ -25,9 +26,8 @@ from dip_coater.motor.tmc2209 import TMC2209_MotorDriver
 class MotorControls(Static):
     def __init__(self, motor_driver: TMC2209_MotorDriver):
         super().__init__()
-        self._motor_state: str = "disabled"
-        self.homing_found = False
         self.motor_driver = motor_driver
+        app_state.homing_found = False
 
     def compose(self) -> ComposeResult:
         yield Button("Move UP ↑", id="move-up", variant="primary")
@@ -38,14 +38,15 @@ class MotorControls(Static):
         yield Button("STOP moving", id="stop-moving", variant="error")
 
     def _on_mount(self, event: events.Mount) -> None:
-        self.app.query_one(Status).update_homing_found(self.homing_found)
+        self.update_status_widgets()
         self.setup_limit_switches_io()
         self.update_limit_switch_up_status(LIMIT_SWITCH_UP_PIN)
         self.update_limit_switch_down_status(LIMIT_SWITCH_DOWN_PIN)
 
-    @property
-    def motor_state(self):
-        return self._motor_state
+    def update_status_widgets(self):
+        status = self.app.query_one("#status")
+        status.update_homing_found(app_state.homing_found)
+        status.update_motor_state(app_state.motor_state)
 
     def get_parameters(self) -> tuple:
         widget = self.app.query_one(DistanceControls)
@@ -58,9 +59,13 @@ class MotorControls(Static):
         step_mode = widget.step_mode
         return distance_mm, speed_mm_s, accel_mm_s2, step_mode
 
+    @property
+    def motor_state(self):
+        return app_state.motor_state
+
     def set_motor_state(self, state: str):
-        self._motor_state = state
-        self.app.query_one(Status).update_motor_state(self._motor_state)
+        app_state.motor_state = state
+        self.update_status_widgets()
 
     @on(Button.Pressed, "#move-up")
     async def move_up_action(self):
@@ -69,7 +74,7 @@ class MotorControls(Static):
 
     async def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
         log = self.app.query_one("#logger", RichLog)
-        if self._motor_state == "enabled":
+        if app_state.motor_state == "enabled":
             def_dist, def_speed, def_accel, step_mode = self.get_parameters()
             if acceleration_mm_s2 is None:
                 acceleration_mm_s2 = def_accel
@@ -98,7 +103,7 @@ class MotorControls(Static):
 
     async def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
         log = self.app.query_one("#logger", RichLog)
-        if self._motor_state == "enabled":
+        if app_state.motor_state == "enabled":
             def_dist, def_speed, def_accel, step_mode = self.get_parameters()
             if acceleration_mm_s2 is None:
                 acceleration_mm_s2 = def_accel
@@ -123,7 +128,7 @@ class MotorControls(Static):
     @on(Button.Pressed, "#enable-motor")
     async def enable_motor_action(self):
         log = self.app.query_one("#logger", RichLog)
-        if self._motor_state == "disabled":
+        if app_state.motor_state == "disabled":
             self.motor_driver.enable_motor()
             self.bind_limit_switches_to_motor()
             self.set_motor_state("enabled")
@@ -132,22 +137,22 @@ class MotorControls(Static):
     @on(Button.Pressed, "#disable-motor")
     async def disable_motor_action(self):
         log = self.app.query_one("#logger", RichLog)
-        if self._motor_state == "homing":
+        if app_state.motor_state == "homing":
             log.write("[red]We cannot disable the motor while homing is in progress[/]")
             return
-        elif self._motor_state == "moving":
+        elif app_state.motor_state == "moving":
             log.write("[red]We cannot disable the motor while homing is moving[/]")
             return
-        elif self._motor_state == "enabled":
+        elif app_state.motor_state == "enabled":
             self.motor_driver.disable_motor()
             self.set_motor_state("disabled")
             log.write(f"[dark_orange]Motor is now disabled.[/]")
 
     @on(Button.Pressed, "#do-homing")
     async def do_homing_action(self):
-        if self._motor_state == "enabled":
+        if app_state.motor_state == "enabled":
             await self.perform_homing()
-        elif self._motor_state == "homing":
+        elif app_state.motor_state == "homing":
             # Do nothing when already homing
             return
         else:
@@ -157,7 +162,7 @@ class MotorControls(Static):
     @on(Button.Pressed, "#stop-moving")
     async def stop_moving_action(self):
         log = self.app.query_one("#logger", RichLog)
-        if self._motor_state == "moving":
+        if app_state.motor_state == "moving":
             self.motor_driver.stop_motor()
             log.write("[dark_orange]Motor movement stopped.[/]")
         else:
@@ -187,8 +192,8 @@ class MotorControls(Static):
         self.bind_limit_switches_to_motor()  # Re-bind the limit switches after homing
 
     def set_homing_found(self, homing_found: bool):
-        self.homing_found = homing_found
-        self.app.query_one(Status).update_homing_found(self.homing_found)
+        app_state.homing_found = homing_found
+        self.app.query_one(Status).update_homing_found(app_state.homing_found)
         self.app.query_one(PositionControls).update_button_states(homing_found)
 
     def setup_limit_switches_io(self):
@@ -205,11 +210,11 @@ class MotorControls(Static):
 
     def update_limit_switch_up_status(self, pin_number):
         triggered = GPIO.input(pin_number) == 1 if LIMIT_SWITCH_UP_NC else GPIO.input(pin_number) == 0
-        self.app.query_one(Status).update_limit_switch_up(triggered)
+        self.app.query_one("#status").update_limit_switch_up(triggered)
 
     def update_limit_switch_down_status(self, pin_number):
         triggered = GPIO.input(pin_number) == 1 if LIMIT_SWITCH_DOWN_NC else GPIO.input(pin_number) == 0
-        self.app.query_one(Status).update_limit_switch_down(triggered)
+        self.app.query_one("#status").update_limit_switch_down(triggered)
 
     def bind_limit_switches_to_motor(self):
         """ Bind the limit switches to stop the motor driver."""

@@ -1,13 +1,9 @@
 from textual.command import Provider
 from textual.command import Hit, Hits, DiscoveryHit
 
-from dip_coater.app import DipCoaterApp
-
 class HelpCommand(Provider):
-
     async def discover(self) -> Hits:
         app = self.app
-        assert isinstance(app, DipCoaterApp)
 
         yield DiscoveryHit(
             display="Help",
@@ -21,7 +17,6 @@ class HelpCommand(Provider):
         matcher = self.matcher(query)
 
         app = self.app
-        assert isinstance(app, DipCoaterApp)
 
         command = f"help"
         score = matcher.match(command)

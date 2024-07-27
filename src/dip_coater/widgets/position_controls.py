@@ -38,7 +38,7 @@ class PositionControls(Static):
                 validators=[Number(minimum=0, maximum=250)],
             )
             yield Label("mm", id="position-unit")
-            yield Button("Move to position", id="move-to-position-btn", variant="primary", classes="btn-position")
+            yield Button("Move to position", id="move-to-position-btn", variant="primary", classes="btn-small btn-position")
 
     def _on_mount(self, event: events.Mount) -> None:
         self.update_button_states(self.motor_driver.is_homing_found())

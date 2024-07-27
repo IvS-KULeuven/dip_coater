@@ -20,7 +20,7 @@ class Coder(Static):
         with Vertical():
             yield Label("Enter your Coder API code below and press 'RUN code' to execute it.")
             with Collapsible(title="View Coder API", collapsed=True, id="coder-api-collapsible"):
-                with open(Path(__file__).parent / "coder_API.md") as text:
+                with open(Path(__file__).parent.parent / "coder_API.md") as text:
                     md = Markdown(
                         text.read(),
                         id="coder-api-markdown",
@@ -111,7 +111,7 @@ class Coder(Static):
             self.set_editor_text(text.read())
 
     def load_default_code(self):
-        file_path = Path(__file__).parent / "code_editor_init_content.py"
+        file_path = Path(__file__).parent.parent / "code_editor_init_content.py"
         self.load_code_into_editor(file_path)
 
     async def exec_code_async(self):

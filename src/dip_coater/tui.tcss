@@ -296,3 +296,12 @@ Coder {
     }
 }
 
+.btn-small {
+    content-align: center middle;
+    margin-right: 0;
+    margin-left: 0;
+    border: none;
+    min-width: 0;
+    padding: 0;
+}
+

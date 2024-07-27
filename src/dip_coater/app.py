@@ -25,7 +25,7 @@ except ModuleNotFoundError:
 
 from TMC_2209._TMC_2209_logger import Loglevel
 from dip_coater.motor.tmc2209 import TMC2209_MotorDriver
-
+from dip_coater.app_state import app_state
 
 from dip_coater.widgets.advanced_settings import AdvancedSettings
 from dip_coater.widgets.coder import Coder
@@ -64,7 +64,7 @@ class DipCoaterApp(App):
         self.motor_logger_widget = RichLog(markup=True, id="motor-logger")
         motor_logger_handler = MotorLoggerHandler(self.motor_logger_widget)
         logging_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", "%Y%m%d %H:%M:%S")
-        self.motor_driver = TMC2209_MotorDriver(stepmode=STEP_MODES[DEFAULT_STEP_MODE],
+        app_state.motor_driver = TMC2209_MotorDriver(stepmode=STEP_MODES[DEFAULT_STEP_MODE],
                                                 current=DEFAULT_CURRENT,
                                                 invert_direction=INVERT_MOTOR_DIRECTION,
                                                 interpolation=USE_INTERPOLATION,
@@ -87,15 +87,15 @@ class DipCoaterApp(App):
                     with Vertical(id="left-side"):
                         yield SpeedControls()
                         yield DistanceControls()
-                        yield PositionControls(self.motor_driver)
-                        yield MotorControls(self.motor_driver)
+                        yield PositionControls(app_state.motor_driver)
+                        yield MotorControls(app_state.motor_driver)
                         yield RichLog(markup=True, id="logger")
                     with Vertical(id="right-side"):
-                        yield Status(self.motor_driver, id="status")
+                        yield Status(app_state.motor_driver, id="status")
             with TabPane("Advanced", id="advanced-tab"):
                 with Horizontal():
                     with Vertical(id="left-side-advanced"):
-                        yield AdvancedSettings(self.motor_driver)
+                        yield AdvancedSettings(app_state.motor_driver)
                         yield self.motor_logger_widget
                     with Vertical(id="right-side-advanced"):
                         yield StatusAdvanced(id="status-advanced")
@@ -112,7 +112,7 @@ class DipCoaterApp(App):
         self.dark = not self.dark
 
     def action_request_quit(self) -> None:
-        self.motor_driver.cleanup()
+        app_state.motor_driver.cleanup()
         self.app.exit()
 
     def action_show_help(self) -> None:
