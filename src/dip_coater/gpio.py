@@ -150,9 +150,6 @@ class GPIOZero(GPIOBase):
             self.pins[pin].when_pressed = wrapped_callback
             self.pins[pin].when_released = wrapped_callback
 
-        if bouncetime and hasattr(self.pins[pin], 'bounce_time'):
-            self.pins[pin].bounce_time = bouncetime / 1000.0  # Convert to seconds
-
     def add_event_callback(self, pin, callback):
         # In gpiozero, we can't add multiple callbacks, so we'll combine them
         existing_callback = self.pins[pin].when_pressed
@@ -169,8 +166,6 @@ class GPIOZero(GPIOBase):
         from gpiozero import Button
         self.pins[pin].when_pressed = None
         self.pins[pin].when_released = None
-        if hasattr(self.pins[pin], 'bounce_time'):
-            self.pins[pin].bounce_time = None
 
     def cleanup(self):
         for pin in self.pins.values():
