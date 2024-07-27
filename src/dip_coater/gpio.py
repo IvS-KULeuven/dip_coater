@@ -139,13 +139,19 @@ class GPIOZero(GPIOBase):
         if not isinstance(self.pins[pin], Button):
             raise ValueError("Event detection can only be added to a button")
 
+        def wrapped_callback():
+            callback(pin)
+
         if edge == GpioEdge.RISING:
-            self.pins[pin].when_pressed = callback
+            self.pins[pin].when_pressed = wrapped_callback
         elif edge == GpioEdge.FALLING:
-            self.pins[pin].when_released = callback
+            self.pins[pin].when_released = wrapped_callback
         elif edge == GpioEdge.BOTH:
-            self.pins[pin].when_pressed = callback
-            self.pins[pin].when_released = callback
+            self.pins[pin].when_pressed = wrapped_callback
+            self.pins[pin].when_released = wrapped_callback
+
+        if bouncetime:
+            self.pins[pin].bounce_time = bouncetime / 1000.0  # Convert to seconds
 
     def add_event_callback(self, pin, callback):
         # In gpiozero, we can't add multiple callbacks, so we'll combine them
@@ -162,6 +168,7 @@ class GPIOZero(GPIOBase):
     def remove_event_detect(self, pin):
         self.pins[pin].when_pressed = None
         self.pins[pin].when_released = None
+        self.pins[pin].bounce_time = None
 
     def cleanup(self):
         for pin in self.pins.values():
