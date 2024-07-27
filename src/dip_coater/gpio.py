@@ -169,7 +169,7 @@ class GPIOZero(GPIOBase):
         from gpiozero import Button
         self.pins[pin].when_pressed = None
         self.pins[pin].when_released = None
-        if isinstance(self.pins[pin], Button):
+        if hasattr(self.pins[pin], 'bounce_time'):
             self.pins[pin].bounce_time = None
 
     def cleanup(self):
