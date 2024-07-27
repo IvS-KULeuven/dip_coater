@@ -114,11 +114,9 @@ class GPIOZero(GPIOBase):
         from gpiozero import LED, Button
         if mode == GpioMode.OUT:
             self.pins[pin] = LED(pin)
-            raise Exception(f"Added output pin {pin}")
         else:
             pull_up = pull_up_down == GpioPUD.PUD_UP
             self.pins[pin] = Button(pin, pull_up=pull_up)
-            raise Exception(f"Added input pin {pin}")
 
     def output(self, pin, state: GpioState):
         self.pins[pin].on() if state == GpioState.HIGH else self.pins[pin].off()
@@ -219,6 +217,10 @@ def get_board_type():
 
 
 def get_gpio_instance():
+    """
+    Get the GPIO instance based on the board type.
+    !!! This function should be called only once in the application !!!
+    """
     board = get_board_type()
 
     if board == Board.RASPBERRY_PI5:

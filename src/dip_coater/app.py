@@ -18,6 +18,7 @@ except ModuleNotFoundError:
 from TMC_2209._TMC_2209_logger import Loglevel
 from dip_coater.motor.tmc2209 import TMC2209_MotorDriver
 from dip_coater.app_state import app_state
+from dip_coater.gpio import get_gpio_instance
 
 from dip_coater.widgets.advanced_settings import AdvancedSettings
 from dip_coater.widgets.coder import Coder
@@ -53,10 +54,11 @@ class DipCoaterApp(App):
 
     def __init__(self, log_level: Loglevel = Loglevel.INFO):
         super().__init__()
+        self.GPIO = get_gpio_instance()
         self.motor_logger_widget = RichLog(markup=True, id="motor-logger")
         motor_logger_handler = MotorLoggerHandler(self.motor_logger_widget)
         logging_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", "%Y%m%d %H:%M:%S")
-        app_state.motor_driver = TMC2209_MotorDriver(stepmode=STEP_MODES[DEFAULT_STEP_MODE],
+        app_state.motor_driver = TMC2209_MotorDriver(self.GPIO, stepmode=STEP_MODES[DEFAULT_STEP_MODE],
                                                 current=DEFAULT_CURRENT,
                                                 invert_direction=INVERT_MOTOR_DIRECTION,
                                                 interpolation=USE_INTERPOLATION,
@@ -80,7 +82,7 @@ class DipCoaterApp(App):
                         yield SpeedControls()
                         yield DistanceControls()
                         yield PositionControls(app_state.motor_driver)
-                        yield MotorControls(app_state.motor_driver)
+                        yield MotorControls(self.GPIO, app_state.motor_driver)
                         yield RichLog(markup=True, id="logger")
                     with Vertical(id="right-side"):
                         yield Status(app_state.motor_driver, id="status")

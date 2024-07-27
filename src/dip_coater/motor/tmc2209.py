@@ -5,7 +5,7 @@ import time
 import logging
 import asyncio
 
-from dip_coater.gpio import get_gpio_instance, GpioEdge
+from dip_coater.gpio import get_gpio_instance, GPIOBase, GpioEdge
 
 # ======== CONSTANTS ========
 TRANS_PER_REV = 4  # The vertical translation in mm of the coater for one revolution of the motor
@@ -16,7 +16,7 @@ class TMC2209_MotorDriver:
     limit_switch_bindings = {}      # Stores the limit switch pin and the corresponding edge trigger event
 
     """ Class to control the TMC2209 motor driver for the dip coater"""
-    def __init__(self, stepmode: int = 8, current: int = 1000, invert_direction: bool = False, interpolation: bool = True,
+    def __init__(self, gpio: GPIOBase, stepmode: int = 8, current: int = 1000, invert_direction: bool = False, interpolation: bool = True,
                  spread_cycle: bool = False, loglevel: Loglevel = Loglevel.ERROR, log_handlers: list = None,
                  log_formatter: logging.Formatter = None):
         """ Initialize the motor driver
@@ -31,7 +31,7 @@ class TMC2209_MotorDriver:
         :param log_formatter: The log formatter log the motor driver messages with (default: None = use default formatter)
         """
         # Get the appropriate GPIO instance
-        self.GPIO = get_gpio_instance()
+        self.GPIO = gpio
 
         # GPIO pins
         self.en_pin = 11
@@ -451,7 +451,7 @@ if __name__ == "__main__":
     _loglevel = Loglevel.INFO  # NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL
 
     # ======== INIT ========
-    motor_driver = TMC2209_MotorDriver(stepmode=_stepmode, loglevel=_loglevel)
+    motor_driver = TMC2209_MotorDriver(get_gpio_instance(), stepmode=_stepmode, loglevel=_loglevel)
 
     # ======== MOVE DOWN ========
     motor_driver.move_down(distance_down, speed_down, accel_down)

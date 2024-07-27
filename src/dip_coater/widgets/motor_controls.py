@@ -17,17 +17,17 @@ from dip_coater.widgets.advanced_settings import AdvancedSettings
 from dip_coater.widgets.step_mode import StepMode
 from dip_coater.widgets.position_controls import PositionControls
 
-from dip_coater.gpio import get_gpio_instance, GpioMode, GpioEdge, GpioPUD
+from dip_coater.gpio import GPIOBase, GpioMode, GpioEdge, GpioPUD
 from dip_coater.app_state import app_state
 from TMC_2209._TMC_2209_move import StopMode
 from dip_coater.motor.tmc2209 import TMC2209_MotorDriver
 
 
 class MotorControls(Static):
-    def __init__(self, motor_driver: TMC2209_MotorDriver):
+    def __init__(self, gpio: GPIOBase, motor_driver: TMC2209_MotorDriver):
         super().__init__()
+        self.GPIO = gpio
         self.motor_driver = motor_driver
-        self.GPIO = get_gpio_instance()
         app_state.homing_found = False
 
     def compose(self) -> ComposeResult:
