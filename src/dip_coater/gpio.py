@@ -166,9 +166,11 @@ class GPIOZero(GPIOBase):
         self.pins[pin].when_released = combined_callback
 
     def remove_event_detect(self, pin):
+        from gpiozero import Button
         self.pins[pin].when_pressed = None
         self.pins[pin].when_released = None
-        self.pins[pin].bounce_time = None
+        if isinstance(self.pins[pin], Button):
+            self.pins[pin].bounce_time = None
 
     def cleanup(self):
         for pin in self.pins.values():
