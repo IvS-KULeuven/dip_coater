@@ -49,3 +49,7 @@ def set_current_position(self, new_pos):
         new_pos (bool): new position of the motor in µsteps
     """
     pass
+
+def distance_to_go(self):
+    """returns the remaining distance the motor should run"""
+    return 0

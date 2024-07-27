@@ -10,7 +10,7 @@ class TMC_2209:
     from ._TMC_2209_move import (set_max_speed, set_acceleration, run_to_position_revolutions,
                                  run_to_position_revolutions_threaded, run_to_position_steps_threaded,
                                  wait_for_movement_finished_threaded,
-                                 set_movement_abs_rel, get_current_position, set_current_position)
+                                 set_movement_abs_rel, get_current_position, set_current_position, distance_to_go)
 
     from ._TMC_2209_test import (
         test_stallguard_threshold
