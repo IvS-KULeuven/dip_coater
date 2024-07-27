@@ -198,21 +198,21 @@ class MotorControls(Static):
         self.app.query_one(PositionControls).update_button_states(homing_found)
 
     def setup_limit_switches_io(self):
-        self._setup_limit_switch_io(LIMIT_SWITCH_UP_PIN, LIMIT_SWITCH_UP_NC)
-        self.GPIO.add_event_callback(LIMIT_SWITCH_UP_PIN, self.update_limit_switch_up_status)
-        self._setup_limit_switch_io(LIMIT_SWITCH_DOWN_PIN, LIMIT_SWITCH_DOWN_NC)
-        self.GPIO.add_event_callback(LIMIT_SWITCH_DOWN_PIN, self.update_limit_switch_down_status)
+        self._setup_limit_switch_io(LIMIT_SWITCH_UP_PIN, LIMIT_SWITCH_UP_NC, callback=self.update_limit_switch_up_status)
+        self._setup_limit_switch_io(LIMIT_SWITCH_DOWN_PIN, LIMIT_SWITCH_DOWN_NC, callback= self.update_limit_switch_down_status)
 
-    def _setup_limit_switch_io(self, limit_switch_pin, limit_switch_nc=True, bouncetime=5):
-        self.GPIO.setup(limit_switch_pin, GpioMode.IN, pull_up_down=GpioPUD.PUD_UP, active_state=GpioState.HIGH if limit_switch_nc else GpioState.LOW)
+    def _setup_limit_switch_io(self, limit_switch_pin, limit_switch_nc=True, callback=None, bouncetime=5):
+        self.GPIO.setup(limit_switch_pin, GpioMode.IN, pull_up_down=GpioPUD.PUD_UP)
         self.GPIO.remove_event_detect(limit_switch_pin)
-        self.GPIO.add_event_detect(limit_switch_pin, GpioEdge.BOTH, callback=None, bouncetime=bouncetime)
+        self.GPIO.add_event_detect(limit_switch_pin, GpioEdge.BOTH, callback=callback, bouncetime=bouncetime)
 
-    def update_limit_switch_up_status(self, pin_number):
+    def update_limit_switch_up_status(self, pin_or_button):
+        pin_number = pin_or_button if isinstance(pin_or_button, int) else LIMIT_SWITCH_UP_PIN
         triggered = self.GPIO.input(pin_number) == GpioState.HIGH if LIMIT_SWITCH_UP_NC else self.GPIO.input(pin_number) == GpioState.LOW
         self.app.query_one("#status").update_limit_switch_up(triggered)
 
-    def update_limit_switch_down_status(self, pin_number):
+    def update_limit_switch_down_status(self, pin_or_button):
+        pin_number = pin_or_button if isinstance(pin_or_button, int) else LIMIT_SWITCH_DOWN_PIN
         triggered = self.GPIO.input(pin_number) == GpioState.HIGH if LIMIT_SWITCH_DOWN_NC else self.GPIO.input(pin_number) == GpioState.LOW
         self.app.query_one("#status").update_limit_switch_down(triggered)
 
