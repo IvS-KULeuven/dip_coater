@@ -51,8 +51,8 @@ class DipCoaterApp(App):
 
     def __init__(self, log_level: Loglevel = Loglevel.INFO):
         super().__init__()
-        self.motor_logger_widget = RichLog(markup=True, id="motor-logger")
-        motor_logger_handler = MotorLoggerHandler(self.motor_logger_widget)
+        app_state.motor_logger_widget = RichLog(markup=True, id="motor-logger")
+        motor_logger_handler = MotorLoggerHandler(app_state)
         logging_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", "%Y%m%d %H:%M:%S")
         app_state.motor_driver = TMC2209_MotorDriver(app_state, stepmode=STEP_MODES[DEFAULT_STEP_MODE],
                                                 current=DEFAULT_CURRENT,
@@ -73,7 +73,7 @@ class DipCoaterApp(App):
         yield Footer()
         with TabbedContent(initial="main-tab", id="tabbed-content"):
             yield MainTab(app_state)
-            yield LogsTab(app_state, self.motor_logger_widget)
+            yield LogsTab(app_state)
             yield AdvancedSettingsTab(app_state)
             yield CoderTab()
 

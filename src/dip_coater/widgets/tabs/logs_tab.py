@@ -7,10 +7,9 @@ from TMC_2209._TMC_2209_logger import Loglevel
 from dip_coater.constants import DEFAULT_LOGGING_LEVEL
 
 class LogsTab(TabPane):
-    def __init__(self, app_state, motor_logger_widget):
+    def __init__(self, app_state):
         super().__init__("Logs", id="logs-tab")
         self.app_state = app_state
-        self.motor_logger_widget = motor_logger_widget
 
     def compose(self) -> ComposeResult:
         with Vertical():
@@ -22,7 +21,7 @@ class LogsTab(TabPane):
                              allow_blank=False,
                              name="Select logging level",
                              id="logging-level-select")
-            yield self.motor_logger_widget
+            yield self.app_state.motor_logger_widget
 
     @staticmethod
     def create_log_level_options() -> list:
