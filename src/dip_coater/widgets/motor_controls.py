@@ -206,13 +206,13 @@ class MotorControls(Static):
         self.GPIO.remove_event_detect(limit_switch_pin)
         self.GPIO.add_event_detect(limit_switch_pin, GpioEdge.BOTH, callback=callback, bouncetime=bouncetime)
 
-    def update_limit_switch_up_status(self, pin_number):
-        print(f"Limit switch up triggered: {self.GPIO.input(pin_number)}")
+    def update_limit_switch_up_status(self, pin_or_button):
+        pin_number = pin_or_button if isinstance(pin_or_button, int) else LIMIT_SWITCH_UP_PIN
         triggered = self.GPIO.input(pin_number) == GpioState.HIGH if LIMIT_SWITCH_UP_NC else self.GPIO.input(pin_number) == GpioState.LOW
         self.app.query_one("#status").update_limit_switch_up(triggered)
 
-    def update_limit_switch_down_status(self, pin_number):
-        print(f"Limit switch down triggered: {self.GPIO.input(pin_number)}")
+    def update_limit_switch_down_status(self, pin_or_button):
+        pin_number = pin_or_button if isinstance(pin_or_button, int) else LIMIT_SWITCH_DOWN_PIN
         triggered = self.GPIO.input(pin_number) == GpioState.HIGH if LIMIT_SWITCH_DOWN_NC else self.GPIO.input(pin_number) == GpioState.LOW
         self.app.query_one("#status").update_limit_switch_down(triggered)
 

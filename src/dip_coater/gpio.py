@@ -139,7 +139,8 @@ class GPIOZero(GPIOBase):
         if not isinstance(self.pins[pin], Button):
             raise ValueError("Event detection can only be added to a button")
 
-        def wrapped_callback():
+        def wrapped_callback(button):
+            """ Convert the gpiozero Button object to the pin number, to comply with the RPi.GPIO callback signature """
             callback(pin)
 
         if edge == GpioEdge.RISING:
