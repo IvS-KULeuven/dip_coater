@@ -1,5 +1,7 @@
 import argparse
 import logging
+import uvloop
+import asyncio
 
 from textual import on
 from textual.app import App, ComposeResult
@@ -18,8 +20,6 @@ from TMC_2209._TMC_2209_logger import Loglevel
 from dip_coater.motor.tmc2209 import TMC2209_MotorDriver
 from dip_coater.app_state import app_state
 
-from dip_coater.widgets.advanced_settings import AdvancedSettings
-from dip_coater.widgets.motor_controls import MotorControls
 from dip_coater.logging.motor_logger import MotorLoggerHandler
 from dip_coater.commands.help_command import HelpCommand
 from dip_coater.screens.help_screen import HelpScreen
@@ -122,4 +122,5 @@ def main():
 
 
 if __name__ == '__main__':
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     main()
