@@ -13,13 +13,17 @@ print("GPIO Input Test Script for Raspberry Pi 5")
 print("Reading input on pin 19")
 print("Press Ctrl+C to exit")
 
-def callback():
-    print("Button pressed (HIGH)")
+def callback_pressed():
+    print("Callback pressed!")
+
+def callback_released(button):
+    print(f"Callback released! {button.pin}")
 
 try:
     # Keep track of the last state to only print when it changes
     last_state = button.is_pressed
-    button.when_pressed = callback
+    button.when_pressed = callback_pressed
+    button.when_released = callback_released
 
     while True:
         current_state = button.is_pressed
