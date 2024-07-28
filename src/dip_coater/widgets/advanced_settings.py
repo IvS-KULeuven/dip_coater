@@ -3,20 +3,18 @@ from textual.app import ComposeResult
 from textual.containers import Vertical, Horizontal
 from textual.validation import Number
 from textual import on, events
-from textual.widgets import Static, Label, Button, Checkbox, Rule, Select, Input, RadioButton, RichLog
+from textual.widgets import Static, Label, Button, Checkbox, Rule, Input, RadioButton, RichLog
 
 from dip_coater.constants import (
        DEFAULT_ACCELERATION, DEFAULT_CURRENT, INVERT_MOTOR_DIRECTION, USE_INTERPOLATION, USE_SPREAD_CYCLE,
        HOMING_REVOLUTIONS, HOMING_THRESHOLD, HOMING_SPEED_MM_S, MIN_ACCELERATION, MAX_ACCELERATION, MIN_CURRENT,
        MAX_CURRENT, HOMING_MIN_REVOLUTIONS, HOMING_MAX_REVOLUTIONS, HOMING_MIN_THRESHOLD, HOMING_MAX_THRESHOLD,
-       HOMING_MIN_SPEED, HOMING_MAX_SPEED, DEFAULT_STEP_MODE, STEP_MODES, STEP_MODE_LABELS, DEFAULT_LOGGING_LEVEL
+       HOMING_MIN_SPEED, HOMING_MAX_SPEED, DEFAULT_STEP_MODE, STEP_MODES, STEP_MODE_LABELS
 )
 from dip_coater.widgets.step_mode import StepMode
 from dip_coater.widgets.status_advanced import StatusAdvanced
 from dip_coater.motor.tmc2209 import TMC2209_MotorDriver
 from dip_coater.utils.helpers import clamp
-
-from TMC_2209._TMC_2209_logger import Loglevel
 
 class AdvancedSettings(Static):
     acceleration = reactive(DEFAULT_ACCELERATION)
@@ -105,17 +103,6 @@ class AdvancedSettings(Static):
                     yield Label("RPM", id="homing-speed-unit")
             yield Button("Test StallGuard Threshold", id="test-stallguard-threshold-btn")
 
-            yield Rule(classes="rule")
-
-            with Horizontal():
-                yield Label("Logging level: ", id="logging-level-label")
-                options = self.create_log_level_options()
-                yield Select(options,
-                             value=DEFAULT_LOGGING_LEVEL.value,
-                             allow_blank=False,
-                             name="Select logging level",
-                             id="logging-level-select")
-
     def _on_mount(self, event: events.Mount) -> None:
         self.app.query_one(StatusAdvanced).update_acceleration(self.acceleration)
         self.app.query_one(StatusAdvanced).update_motor_current(self.motor_current)
@@ -149,15 +136,6 @@ class AdvancedSettings(Static):
         self.query_one("#homing-threshold-input", Input).value = f"{HOMING_THRESHOLD}"
         self.set_homing_speed(HOMING_SPEED_MM_S)
         self.query_one("#homing-speed-input", Input).value = f"{HOMING_SPEED_MM_S}"
-
-        self.query_one("#logging-level-select", Select).value = DEFAULT_LOGGING_LEVEL.value
-
-    @staticmethod
-    def create_log_level_options() -> list:
-        options = []
-        for level in Loglevel:
-            options.append((level.name, level.value))
-        return options
 
     @on(Input.Submitted, "#acceleration-input")
     def submit_acceleration_input(self):
@@ -221,11 +199,6 @@ class AdvancedSettings(Static):
         self.motor_driver.test_stallguard_threshold()
         log.write("[cyan]-> Finished testing StallGuard threshold.[/]")
 
-    @on(Select.Changed, "#logging-level-select")
-    def action_set_loglevel(self, event: Select.Changed):
-        level = Loglevel(event.value)
-        self.set_loglevel(level)
-
     def set_acceleration(self, acceleration: float):
         validated_acceleration = clamp(acceleration, MIN_ACCELERATION, MAX_ACCELERATION)
         self.acceleration = round(validated_acceleration, 1)
@@ -262,6 +235,3 @@ class AdvancedSettings(Static):
     def set_homing_speed(self, homing_speed: float):
         self.homing_speed = homing_speed
         self.app.query_one(StatusAdvanced).update_homing_speed(self.homing_speed)
-
-    def set_loglevel(self, level: Loglevel):
-        self.motor_driver.set_loglevel(level)
