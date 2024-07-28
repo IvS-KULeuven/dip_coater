@@ -16,11 +16,12 @@ class TMC2209_MotorDriver:
     limit_switch_bindings = {}      # Stores the limit switch pin and the corresponding edge trigger event
 
     """ Class to control the TMC2209 motor driver for the dip coater"""
-    def __init__(self, gpio: GPIOBase, stepmode: int = 8, current: int = 1000, invert_direction: bool = False, interpolation: bool = True,
+    def __init__(self, app_state, stepmode: int = 8, current: int = 1000, invert_direction: bool = False, interpolation: bool = True,
                  spread_cycle: bool = False, loglevel: Loglevel = Loglevel.ERROR, log_handlers: list = None,
                  log_formatter: logging.Formatter = None):
         """ Initialize the motor driver
 
+        :param app_state: The application state to use for the motor driver
         :param stepmode: The step mode to set (1, 2, 4, 8, 16, 32, 64, 128, 256)
         :param current: The current to set for the motor driver in mA
         :param invert_direction: Whether to invert the direction of the motor (default: False)
@@ -31,7 +32,7 @@ class TMC2209_MotorDriver:
         :param log_formatter: The log formatter log the motor driver messages with (default: None = use default formatter)
         """
         # Get the appropriate GPIO instance
-        self.GPIO = gpio
+        self.GPIO = app_state.gpio
 
         # GPIO pins
         self.en_pin = 11
