@@ -60,6 +60,10 @@ class MotorControls(Static):
     def set_motor_state(self, state: str):
         self.app_state.motor_state = state
         self.update_status_widgets()
+        if state == "moving":
+            self.bind_limit_switches_to_motor()
+        else:
+            self.bind_limit_switches_to_ui()
 
     @on(Button.Pressed, "#move-up")
     async def move_up_action(self):
@@ -124,7 +128,6 @@ class MotorControls(Static):
         log = self.app.query_one("#logger", RichLog)
         if self.app_state.motor_state == "disabled":
             self.app_state.motor_driver.enable_motor()
-            self.bind_limit_switches_to_motor()
             self.set_motor_state("enabled")
             log.write(f"[green]Motor is now enabled.[/]")
 
@@ -139,7 +142,6 @@ class MotorControls(Static):
             return
         elif self.app_state.motor_state == "enabled":
             self.app_state.motor_driver.disable_motor()
-            self.bind_limit_switches_to_ui()
             self.set_motor_state("disabled")
             log.write(f"[dark_orange]Motor is now disabled.[/]")
 
@@ -182,7 +184,6 @@ class MotorControls(Static):
         except ValueError as e:
             log.write(f"[red]{e}[/]")
         self.set_motor_state("enabled")
-        self.bind_limit_switches_to_motor()  # Re-bind the limit switches after homing
 
     def set_homing_found(self, homing_found: bool):
         self.app_state.homing_found = homing_found
