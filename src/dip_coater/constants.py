@@ -85,5 +85,21 @@ INVERT_MOTOR_DIRECTION = False
 USE_SPREAD_CYCLE = False
 USE_INTERPOLATION = True
 
+# Threshold speed settings
+DEFAULT_THRESHOLD_SPEED = 5.0  # mm/s
+MIN_THRESHOLD_SPEED = 0.1  # mm/s
+MAX_THRESHOLD_SPEED = 20.0  # mm/s
+THRESHOLD_SPEED_ENABLED = True
+
+# Low-speed configuration
+LOW_SPEED_STEP_MODE = "I16"
+LOW_SPEED_INTERPOLATION = True
+LOW_SPEED_SPREAD_CYCLE = False
+
+# High-speed configuration
+HIGH_SPEED_STEP_MODE = "I4"
+HIGH_SPEED_INTERPOLATION = False
+HIGH_SPEED_SPREAD_CYCLE = True
+
 # Application config file
 CONFIG_FILE = "dip_coater_config.json"

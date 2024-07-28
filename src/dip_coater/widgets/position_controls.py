@@ -9,17 +9,15 @@ from dip_coater.constants import (
     POSITION_STEP_COARSE, POSITION_STEP_FINE, DISTANCE_STEP_COARSE, DISTANCE_STEP_FINE, HOME_UP,
     MIN_POSITION, MAX_POSITION
 )
-from dip_coater.motor.tmc2209 import TMC2209_MotorDriver
 from dip_coater.widgets.speed_controls import SpeedControls
-from dip_coater.widgets.advanced_settings import AdvancedSettings
 from dip_coater.utils.helpers import clamp
 
 class PositionControls(Static):
     position = reactive("0")
 
-    def __init__(self, motor_driver: TMC2209_MotorDriver):
+    def __init__(self, app_state):
         super().__init__()
-        self.motor_driver = motor_driver
+        self.app_state = app_state
 
     def compose(self) -> ComposeResult:
         with Horizontal():
@@ -41,7 +39,7 @@ class PositionControls(Static):
             yield Button("Move to position", id="move-to-position-btn", variant="primary", classes="btn-small btn-position")
 
     def _on_mount(self, event: events.Mount) -> None:
-        self.update_button_states(self.motor_driver.is_homing_found())
+        self.update_button_states(self.app_state.motor_driver.is_homing_found())
 
     @on(Button.Pressed, "#position-down-coarse")
     def decrease_position_coarse(self):
@@ -65,7 +63,7 @@ class PositionControls(Static):
 
     @on(Button.Pressed, "#set-to-current-pos-btn")
     def set_to_current_position(self):
-        pos = self.motor_driver.get_current_position()
+        pos = self.app_state.motor_driver.get_current_position()
         if pos is not None:
             self.set_position(pos)
 
@@ -73,12 +71,12 @@ class PositionControls(Static):
     async def move_to_position_action(self):
         pos = float(self.position)
         speed = self.app.query_one(SpeedControls).speed
-        accel = self.app.query_one(AdvancedSettings).acceleration
+        accel = self.app_state.advanced_settings.acceleration
         await self.move_to_position(pos, speed, accel)
 
     async def move_to_position(self, position_mm: float, speed_mm_s: float = None, acceleration_mm_s2: float = None,
                                home_up: bool = HOME_UP):
-        self.motor_driver.run_to_position(position_mm, speed_mm_s, acceleration_mm_s2, home_up)
+        self.app_state.motor_driver.run_to_position(position_mm, speed_mm_s, acceleration_mm_s2, home_up)
 
     def set_position(self, position: float):
         validated_position = clamp(position, MIN_POSITION, MAX_POSITION)

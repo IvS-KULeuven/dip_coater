@@ -7,14 +7,17 @@ from textual.widget import Widget
 from textual.widgets import Button, Input, Label
 
 from dip_coater.constants import (
-    DEFAULT_SPEED, MAX_SPEED, MIN_SPEED, SPEED_STEP_COARSE, SPEED_STEP_FINE
+    DEFAULT_SPEED, MAX_SPEED, MIN_SPEED, SPEED_STEP_COARSE, SPEED_STEP_FINE,
 )
-from dip_coater.widgets.status import Status
 from dip_coater.utils.helpers import clamp
 
 
 class SpeedControls(Widget):
     speed = reactive(DEFAULT_SPEED)
+
+    def __init__(self, app_state):
+        super().__init__()
+        self.app_state = app_state
 
     def compose(self) -> ComposeResult:
         with Horizontal():
@@ -66,4 +69,5 @@ class SpeedControls(Widget):
     def watch_speed(self, speed: float):
         speed_input = self.query_one("#speed-input", Input)
         speed_input.value = f"{speed}"
-        self.app.query_one(Status).update_speed(speed)
+        self.app_state.status.update_speed(speed)
+        self.app_state.advanced_settings.update_motor_configuration()

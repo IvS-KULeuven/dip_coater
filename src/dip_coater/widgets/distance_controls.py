@@ -8,11 +8,14 @@ from textual.widgets import Static, Label, Button, Input
 from dip_coater.constants import (
     DEFAULT_DISTANCE, DISTANCE_STEP_COARSE, DISTANCE_STEP_FINE, MAX_DISTANCE, MIN_DISTANCE
 )
-from dip_coater.widgets.status import Status
 from dip_coater.utils.helpers import clamp
 
 class DistanceControls(Static):
     distance = reactive(DEFAULT_DISTANCE)
+
+    def __init__(self, app_state):
+        super().__init__()
+        self.app_state = app_state
 
     def compose(self) -> ComposeResult:
         with Horizontal():
@@ -64,4 +67,4 @@ class DistanceControls(Static):
     def watch_distance(self, distance: float):
         distance_input = self.query_one("#distance-input", Input)
         distance_input.value = f"{distance}"
-        self.app.query_one(Status).update_distance(distance)
+        self.app_state.status.update_distance(distance)
