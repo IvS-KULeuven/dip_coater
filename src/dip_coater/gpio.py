@@ -103,6 +103,82 @@ class RPiGPIO(GPIOBase):
     def cleanup(self):
         self.GPIO.cleanup()
 
+
+class GPIOd(GPIOBase):
+    def __init__(self):
+        import gpiod
+        self.chip = gpiod.Chip('/dev/gpiochip0')
+        self.lines = {}
+        self.callbacks = {}
+
+    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = GpioPUD.PUD_OFF, active_state=None):
+        import gpiod
+        from gpiod.line import Direction, Value, Edge, Bias
+        config = gpiod.LineSettings()
+        if mode == GpioMode.OUT:
+            config.direction = Direction.OUTPUT
+        else:
+            config.direction = Direction.INPUT
+            if pull_up_down == GpioPUD.PUD_UP:
+                config.bias = Bias.PULL_UP
+            elif pull_up_down == GpioPUD.PUD_DOWN:
+                config.bias = Bias.PULL_DOWN
+
+        self.lines[pin] = self.chip.request_lines(
+            consumer="myapp",
+            config={pin: config}
+        )
+
+    def output(self, pin, state: GpioState):
+        from gpiod.line import Value
+        value = Value.ACTIVE if state == GpioState.HIGH else Value.INACTIVE
+        self.lines[pin].set_values({pin: value})
+
+    def input(self, pin) -> GpioState:
+        from gpiod.line import Value
+        value = self.lines[pin].get_values()[pin]
+        return GpioState.HIGH if value == Value.ACTIVE else GpioState.LOW
+
+    def add_event_detect(self, pin, edge: GpioEdge, callback, bouncetime=None):
+        import gpiod
+        from gpiod.line import Direction, Edge
+        config = gpiod.LineSettings()
+        config.direction = Direction.INPUT
+        if edge == GpioEdge.RISING:
+            config.edge_detection = Edge.RISING
+        elif edge == GpioEdge.FALLING:
+            config.edge_detection = Edge.FALLING
+        else:
+            config.edge_detection = Edge.BOTH
+
+        self.lines[pin] = self.chip.request_lines(
+            consumer="myapp",
+            config={pin: config},
+            event_handler=self._event_handler
+        )
+        self.callbacks[pin] = callback
+
+    def _event_handler(self, event):
+        if event.line_offset in self.callbacks:
+            self.callbacks[event.line_offset](event.line_offset)
+
+    def add_event_callback(self, pin, callback):
+        # This method might need to be adjusted based on your specific requirements
+        self.callbacks[pin] = callback
+
+    def remove_event_detect(self, pin):
+        if pin in self.lines:
+            self.lines[pin].release()
+            del self.lines[pin]
+        if pin in self.callbacks:
+            del self.callbacks[pin]
+
+    def cleanup(self):
+        for line in self.lines.values():
+            line.release()
+        self.chip.close()
+
+
 class GPIOZero(GPIOBase):
     def __init__(self):
         from gpiozero.pins.lgpio import LGPIOFactory
@@ -238,12 +314,12 @@ def get_gpio_instance():
     if board == Board.RASPBERRY_PI5:
         print("Attempting to use GPIOZero for Raspberry Pi 5")
         try:
-            import gpiozero
-            return GPIOZero()
+            import gpiod
+            return GPIOd()
         except ImportError as err:
             print(f"ImportError: {err}")
-            print("Board is Raspberry Pi 5 but module gpiozero isn't installed.")
-            print("Follow the installation instructions: https://gpiozero.readthedocs.io/en/stable/installing.html")
+            print("Board is Raspberry Pi 5 but module gpiod isn't installed.")
+            print("Install gpiod using: pip install gpiod")
             raise
     elif board == Board.RASPBERRY_PI:
         print("Attempting to use RPi.GPIO for Raspberry Pi")
