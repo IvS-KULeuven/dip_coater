@@ -163,16 +163,8 @@ class TMC2209_MotorDriver:
 
         :return: The StopMode of the movement (StopMode.NO for normal stop, other StopMode for early stop)
         """
-        done_event = asyncio.Event()
-
-        def check_done():
-            if self.tmc.distance_to_go() <= 0:
-                done_event.set()
-            else:
-                asyncio.get_running_loop().call_later(0.1, check_done)
-
-        check_done()
-        await done_event.wait()
+        while self.tmc.distance_to_go() > 0:
+            await asyncio.sleep(0.1)  # Check every 100ms
         return self.tmc.wait_for_movement_finished_threaded()
 
     def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0, limit_switch_pins: list = None):
