@@ -146,6 +146,7 @@ class MotorControls(Static):
             return
         elif app_state.motor_state == "enabled":
             self.motor_driver.disable_motor()
+            self.setup_limit_switches_io()
             self.set_motor_state("disabled")
             log.write(f"[dark_orange]Motor is now disabled.[/]")
 
@@ -187,8 +188,6 @@ class MotorControls(Static):
             self.set_homing_found(homing_found)
         except ValueError as e:
             log.write(f"[red]{e}[/]")
-        finally:
-            self.setup_limit_switches_io()  # Re-bind the limit switches after homing
         self.set_motor_state("enabled")
         self.bind_limit_switches_to_motor()  # Re-bind the limit switches after homing
 

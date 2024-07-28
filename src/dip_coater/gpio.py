@@ -65,6 +65,7 @@ class GPIOBase(ABC):
     def cleanup(self):
         pass
 
+
 class RPiGPIO(GPIOBase):
     def __init__(self):
         import RPi.GPIO as GPIO
