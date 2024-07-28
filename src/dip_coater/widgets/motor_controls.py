@@ -198,14 +198,12 @@ class MotorControls(Static):
         self.app_state.gpio.setup(limit_switch_pin, GpioMode.IN, pull_up_down=GpioPUD.PUD_UP)
 
 
-    def update_limit_switch_up_status(self, pin_or_button):
-        pin_number = pin_or_button if isinstance(pin_or_button, int) else LIMIT_SWITCH_UP_PIN
-        triggered = self.app_state.gpio.input(pin_number) == GpioState.HIGH if LIMIT_SWITCH_UP_NC else self.app_state.gpio.input(pin_number) == GpioState.LOW
+    def update_limit_switch_up_status(self, pin):
+        triggered = self.app_state.gpio.input(LIMIT_SWITCH_UP_PIN) == GpioState.HIGH if LIMIT_SWITCH_UP_NC else self.app_state.gpio.input(LIMIT_SWITCH_UP_PIN) == GpioState.LOW
         self.app_state.status.update_limit_switch_up(triggered)
 
-    def update_limit_switch_down_status(self, pin_or_button):
-        pin_number = pin_or_button if isinstance(pin_or_button, int) else LIMIT_SWITCH_DOWN_PIN
-        triggered = self.app_state.gpio.input(pin_number) == GpioState.HIGH if LIMIT_SWITCH_DOWN_NC else self.app_state.gpio.input(pin_number) == GpioState.LOW
+    def update_limit_switch_down_status(self, pin):
+        triggered = self.app_state.gpio.input(LIMIT_SWITCH_DOWN_PIN) == GpioState.HIGH if LIMIT_SWITCH_DOWN_NC else self.app_state.gpio.input(LIMIT_SWITCH_DOWN_PIN) == GpioState.LOW
         self.app_state.status.update_limit_switch_down(triggered)
 
     def bind_limit_switches_to_motor(self):
@@ -214,8 +212,10 @@ class MotorControls(Static):
         self.app_state.motor_driver.bind_limit_switch(LIMIT_SWITCH_DOWN_PIN, NC=LIMIT_SWITCH_DOWN_NC)
 
     def bind_limit_switches_to_ui(self):
-        self._bind_limit_switch_to_ui(LIMIT_SWITCH_UP_PIN, LIMIT_SWITCH_UP_NC, callback=self.update_limit_switch_up_status)
-        self._bind_limit_switch_to_ui(LIMIT_SWITCH_DOWN_PIN, LIMIT_SWITCH_DOWN_NC, callback=self.update_limit_switch_down_status)
+        self._bind_limit_switch_to_ui(LIMIT_SWITCH_UP_PIN, LIMIT_SWITCH_UP_NC,
+                                      callback=self.update_limit_switch_up_status, bouncetime=None)
+        self._bind_limit_switch_to_ui(LIMIT_SWITCH_DOWN_PIN, LIMIT_SWITCH_DOWN_NC,
+                                      callback=self.update_limit_switch_down_status, bouncetime=None)
 
     def _bind_limit_switch_to_ui(self, limit_switch_pin, limit_switch_nc=True, callback=None, bouncetime=5):
         self.app_state.gpio.remove_event_detect(limit_switch_pin)
