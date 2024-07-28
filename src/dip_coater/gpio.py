@@ -93,6 +93,7 @@ class RPiGPIO(GPIOBase):
             GpioEdge.FALLING: self.GPIO.FALLING,
             GpioEdge.BOTH: self.GPIO.BOTH
         }[edge]
+        bouncetime = bouncetime if bouncetime is not None else 0
         self.GPIO.add_event_detect(pin, gpio_edge, callback=callback, bouncetime=bouncetime)
 
     def add_event_callback(self, pin, callback):
