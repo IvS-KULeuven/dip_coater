@@ -7,7 +7,6 @@ from textual.containers import Horizontal, Vertical
 from textual.validation import Function
 from textual.widgets import Static, Label, TextArea, Button, Input, Markdown, Collapsible, TabbedContent, RichLog
 
-from dip_coater.widgets.motor_controls import MotorControls
 from dip_coater.widgets.position_controls import PositionControls
 from dip_coater.utils.helpers import config_load_coder_filepath, config_save_coder_filepath
 from dip_coater.constants import HOME_UP
@@ -15,6 +14,10 @@ from dip_coater.constants import HOME_UP
 
 class Coder(Static):
     code = ""
+
+    def __init__(self, app_state):
+        super().__init__()
+        self.app_state = app_state
 
     def compose(self) -> ComposeResult:
         with Vertical():
@@ -137,23 +140,23 @@ class Coder(Static):
     ''' ========== API for the code editor ========== '''
 
     def enable_motor(self):
-        self.async_run(self.app.query_one(MotorControls).enable_motor_action)
+        self.async_run(self.app_state.motor_controls.enable_motor_action)
 
     def disable_motor(self):
-        self.async_run(self.app.query_one(MotorControls).disable_motor_action)
+        self.async_run(self.app_state.motor_controls.disable_motor_action)
 
     def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
         # NOTE: We are purposely not changing the distance, speed and acceleration settings here,
         # as this may be undesirable in some cases.
-        self.async_run(self.app.query_one(MotorControls).move_up, distance_mm, speed_mm_s, acceleration_mm_s2)
+        self.async_run(self.app_state.motor_controls.move_up, distance_mm, speed_mm_s, acceleration_mm_s2)
 
     def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
         # NOTE: We are purposely not changing the distance, speed and acceleration settings here,
         # as this may be undesirable in some cases.
-        self.async_run(self.app.query_one(MotorControls).move_down, distance_mm, speed_mm_s, acceleration_mm_s2)
+        self.async_run(self.app_state.motor_controls.move_down, distance_mm, speed_mm_s, acceleration_mm_s2)
 
     def home_motor(self, home_up: bool = HOME_UP):
-        self.async_run(self.app.query_one(MotorControls).perform_homing, home_up)
+        self.async_run(self.app_state.motor_controls.perform_homing, home_up)
 
     def move_to_position(self, position_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None,
                          home_up: bool = HOME_UP):

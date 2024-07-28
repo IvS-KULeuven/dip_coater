@@ -54,7 +54,7 @@ class DipCoaterApp(App):
         app_state.motor_logger_widget = RichLog(markup=True, id="motor-logger")
         motor_logger_handler = MotorLoggerHandler(app_state)
         logging_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", "%Y%m%d %H:%M:%S")
-        app_state.motor_driver = TMC2209_MotorDriver(app_state, stepmode=STEP_MODES[DEFAULT_STEP_MODE],
+        app_state.motor_driver = TMC2209_MotorDriver(app_state, step_mode=STEP_MODES[DEFAULT_STEP_MODE],
                                                 current=DEFAULT_CURRENT,
                                                 invert_direction=INVERT_MOTOR_DIRECTION,
                                                 interpolation=USE_INTERPOLATION,
@@ -75,11 +75,11 @@ class DipCoaterApp(App):
             yield MainTab(app_state)
             yield LogsTab(app_state)
             yield AdvancedSettingsTab(app_state)
-            yield CoderTab()
+            yield CoderTab(app_state)
 
     @on(Button.Pressed, "#reset-to-defaults-btn")
     def reset_to_defaults(self):
-        self.query_one(AdvancedSettings).reset_settings_to_default()
+        app_state.advanced_settings.reset_settings_to_default()
 
     def action_toggle_dark(self) -> None:
         """An action to toggle dark mode."""
@@ -93,16 +93,16 @@ class DipCoaterApp(App):
         self.push_screen(HelpScreen())
 
     async def action_move_up(self) -> None:
-        await self.query_one(MotorControls).move_up_action()
+        await app_state.motor_controls.move_up_action()
 
     async def action_move_down(self) -> None:
-        await self.query_one(MotorControls).move_down_action()
+        await app_state.motor_controls.move_down_action()
 
     async def action_enable_motor(self) -> None:
-        await self.query_one(MotorControls).enable_motor_action()
+        await app_state.motor_controls.enable_motor_action()
 
     async def action_disable_motor(self) -> None:
-        await self.query_one(MotorControls).disable_motor_action()
+        await app_state.motor_controls.disable_motor_action()
 
 
 def main():

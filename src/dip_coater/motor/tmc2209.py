@@ -16,13 +16,13 @@ class TMC2209_MotorDriver:
     limit_switch_bindings = {}      # Stores the limit switch pin and the corresponding edge trigger event
 
     """ Class to control the TMC2209 motor driver for the dip coater"""
-    def __init__(self, app_state, stepmode: int = 8, current: int = 1000, invert_direction: bool = False, interpolation: bool = True,
+    def __init__(self, app_state, step_mode: int = 8, current: int = 1000, invert_direction: bool = False, interpolation: bool = True,
                  spread_cycle: bool = False, loglevel: Loglevel = Loglevel.ERROR, log_handlers: list = None,
                  log_formatter: logging.Formatter = None):
         """ Initialize the motor driver
 
         :param app_state: The application state to use for the motor driver
-        :param stepmode: The step mode to set (1, 2, 4, 8, 16, 32, 64, 128, 256)
+        :param step_mode: The step mode to set (1, 2, 4, 8, 16, 32, 64, 128, 256)
         :param current: The current to set for the motor driver in mA
         :param invert_direction: Whether to invert the direction of the motor (default: False)
         :param interpolation: Whether to use interpolation for the motor driver
@@ -50,7 +50,7 @@ class TMC2209_MotorDriver:
         self.tmc.set_current(current, pdn_disable=False)    # mA
         self.tmc.set_interpolation(interpolation)
         self.tmc.set_spreadcycle(spread_cycle)  # True: spreadcycle, False: stealthchop
-        self.tmc.set_microstepping_resolution(stepmode)  # 1, 2, 4, 8, 16, 32, 64, 128, 256
+        self.tmc.set_microstepping_resolution(step_mode)  # 1, 2, 4, 8, 16, 32, 64, 128, 256
         self.tmc.set_internal_rsense(False)
 
         self.tmc.set_movement_abs_rel(MovementAbsRel.RELATIVE)
@@ -61,12 +61,12 @@ class TMC2209_MotorDriver:
         self.tmc.read_drv_status()
         self.tmc.read_gconf()
 
-    def set_stepmode(self, _stepmode: int = 4):
+    def set_step_mode(self, _step_mode: int = 4):
         """ Set the step mode of the motor driver
 
-        :param _stepmode: The step mode to set (1, 2, 4, 8, 16, 32, 64, 128, 256)
+        :param _step_mode: The step mode to set (1, 2, 4, 8, 16, 32, 64, 128, 256)
         """
-        self.tmc.set_microstepping_resolution(_stepmode)
+        self.tmc.set_microstepping_resolution(_step_mode)
 
     def set_current(self, current: int = 1000):
         """ Set the current of the motor driver
@@ -89,10 +89,10 @@ class TMC2209_MotorDriver:
         """
         self.tmc.set_interpolation(interpolation)
 
-    def set_spreadcycle(self, spread_cycle: bool = False):
-        """ Set the spreadcycle setting of the motor driver
+    def set_spread_cycle(self, spread_cycle: bool = False):
+        """ Set the spread cycle/stealth chop setting of the motor driver
 
-        :param spreadcycle: Whether to use spread_cycle for the motor driver (true) or stealthchop (false)
+        :param spread_cycle: Whether to use spread_cycle for the motor driver (true) or stealth chop (false)
         """
         self.tmc.set_spreadcycle(spread_cycle)
 
@@ -327,7 +327,7 @@ class TMC2209_MotorDriver:
         :param threshold: The threshold to use for the homing routine (default: None)
         :param speed_mm_s: The speed to use for the homing routine in mm/s (default: 2 mm/s)
         """
-        # Homing sets the spreadcycle to StealthChop, so we need to store the original setting and restore it afterwards
+        # Homing sets the SpreadCycle to StealthChop, so we need to store the original setting and restore it afterwards
         spread_cycle = self.tmc.get_spreadcycle()
         speed_rpm = speed_mm_s / TRANS_PER_REV * 60
         self.tmc.do_homing(
@@ -432,7 +432,7 @@ class TMC2209_MotorDriver:
 if __name__ == "__main__":
     # ======== SETTINGS ========
     # Step mode
-    _stepmode = 8  # 1 (full), 2 (half), 4 (1/4), 8, 16, 32, 64, 128, 256
+    _step_mode = 8  # 1 (full), 2 (half), 4 (1/4), 8, 16, 32, 64, 128, 256
 
     # Movement speed in mm/s
     speed_up = 2
@@ -453,7 +453,7 @@ if __name__ == "__main__":
     _loglevel = Loglevel.INFO  # NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL
 
     # ======== INIT ========
-    motor_driver = TMC2209_MotorDriver(get_gpio_instance(), stepmode=_stepmode, loglevel=_loglevel)
+    motor_driver = TMC2209_MotorDriver(get_gpio_instance(), step_mode=_step_mode, loglevel=_loglevel)
 
     # ======== MOVE DOWN ========
     motor_driver.move_down(distance_down, speed_down, accel_down)

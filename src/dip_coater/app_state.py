@@ -10,5 +10,13 @@ class AppState:
         self.motor_state = "disabled"
         self.homing_found = False
         self.motor_logger_widget = None
+        self.status = None
+        self.advanced_settings = None
+        self.status_advanced = None
+        self.motor_controls = None
+        self.speed_controls = None
+        self.position_controls = None
+        self.distance_controls = None
+        self.step_mode = None
 
 app_state = AppState()

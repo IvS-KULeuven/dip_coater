@@ -17,6 +17,10 @@ class StatusAdvanced(Static):
     homing_threshold = reactive("Homing StallGuard threshold: ")
     homing_speed = reactive("Homing speed: ")
 
+    def __init__(self, app_state, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.app_state = app_state
+
     def compose(self) -> ComposeResult:
         with Vertical():
             yield Label(id="status-step-mode")
@@ -26,6 +30,9 @@ class StatusAdvanced(Static):
             yield Label(id="status-invert-motor-direction")
             yield Label(id="status-interpolate")
             yield Label(id="status-spread-cycle")
+            yield Rule()
+            yield Label(id="speed-mode")
+            yield Label(id="threshold-speed-status")
             yield Rule()
             yield Label(id="status-homing-revolutions")
             yield Label(id="status-homing-threshold")
@@ -66,6 +73,23 @@ class StatusAdvanced(Static):
 
     def update_spread_cycle(self, spread_cycle: bool):
         self.spread_cycle = f"Spread Cycle: {spread_cycle}"
+
+    def update_speed_mode(self, threshold_enabled: bool, threshold_speed: float):
+        mode = "DISABLED" if not threshold_enabled else "High-speed" if self.app_state.speed_controls.speed > threshold_speed else "Low-speed"
+        self.query_one("#speed-mode", Static).update(f"Speed mode: {mode}")
+
+    def watch_threshold_speed(self, threshold_speed: str):
+        self.query_one("#threshold-speed-status", Static).update(threshold_speed)
+
+    def update_threshold_speed(self, threshold_speed: float):
+        self.query_one("#threshold-speed-status", Static).update(f"Threshold Speed: {threshold_speed:.2f} mm/s")
+        self.update_speed_mode(self.app_state.advanced_settings.threshold_speed_enabled, threshold_speed)
+
+    def watch_threshold_speed_enabled(self, enabled: str):
+        self.query_one("#threshold-speed-enabled-status", Static).update(enabled)
+
+    def update_threshold_speed_enabled(self, enabled: bool):
+        self.update_speed_mode(enabled, self.app_state.advanced_settings.threshold_speed)
 
     def watch_homing_revs(self, homing_revs: str):
         self.query_one("#status-homing-revolutions", Label).update(homing_revs)

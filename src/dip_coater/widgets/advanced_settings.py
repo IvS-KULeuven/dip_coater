@@ -3,17 +3,18 @@ from textual.app import ComposeResult
 from textual.containers import Vertical, Horizontal
 from textual.validation import Number
 from textual import on, events
-from textual.widgets import Static, Label, Button, Checkbox, Rule, Input, RadioButton, RichLog
+from textual.widgets import Static, Label, Button, Checkbox, Rule, Input, RadioButton, RichLog, Switch
 
 from dip_coater.constants import (
        DEFAULT_ACCELERATION, DEFAULT_CURRENT, INVERT_MOTOR_DIRECTION, USE_INTERPOLATION, USE_SPREAD_CYCLE,
        HOMING_REVOLUTIONS, HOMING_THRESHOLD, HOMING_SPEED_MM_S, MIN_ACCELERATION, MAX_ACCELERATION, MIN_CURRENT,
        MAX_CURRENT, HOMING_MIN_REVOLUTIONS, HOMING_MAX_REVOLUTIONS, HOMING_MIN_THRESHOLD, HOMING_MAX_THRESHOLD,
-       HOMING_MIN_SPEED, HOMING_MAX_SPEED, DEFAULT_STEP_MODE, STEP_MODES, STEP_MODE_LABELS
+       HOMING_MIN_SPEED, HOMING_MAX_SPEED, DEFAULT_STEP_MODE, STEP_MODES, STEP_MODE_LABELS,
+       DEFAULT_THRESHOLD_SPEED, THRESHOLD_SPEED_ENABLED, MIN_THRESHOLD_SPEED, MAX_THRESHOLD_SPEED,
+       HIGH_SPEED_STEP_MODE, HIGH_SPEED_INTERPOLATION, HIGH_SPEED_SPREAD_CYCLE,
+       LOW_SPEED_STEP_MODE, LOW_SPEED_INTERPOLATION, LOW_SPEED_SPREAD_CYCLE
 )
 from dip_coater.widgets.step_mode import StepMode
-from dip_coater.widgets.status_advanced import StatusAdvanced
-from dip_coater.motor.tmc2209 import TMC2209_MotorDriver
 from dip_coater.utils.helpers import clamp
 
 class AdvancedSettings(Static):
@@ -26,13 +27,17 @@ class AdvancedSettings(Static):
     homing_threshold = reactive(HOMING_THRESHOLD)
     homing_speed = reactive(HOMING_SPEED_MM_S)
 
-    def __init__(self, motor_driver: TMC2209_MotorDriver):
+    threshold_speed = reactive(DEFAULT_THRESHOLD_SPEED)
+    threshold_speed_enabled = reactive(THRESHOLD_SPEED_ENABLED)
+
+    def __init__(self, app_state):
         super().__init__()
-        self.motor_driver = motor_driver
+        self.app_state = app_state
+        self.app_state.step_mode = StepMode(self.app_state)
 
     def compose(self) -> ComposeResult:
         with Vertical():
-            yield StepMode(self.motor_driver)
+            yield self.app_state.step_mode
             with Horizontal():
                 with Horizontal():
                     yield Label("Acceleration: ", id="acceleration-label")
@@ -63,6 +68,20 @@ class AdvancedSettings(Static):
                                classes="checkbox")
                 yield Checkbox("Interpolation", value=self.interpolate, id="interpolation-checkbox", classes="checkbox")
                 yield Checkbox("Spread Cycle (T)/Stealth Chop (F)", value=self.spread_cycle, id="spread-cycle-checkbox", classes="checkbox")
+            with Horizontal(id="threshold-speed-container"):
+                yield Label("Enable Threshold Speed", id="threshold-speed-switch-label")
+                yield Switch(value=self.threshold_speed_enabled, id="threshold-speed-switch")
+                yield Label("Threshold Speed: ", id="threshold-speed-label")
+                yield Input(
+                    value=f"{self.threshold_speed}",
+                    type="number",
+                    placeholder="Threshold Speed (mm/s)",
+                    id="threshold-speed-input",
+                    validate_on=["submitted"],
+                    validators=[Number(minimum=MIN_THRESHOLD_SPEED, maximum=MAX_THRESHOLD_SPEED)],
+                    classes="input-fields",
+                )
+                yield Label("mm/s", id="threshold-speed-unit")
 
             yield Rule(classes="rule")
 
@@ -104,20 +123,24 @@ class AdvancedSettings(Static):
             yield Button("Test StallGuard Threshold", id="test-stallguard-threshold-btn")
 
     def _on_mount(self, event: events.Mount) -> None:
-        self.app.query_one(StatusAdvanced).update_acceleration(self.acceleration)
-        self.app.query_one(StatusAdvanced).update_motor_current(self.motor_current)
+        self.app_state.status_advanced.update_acceleration(self.acceleration)
+        self.app_state.status_advanced.update_motor_current(self.motor_current)
 
-        self.app.query_one(StatusAdvanced).update_invert_motor_direction(self.invert_motor_direction)
-        self.app.query_one(StatusAdvanced).update_interpolate(self.interpolate)
-        self.app.query_one(StatusAdvanced).update_spread_cycle(self.spread_cycle)
+        self.app_state.status_advanced.update_invert_motor_direction(self.invert_motor_direction)
+        self.app_state.status_advanced.update_interpolate(self.interpolate)
+        self.app_state.status_advanced.update_spread_cycle(self.spread_cycle)
 
-        self.app.query_one(StatusAdvanced).update_homing_revs(self.homing_revs)
-        self.app.query_one(StatusAdvanced).update_homing_threshold(self.homing_threshold)
-        self.app.query_one(StatusAdvanced).update_homing_speed(self.homing_speed)
+        self.app_state.status_advanced.update_threshold_speed(self.threshold_speed)
+        self.app_state.status_advanced.update_threshold_speed_enabled(self.threshold_speed_enabled)
+        self.update_control_mode_widgets_state()
+
+        self.app_state.status_advanced.update_homing_revs(self.homing_revs)
+        self.app_state.status_advanced.update_homing_threshold(self.homing_threshold)
+        self.app_state.status_advanced.update_homing_speed(self.homing_speed)
 
     def reset_settings_to_default(self):
-        self.query_one(StepMode).set_stepmode(STEP_MODES[DEFAULT_STEP_MODE], STEP_MODE_LABELS[DEFAULT_STEP_MODE])
-        self.query_one(StepMode).query_one(f"#{DEFAULT_STEP_MODE}", RadioButton).value = True
+        self.set_step_mode(DEFAULT_STEP_MODE)
+        self.app_state.step_mode.query_one(f"#{DEFAULT_STEP_MODE}", RadioButton).value = True
         self.set_acceleration(DEFAULT_ACCELERATION)
         self.query_one("#acceleration-input", Input).value = f"{DEFAULT_ACCELERATION}"
         self.set_motor_current(DEFAULT_CURRENT)
@@ -125,10 +148,17 @@ class AdvancedSettings(Static):
 
         self.set_invert_motor_direction(INVERT_MOTOR_DIRECTION)
         self.query_one("#invert-motor-checkbox", Checkbox).value = INVERT_MOTOR_DIRECTION
-        self.set_interpolate(USE_INTERPOLATION)
+        self.set_interpolation(USE_INTERPOLATION)
         self.query_one("#interpolation-checkbox", Checkbox).value = USE_INTERPOLATION
         self.set_spread_cycle(USE_SPREAD_CYCLE)
         self.query_one("#spread-cycle-checkbox", Checkbox).value = USE_SPREAD_CYCLE
+
+        self.set_threshold_speed(DEFAULT_THRESHOLD_SPEED)
+        self.query_one("#threshold-speed-input", Input).value = f"{DEFAULT_THRESHOLD_SPEED}"
+        self.threshold_speed_enabled = THRESHOLD_SPEED_ENABLED
+        self.query_one("#threshold-speed-switch", Switch).value = THRESHOLD_SPEED_ENABLED
+        self.update_control_mode_widgets_state()
+        self.update_control_mode_widgets_value()
 
         self.set_homing_revs(HOMING_REVOLUTIONS)
         self.query_one("#homing-revolutions-input", Input).value = f"{HOMING_REVOLUTIONS}"
@@ -161,12 +191,65 @@ class AdvancedSettings(Static):
     @on(Checkbox.Changed, "#interpolation-checkbox")
     def toggle_interpolation(self, event: Checkbox.Changed):
         interpolate = event.checkbox.value
-        self.set_interpolate(interpolate)
+        self.set_interpolation(interpolate)
 
     @on(Checkbox.Changed, "#spread-cycle-checkbox")
     def toggle_spread_cycle(self, event: Checkbox.Changed):
         spread_cycle = event.checkbox.value
         self.set_spread_cycle(spread_cycle)
+
+    @on(Switch.Changed, "#threshold-speed-switch")
+    def toggle_threshold_speed(self, event: Switch.Changed):
+        self.threshold_speed_enabled = event.switch.value
+        self.app_state.status_advanced.update_threshold_speed_enabled(self.threshold_speed_enabled)
+        self.update_control_mode_widgets_value()
+        self.update_control_mode_widgets_state()
+
+    @on(Input.Submitted, "#threshold-speed-input")
+    def submit_threshold_speed_input(self):
+        threshold_speed_input = self.query_one("#threshold-speed-input", Input)
+        threshold_speed = float(threshold_speed_input.value)
+        threshold_speed_validated = clamp(threshold_speed, MIN_THRESHOLD_SPEED, MAX_THRESHOLD_SPEED)
+        threshold_speed_input.value = f"{threshold_speed_validated}"
+        self.set_threshold_speed(threshold_speed_validated)
+
+    def set_threshold_speed(self, threshold_speed: float):
+        self.threshold_speed = round(threshold_speed, 2)
+        self.app_state.status_advanced.update_threshold_speed(self.threshold_speed)
+        self.update_control_mode_widgets_value()
+
+    def update_control_mode_widgets_value(self):
+        if not self.threshold_speed_enabled:
+            return
+        self.app_state.status_advanced.update_speed_mode(self.threshold_speed_enabled, self.threshold_speed)
+
+        interpolation_checkbox = self.query_one("#interpolation-checkbox", Checkbox)
+        spread_cycle_checkbox = self.query_one("#spread-cycle-checkbox", Checkbox)
+
+        interpolation_checkbox.value = self.interpolate
+        spread_cycle_checkbox.value = self.spread_cycle
+
+    def update_motor_configuration(self):
+        if self.threshold_speed_enabled and self.app_state.speed_controls.speed >= self.threshold_speed:
+            # High-speed configuration
+            self.set_step_mode(HIGH_SPEED_STEP_MODE)
+            self.set_interpolation(HIGH_SPEED_INTERPOLATION)
+            self.set_spread_cycle(HIGH_SPEED_SPREAD_CYCLE)
+        else:
+            # Low-speed configuration
+            self.set_step_mode(LOW_SPEED_STEP_MODE)
+            self.set_interpolation(LOW_SPEED_INTERPOLATION)
+            self.set_spread_cycle(LOW_SPEED_SPREAD_CYCLE)
+        self.update_control_mode_widgets_value()
+
+    def update_control_mode_widgets_state(self):
+        interpolation_checkbox = self.query_one("#interpolation-checkbox", Checkbox)
+        spread_cycle_checkbox = self.query_one("#spread-cycle-checkbox", Checkbox)
+
+        disabled = self.threshold_speed_enabled
+        self.app_state.step_mode.disabled = disabled
+        interpolation_checkbox.disabled = disabled
+        spread_cycle_checkbox.disabled = disabled
 
     @on(Input.Submitted, "#homing-revolutions-input")
     def submit_homing_revs_input(self):
@@ -196,42 +279,45 @@ class AdvancedSettings(Static):
     async def test_stallguard_threshold(self):
         log = self.app.query_one("#logger", RichLog)
         log.write("[cyan]Testing StallGuard threshold...[/]")
-        self.motor_driver.test_stallguard_threshold()
+        self.app_state.motor_driver.test_stallguard_threshold()
         log.write("[cyan]-> Finished testing StallGuard threshold.[/]")
 
     def set_acceleration(self, acceleration: float):
         validated_acceleration = clamp(acceleration, MIN_ACCELERATION, MAX_ACCELERATION)
         self.acceleration = round(validated_acceleration, 1)
-        self.app.query_one(StatusAdvanced).update_acceleration(self.acceleration)
+        self.app_state.status_advanced.update_acceleration(self.acceleration)
 
     def set_motor_current(self, motor_current: int):
         self.motor_current = clamp(motor_current, MIN_CURRENT, MAX_CURRENT)
-        self.motor_driver.set_current(self.motor_current)
-        self.app.query_one(StatusAdvanced).update_motor_current(self.motor_current)
+        self.app_state.motor_driver.set_current(self.motor_current)
+        self.app_state.status_advanced.update_motor_current(self.motor_current)
 
     def set_invert_motor_direction(self, invert_direction: bool):
         self.invert_motor_direction = invert_direction
-        self.motor_driver.set_direction(self.invert_motor_direction)
-        self.app.query_one(StatusAdvanced).update_invert_motor_direction(self.invert_motor_direction)
+        self.app_state.motor_driver.set_direction(self.invert_motor_direction)
+        self.app_state.status_advanced.update_invert_motor_direction(self.invert_motor_direction)
 
-    def set_interpolate(self, interpolate: bool):
+    def set_step_mode(self, step_mode: int):
+        self.app_state.step_mode.set_step_mode(STEP_MODES[step_mode], STEP_MODE_LABELS[step_mode])
+
+    def set_interpolation(self, interpolate: bool):
         self.interpolate = interpolate
-        self.motor_driver.set_interpolation(self.interpolate)
-        self.app.query_one(StatusAdvanced).update_interpolate(self.interpolate)
+        self.app_state.motor_driver.set_interpolation(self.interpolate)
+        self.app_state.status_advanced.update_interpolate(self.interpolate)
 
     def set_spread_cycle(self, spread_cycle: bool):
         self.spread_cycle = spread_cycle
-        self.motor_driver.set_spreadcycle(self.spread_cycle)
-        self.app.query_one(StatusAdvanced).update_spread_cycle(self.spread_cycle)
+        self.app_state.motor_driver.set_spread_cycle(self.spread_cycle)
+        self.app_state.status_advanced.update_spread_cycle(self.spread_cycle)
 
     def set_homing_revs(self, homing_revs: int):
         self.homing_revs = homing_revs
-        self.app.query_one(StatusAdvanced).update_homing_revs(self.homing_revs)
+        self.app_state.status_advanced.update_homing_revs(self.homing_revs)
 
     def set_homing_threshold(self, homing_threshold: int):
         self.homing_threshold = homing_threshold
-        self.app.query_one(StatusAdvanced).update_homing_threshold(self.homing_threshold)
+        self.app_state.status_advanced.update_homing_threshold(self.homing_threshold)
 
     def set_homing_speed(self, homing_speed: float):
         self.homing_speed = homing_speed
-        self.app.query_one(StatusAdvanced).update_homing_speed(self.homing_speed)
+        self.app_state.status_advanced.update_homing_speed(self.homing_speed)
