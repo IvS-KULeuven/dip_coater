@@ -69,7 +69,7 @@ class AdvancedSettings(Static):
                 yield Checkbox("Interpolation", value=self.interpolate, id="interpolation-checkbox", classes="checkbox")
                 yield Checkbox("Spread Cycle (T)/Stealth Chop (F)", value=self.spread_cycle, id="spread-cycle-checkbox", classes="checkbox")
             with Horizontal(id="threshold-speed-container"):
-                yield Label("Enable Threshold Speed", id="threshold-speed-switch-label")
+                yield Label("Enable Threshold Speed: ", id="threshold-speed-switch-label")
                 yield Switch(value=self.threshold_speed_enabled, id="threshold-speed-switch")
                 yield Label("Threshold Speed: ", id="threshold-speed-label")
                 yield Input(
