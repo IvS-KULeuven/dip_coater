@@ -242,6 +242,7 @@ StatusAdvanced {
 #motor-logger {
     background: $panel;
     margin-top: 1;
+    height: 90%;
 }
 
 Coder {

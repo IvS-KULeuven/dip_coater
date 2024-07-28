@@ -3,8 +3,7 @@ import logging
 
 from textual import on
 from textual.app import App, ComposeResult
-from textual.containers import Horizontal, Vertical
-from textual.widgets import Button, Footer, Header, RichLog, TabPane, TabbedContent
+from textual.widgets import Button, Footer, Header, RichLog, TabbedContent
 from textual.binding import Binding
 from importlib.metadata import version
 
@@ -21,13 +20,7 @@ from dip_coater.app_state import app_state
 from dip_coater.gpio import get_gpio_instance
 
 from dip_coater.widgets.advanced_settings import AdvancedSettings
-from dip_coater.widgets.coder import Coder
-from dip_coater.widgets.distance_controls import DistanceControls
 from dip_coater.widgets.motor_controls import MotorControls
-from dip_coater.widgets.position_controls import PositionControls
-from dip_coater.widgets.speed_controls import SpeedControls
-from dip_coater.widgets.status import Status
-from dip_coater.widgets.status_advanced import StatusAdvanced
 from dip_coater.logging.motor_logger import MotorLoggerHandler
 from dip_coater.commands.help_command import HelpCommand
 from dip_coater.screens.help_screen import HelpScreen
@@ -35,6 +28,11 @@ from dip_coater.constants import (
     STEP_MODES, DEFAULT_STEP_MODE, DEFAULT_CURRENT, INVERT_MOTOR_DIRECTION, USE_INTERPOLATION, USE_SPREAD_CYCLE,
     DEFAULT_LOGGING_LEVEL
 )
+
+from dip_coater.widgets.tabs.main_tab import MainTab
+from dip_coater.widgets.tabs.logs_tab import LogsTab
+from dip_coater.widgets.tabs.advanced_settings_tab import AdvancedSettingsTab
+from dip_coater.widgets.tabs.coder_tab import CoderTab
 
 
 class DipCoaterApp(App):
@@ -76,26 +74,10 @@ class DipCoaterApp(App):
         yield Header(show_clock=True)
         yield Footer()
         with TabbedContent(initial="main-tab", id="tabbed-content"):
-            with TabPane("Main", id="main-tab"):
-                with Horizontal():
-                    with Vertical(id="left-side"):
-                        yield SpeedControls()
-                        yield DistanceControls()
-                        yield PositionControls(app_state.motor_driver)
-                        yield MotorControls(self.GPIO, app_state.motor_driver)
-                        yield RichLog(markup=True, id="logger")
-                    with Vertical(id="right-side"):
-                        yield Status(app_state.motor_driver, id="status")
-            with TabPane("Advanced", id="advanced-tab"):
-                with Horizontal():
-                    with Vertical(id="left-side-advanced"):
-                        yield AdvancedSettings(app_state.motor_driver)
-                        yield self.motor_logger_widget
-                    with Vertical(id="right-side-advanced"):
-                        yield StatusAdvanced(id="status-advanced")
-                        yield Button("Reset to defaults", id="reset-to-defaults-btn", variant="error")
-            with TabPane("Coder", id="coder-tab"):
-                yield Coder()
+            yield MainTab(self.GPIO, app_state)
+            yield LogsTab(app_state, self.motor_logger_widget)
+            yield AdvancedSettingsTab(app_state)
+            yield CoderTab()
 
     @on(Button.Pressed, "#reset-to-defaults-btn")
     def reset_to_defaults(self):
