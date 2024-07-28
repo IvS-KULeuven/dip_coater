@@ -1,14 +1,12 @@
 from logging import Handler
 
-from textual.widgets import RichLog
-
 from TMC_2209._TMC_2209_logger import Loglevel
 
 
 class MotorLoggerHandler(Handler):
-    def __init__(self, logger_widget: RichLog) -> None:
+    def __init__(self, app_state) -> None:
         super().__init__()
-        self.logger_widget = logger_widget
+        self.logger_widget = app_state.motor_logger_widget
 
     def emit(self, record) -> None:
         self.logger_widget.write(self.colorize(record))
