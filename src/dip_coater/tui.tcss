@@ -216,14 +216,21 @@ AdvancedSettings {
         border: none;
     }
 
-    #logging-level-select {
-        height: 3;
+    #threshold-speed-switch {
         border: none;
+        margin-right: 2;
     }
 
     .rule {
         border: none;
         margin-bottom: 1;
+    }
+}
+
+LogsTab {
+    #logging-level-select {
+        height: 3;
+        border: none;
     }
 }
 
