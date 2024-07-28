@@ -315,8 +315,7 @@ def get_gpio_instance():
     if board == Board.RASPBERRY_PI5:
         print("Attempting to use GPIOZero for Raspberry Pi 5")
         try:
-            import gpiod
-            return GPIOd()
+            return GPIOZero()
         except ImportError as err:
             print(f"ImportError: {err}")
             print("Board is Raspberry Pi 5 but module gpiod isn't installed.")
