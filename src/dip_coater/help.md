@@ -2,9 +2,13 @@
 
 ## Keyboard actions
 
-- `d` toggles dark/light mode
+- `t` toggles dark/light mode
 - `q` quits the application
 - `h` show this help screen (`escape` to exit)
+- `a` enable the motor
+- `d` disable the motor
+- `w` move the motor up
+- `s` move the motor down
 - `tab` will navigate through different input possibilities
 - `return` will accept the currently selected input
 
@@ -16,6 +20,13 @@ The movement speed and the vertical distance is the same for up or down movement
 with the `+` and `-` buttons, or by entering a new value in the text input fields (the widget that displays the 
 speed/distance value) and then pressing the Enter key on your keyboard. The application has defined minimum and maximum 
 values for the speed and distance. You will not be able to go passed these limits.
+
+If you have homed the motor, you can also move the guide to absolute positions. To home the motor, press the `Do HOMING`
+button. This will move the motor upwards, until the top limit switch is triggered. It will then stop and define its current
+position as the absolute 0 position. If you were to move the motor down 10 mm, and then up 3 mm, you would then be at the 7 mm absolute position.
+You can also move the motor to an absolute position by entering the desired position in the text input field and pressing
+the Enter key on your keyboard. The motor will then move to the desired position. ! If the motor is not homed, the position
+control buttons will be disabled and not work.
 
 For high motor speeds (> 10 mm/s) and/or high step mode (> 16), the motor may overshoot (a larger travel distance than 
 the set distance), or not respond as fast as you would expect for the given speed input. This is due to the limitation 
@@ -54,11 +65,18 @@ following functions (the so-called 'Coder API'):
 - `self.move_down(distance_mm, speed_mm_s, acceleration_mm_s=None)`: move the motor down by supplying the following parameters:
   - `distance_mm`: the distance in mm to move down
   - `speed_mm_s`: the speed in mm/s to move down
-  - `acceleration_mm_s`: the acceleration in mm/s^2 to move down (optional, leave empty for default acceleration)
+  - `acceleration_mm_s`: (optional) the acceleration in mm/s^2 to move down (leave empty for default acceleration)
 - `self.move_up(distance_mm, speed_mm_s, acceleration_mm_s=None)`: move the motor up by supplying the following parameters:
   - `distance_mm`: the distance in mm to move up
   - `speed_mm_s`: the speed in mm/s to move up
-  - `acceleration_mm_s`: the acceleration in mm/s^2 to move up (optional, leave empty for default acceleration)
+  - `acceleration_mm_s`: (optional) the acceleration in mm/s^2 to move up (leave empty for default acceleration)
+- `self.home_motor(home_up=True)`: home the motor, necessary for moving to absolute positions
+  - `home_up` (optional) if the motor was homed at the top limit switch, set to `True`, if homed using the bottom limit switch, set `False`
+- `self.move_to_position(self, position_mm, speed_mm_s=None, acceleration_mm_s2=None, home_up=True)`: move the motor to an absolute position in mm
+  - `position_mm`: the absolute position in mm to move to
+  - `speed_mm_s`: (optional) the speed in mm/s to move to the absolute position (leave empty to use the last set speed)
+  - `acceleration_mm_s2`: (optional) the acceleration in mm/s^2 to move to the absolute position (leave empty to use the last set acceleration)
+  - `home_up`: (optional) if the motor was homed at the top limit switch, set to `True`, if homed using the bottom limit switch, set `False`
 - `self.sleep(seconds)`: wait for a number of seconds
 
 For example, to move the motor down by 10 mm at a speed of 5 mm/s, then wait 5 seconds, and then move up by 10 mm at 2 mm/s,

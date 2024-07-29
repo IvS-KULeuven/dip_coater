@@ -1,9 +1,12 @@
+#pylint: disable=invalid-name
+#pylint: disable=protected-access
 """
 TMC_2209 stepper driver logger module
 """
 
 import logging
 from enum import Enum
+
 
 
 class Loglevel(Enum):
@@ -17,6 +20,7 @@ class Loglevel(Enum):
     NONE = -1           # no messages will be logged
 
 
+
 class TMC_logger:
     """TMC_2209_logger
 
@@ -25,13 +29,14 @@ class TMC_logger:
     """
 
     def __init__(self, loglevel: Loglevel = Loglevel.INFO, logprefix: str = "TMC2209",
-                 handlers=None):
+                 handlers: list = None, formatter: logging.Formatter = None):
         """constructor
 
         Args:
-            logprefix (string): new logprefix
+            logprefix (string): new logprefix (name of the logger) (default: "TMC2209")
             loglevel (enum): level for which to log
             handlers (list): list of logging handlers, see logging.handlers (default: None)
+            formatter (logging.Formatter): formatter for the log messages (default: None)
         """
         if logprefix is None:
             logprefix = "TMC2209"
@@ -44,7 +49,9 @@ class TMC_logger:
 
         self.loglevel = loglevel
         self.set_loglevel(loglevel)
-        self.formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        if formatter is None:
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        self.formatter = formatter
 
         if handlers is None:
             # Default handler: StreamHandler (logs to console)
@@ -141,6 +148,7 @@ class TMC_logger:
         setattr(logging.getLoggerClass(), method_name, logForLevel)
         setattr(logging, method_name, logToRoot)
 
+
     def log(self, message, loglevel: Loglevel = Loglevel.INFO):
         """logs a message
 
@@ -149,5 +157,4 @@ class TMC_logger:
             loglevel (enum): loglevel of this message (Default value = Loglevel.INFO)
         """
         if self.loglevel is not Loglevel.NONE:
-            #raise Exception(self.logger.handlers)
             self.logger.log(loglevel.value, message)

@@ -1,6 +1,6 @@
 Status {
     height: 4;
-    width: 30;
+    width: 100%;
     visibility: visible;
 }
 
@@ -20,13 +20,14 @@ Status {
 
 StepMode {
     align-vertical: middle;
-    height: 6;
+    height: 5;
+    margin-bottom: 1;
 
     #step-mode {
         layout: horizontal;
         width: 100%;
         overflow: auto;
-        height: 5;
+        height: 4;
         margin: 0;
     }
 
@@ -43,6 +44,10 @@ MotorControls {
 
     Button {
         margin: 0 1 1 1;
+    }
+
+    #stop-motor {
+        margin-left: 2;
     }
 }
 
@@ -126,6 +131,47 @@ DistanceControls {
     }
 }
 
+PositionControls {
+    margin-right: 0;
+    margin-left: 0;
+    height: 2;
+    #distance-label {
+        width: 10;
+    }
+    .btn-position {
+         content-align: center middle;
+        margin-right: 0;
+        margin-left: 0;
+        border: none;
+        min-width: 0;
+        padding: 0;
+    }
+    .btn-position-control {
+        width: 7;
+    }
+    #position-down-fine {
+        margin-right: 2;
+        margin-left: 1;
+    }
+    #position-up-fine {
+        margin-right: 1;
+    }
+    #set-to-current-pos-btn {
+        margin-left: 1;
+    }
+    #position-input {
+        content-align: left top;
+        margin-left: 2;
+        width: 7;
+        height: 1;
+        padding: 0;
+        border: none;
+    }
+    #move-to-position-btn {
+        margin-left: 1;
+    }
+}
+
 .selected {
     background: $success;
 }
@@ -139,7 +185,7 @@ DistanceControls {
 }
 
 AdvancedSettings {
-    height: 13;
+    height: 23;
     .input-fields {
         content-align: left top;
         margin-left: 2;
@@ -147,6 +193,10 @@ AdvancedSettings {
         height: 1;
         padding: 0;
         border: none;
+    }
+
+    #invert-motor-checkbox {
+        margin-right: 2;
     }
 
     #interpolation-container {
@@ -166,6 +216,18 @@ AdvancedSettings {
         border: none;
     }
 
+    #threshold-speed-switch {
+        border: none;
+        margin-right: 2;
+    }
+
+    .rule {
+        border: none;
+        margin-bottom: 1;
+    }
+}
+
+LogsTab {
     #logging-level-select {
         height: 3;
         border: none;
@@ -187,6 +249,7 @@ StatusAdvanced {
 #motor-logger {
     background: $panel;
     margin-top: 1;
+    height: 90%;
 }
 
 Coder {
@@ -239,5 +302,14 @@ Coder {
     #coder-path-invalid-reasons {
         margin-left: 1;
     }
+}
+
+.btn-small {
+    content-align: center middle;
+    margin-right: 0;
+    margin-left: 0;
+    border: none;
+    min-width: 0;
+    padding: 0;
 }
 
