@@ -5,7 +5,7 @@ import time
 import logging
 import asyncio
 
-from dip_coater.gpio import get_gpio_instance, GPIOBase, GpioEdge, GpioState
+from dip_coater.gpio import get_gpio_instance, GpioEdge, GpioState
 
 # ======== CONSTANTS ========
 TRANS_PER_REV = 4  # The vertical translation in mm of the coater for one revolution of the motor

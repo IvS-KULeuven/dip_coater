@@ -1,46 +1,37 @@
-[build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[project]
+[tool.poetry]
 name = "dip-coater"
 version = "1.0.0"
+description = "A terminal / Textual app to control a dip coater motor"
 authors = [
-    {name="Rik Huygen", email="rik.huygen@kuleuven.be"},
-    {name="Sibo Van Gool", email="sibo.vangool@kuleuven.be"}
+    "Rik Huygen <rik.huygen@kuleuven.be>",
+    "Sibo Van Gool <sibo.vangool@kuleuven.be>"
 ]
-license = { text = "MIT License" }
+license = "MIT"
 readme = "README.md"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "License :: OSI Approved :: MIT License",
-]
-requires-python = ">=3.8, <4.0"
+packages = [{include = "dip_coater", from = "src"}]
+package-mode = true
 
-dependencies = [
-    "textual>=0.73.0",
-    "textual-dev",
-    "uvloop>=0.19.0"
-]
+[tool.poetry.dependencies]
+python = ">=3.8,<4.0"
+textual = ">=0.73.0"
+textual-dev = "*"
+uvloop = ">=0.19.0"
+pytrinamic = "^0.2.11"
+tmc-2209-raspberry-pi = ">=0.5.1"
+mock-gpio = "^0.1.8"
 
-[project.urls]
-repository = "https://github.com/IvS-KULeuven/dip_coater"
+[tool.poetry.group.rpi]
+optional = true
 
-[project.optional-dependencies]
-rpi = ["RPi.GPIO", "TMC-2209-Raspberry-Pi>=0.5.1"]
+[tool.poetry.group.rpi.dependencies]
+"RPi.GPIO" = ">=0.7.1"
 
-[project.scripts]
+[tool.poetry.scripts]
 dip-coater = "dip_coater.app:main"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.poetry.urls]
+repository = "https://github.com/IvS-KULeuven/dip_coater"
 
-[tool.setuptools.package-data]
-dip_coater = [
-    "*.tcss",
-    "*.md",
-    "images/*.png"
-]
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

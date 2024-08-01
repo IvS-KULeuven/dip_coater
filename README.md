@@ -8,24 +8,54 @@ This App is developed with [Textual](https://www.textualize.io) and the motor dr
 
 Always install in a dedicated virtual environment!
 
+### Poetry (recommended)
+
+First [install Poetry](https://python-poetry.org/docs/).
+
+On a Raspberry Pi, install the project together with the RPi packages:
+
 ```bash
 $ cd </path/to/dip-coater>
-$ python3 -m venv venv --prompt=dip-coater
-$ source venv/bin/activate
-$ python3 -m pip install --upgrade pip setuptools wheel
-$ python3 -m pip install -e .
-```
-
-On a Raspberry Pi, install the project together with the RPi package:
-
-```bash
-$ pip install dip-coater[rpi] 
+$ poetry install --with rpi
 ```
 
 When you want to develop and test on a macOS or Linux system, install without the RPi package. The App will mock the imports and functions.
 
 ```bash
-$ pip install dip-coater
+$ poetry install
+```
+
+Then activate the environment:
+
+```bash
+$ poetry shell
+```
+
+### Classic venv
+
+Create and activate the virtual environment:
+```bash
+$ cd </path/to/dip-coater>
+$ python3 -m venv venv --prompt=dip-coater
+$ source venv/bin/activate
+```
+
+On a Raspberry Pi:
+
+```bash
+$ python3 -m pip install -r <(poetry export --with rpi --dev --format=requirements.txt)
+```
+
+Or on a macOS, Linux, or Windows system:
+
+```bash
+$ python3 -m pip install -r <(poetry export --dev --format=requirements.txt)
+```
+
+### Install the package
+
+```bash
+$ python3 -m pip install -e .
 ```
 
 ## Usage
