@@ -44,6 +44,10 @@ By default, the `Main` tab is selected. You can switch to the `Advanced` tab on 
 
 ![](https://raw.githubusercontent.com/IvS-KULeuven/dip_coater/develop/images/dip-coater-dark-advanced.png)
 
+To view log messages of the program for debugging, you can switch to the `Logs` tab.
+
+![](https://raw.githubusercontent.com/IvS-KULeuven/dip_coater/develop/images/dip-coater-dark-logs.png)
+
 To run custom, automated routines, you can use the `Coder` tab. Here you can write your own Python code to control the motor
 using the Coder API. The code is executed when you press the `RUN code` button. You can view the available Coder API calls in the 
 collapsible section at the top of the screen, or in the help menu. If you do not want to use the default code, you can 
