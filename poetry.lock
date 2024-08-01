@@ -737,13 +737,13 @@ typing-extensions = ">=4.4.0,<5.0.0"
 
 [[package]]
 name = "tmc-2209-raspberry-pi"
-version = "0.5.1"
+version = "0.5.2"
 description = "this is a Python libary to drive a stepper motor with a Trinamic TMC2209 stepper driver and a Raspberry Pi"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "TMC_2209_Raspberry_Pi-0.5.1-py3-none-any.whl", hash = "sha256:5273e58b9d4831209ef130abd552d2185b54ffc49c78bdd4cf4dbb663fddfe36"},
-    {file = "tmc_2209_raspberry_pi-0.5.1.tar.gz", hash = "sha256:189eceee8e6febcd442dff2d7b24d3b0f748fb7be9605a7e9be9bbee8760d956"},
+    {file = "TMC_2209_Raspberry_Pi-0.5.2-py3-none-any.whl", hash = "sha256:323c9477527d500313875d32601730b9fe7df8b45147296ca61825a273fbd577"},
+    {file = "tmc_2209_raspberry_pi-0.5.2.tar.gz", hash = "sha256:d48602dc7707d40ac1c19c01db39557b8428c65c27b02e5239796cda8e2bdd73"},
 ]
 
 [package.dependencies]
@@ -1009,4 +1009,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<4.0"
-content-hash = "202581a0b853eee39c3d40002be286a85074d3c447d59b8c09f0888fd2741b32"
+content-hash = "f348b630ca3683e3a440ba4b73f69dceaf53775d0ea654efbecf0932aae16c0a"
