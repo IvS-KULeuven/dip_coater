@@ -4,6 +4,7 @@ from TMC_2209._TMC_2209_move import MovementAbsRel, StopMode
 import time
 import logging
 import asyncio
+import platform
 
 from dip_coater.gpio import get_gpio_instance, GpioEdge, GpioState
 
@@ -41,11 +42,15 @@ class TMC2209_MotorDriver:
         self.diag_pin = 5
 
         # Motor driver
-        self.tmc = TMC_2209(self.en_pin, self.step_pin, self.dir_pin, loglevel=loglevel, log_handlers=log_handlers,
-                            log_formatter=log_formatter)
-
+        if platform.system() == "Darwin" or platform.system() == "Windows":
+            print("Running on non-Raspberry Pi system. Using mock TMC2209 driver.")
+            self.tmc = TMC_2209(self.en_pin, self.step_pin, self.dir_pin, loglevel=loglevel, log_handlers=log_handlers,
+                                serialport=None, skip_uart_init=True)
+        else:
+            self.tmc = TMC_2209(self.en_pin, self.step_pin, self.dir_pin, loglevel=loglevel, log_handlers=log_handlers,
+                                log_formatter=log_formatter)
         # Set motor driver settings
-        self.tmc.set_vactual(False)      # Motor is not controlled by UART
+        self.tmc.set_vactual(0)      # Motor is not controlled by UART
         self.tmc.set_direction_reg(invert_direction)
         self.tmc.set_current(current, pdn_disable=False)    # mA
         self.tmc.set_interpolation(interpolation)

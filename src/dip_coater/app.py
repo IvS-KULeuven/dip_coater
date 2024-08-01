@@ -115,8 +115,9 @@ def main():
     # Convert string level to the appropriate value in your Loglevel enum
     log_level = getattr(Loglevel, args.log_level)
 
-    app = DipCoaterApp(log_level)
     package_version = version("dip-coater")
+    print(f"Starting Dip Coater v{package_version}")
+    app = DipCoaterApp(log_level)
     app.title = f"Dip Coater v{package_version}"
     app.run()
 
