@@ -40,11 +40,11 @@ app_state = DummyAppState(mechanical_setup)
 # Initialize the TMC2660 driver
 driver = TMC2660_MotorDriver(
     app_state,
-    interface_type="dummy_tmcl" if USE_DUMMY else "usb_tmcl",
+    interface_type="usb_tmcl" if not USE_DUMMY else "dummy_tmcl",
     port="/dev/ttyACM0" if not USE_DUMMY else None,
-    step_mode=8,
-    current_ma=2000,
-    current_standstill_ma=1000,
+    step_mode=128,
+    current_mA=4000,
+    current_standstill_mA=1500,
     loglevel=Loglevel.INFO
 )
 
@@ -53,29 +53,28 @@ lb = Landungsbruecke(driver.interface)
 print_lb_content(lb)
 
 # Configure the motor
-#driver.set_acceleration(100)  # 100 mm/s^2
+driver.set_acceleration(100)  # 100 mm/s^2
 
 # Enable the driver
 driver.enable_motor()
 
 print("Rotating...")
-driver.motor.rotate(5000)
-#driver.move_up(10, 5)  # Move up 10mm at 5 mm/s
+#driver.motor.rotate(1000)
+#driver.move_up(8, 4)  # Move up 8mm at 4 mm/s
+driver.rotate(2, 1)
 time.sleep(2)
 
 print("Stopping...")
 driver.stop_motor()
 time.sleep(1)
 
-print("Moving back to 0...")
-driver.run_to_position(0, 10)  # Move to 0mm at 10 mm/s
+print("Rotating...")
+driver.motor.rotate(-1000)
+#driver.move_down(8, 4)  # Move down 8mm at 4 mm/s
+time.sleep(2)
 
-# Wait until position 0 is reached
-while abs(driver.get_current_position_mm()) > 0.1:
-    print(f"Actual position: {driver.get_current_position_mm():.2f} mm")
-    time.sleep(0.2)
-
-print("Reached position 0")
+print("Stopping...")
+driver.motor.stop()
 
 # Clean up
 driver.cleanup()

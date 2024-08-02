@@ -25,30 +25,47 @@ class TMC2660_MotorDriver(MotorDriver):
         self.eval_board = TMC2660_eval(self.interface)
         self.lb = Landungsbruecke(self.interface)
         self.bank = 0
+
         self.axis = 0
         self.motor = self.eval_board.motors[0]
+        self.disable_motor()
         self.set_microsteps(step_mode)
-        self.microsteps = self.get_microsteps()
 
-        #self.set_max_current(current_mA)
-        #self.set_standby_current(current_standstill_mA)
+        self.set_max_current(current_mA)
+        self.set_standby_current(current_standstill_mA)
 
     # --------------- MOTOR CONTROL ---------------
 
     def enable_motor(self):
         self.interface.set_global_parameter(self.lb.GP.DriversEnable, self.bank, 1)
+        if self.is_motor_enabled() != 1:
+            raise ValueError("Motor should be enabled")
 
     def disable_motor(self):
         self.interface.set_global_parameter(self.lb.GP.DriversEnable, self.bank, 0)
+        if self.is_motor_enabled() != 0:
+            raise ValueError("Motor should be enabled")
 
-    def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0):
-        self.set_speed(speed_mm_s)
-        self.set_acceleration(acceleration_mm_s2)
-        steps = self.mechanical_setup.mm_to_steps(distance_mm, self.microsteps)
-        self.interface.move_by(0, int(steps))
+    def is_motor_enabled(self):
+        return self.interface.get_global_parameter(self.lb.GP.DriversEnable, self.bank)
 
-    def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0):
-        self.move_up(-distance_mm, speed_mm_s, acceleration_mm_s2)
+    def rotate(self, revs: float, rps: float, rpss: float = None):
+        self.set_speed_rps(rps)
+        self.set_acceleration_rpss(rpss)
+        steps = self.mechanical_setup.revs_to_steps(revs, self.microsteps)
+        self.motor.move_by(0, int(steps))
+
+    def move(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
+        revs = self.mechanical_setup.mm_to_revs(distance_mm)
+        rps = self.mechanical_setup.mm_s_to_rps(speed_mm_s)
+        rpss = self.mechanical_setup.mm_s2_to_rpss(acceleration_mm_s2)
+        self.rotate(revs, rps, rpss)
+
+    def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
+        self.move(distance_mm, speed_mm_s, acceleration_mm_s2)
+
+    def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
+        self.move(-distance_mm, speed_mm_s, acceleration_mm_s2)
 
     def stop_motor(self):
         self.motor.stop()
@@ -66,30 +83,48 @@ class TMC2660_MotorDriver(MotorDriver):
     # --------------- MOTOR CONFIGURATION ---------------
 
     def set_microsteps(self, microsteps: int):
+        self.verify_microsteps(microsteps)
         self.microsteps = microsteps
-        _step_mode = self.microstep_steps_to_idx(microsteps)
-        self.motor.set_axis_parameter(self.motor.AP.MicrostepResolution, int(_step_mode))
+        self.motor.set_axis_parameter(self.motor.AP.MicrostepResolution, microsteps)
+
+        verify_microsteps = self.get_microsteps()
+        if self.microsteps != verify_microsteps:
+            raise ValueError(f"Set microsteps {microsteps} does not match read back value {verify_microsteps}")
 
     def get_microsteps(self) -> int:
-        mstep = self.eval_board.get_axis_parameter(self.motor.AP.MicrostepResolution, self.axis)
+        mstep = self.motor.get_axis_parameter(self.motor.AP.MicrostepResolution, self.axis)
         return self.microstep_idx_to_steps(mstep)
 
     def set_max_current(self, current_mA: float):
         self.motor.set_axis_parameter(self.motor.AP.MaxCurrent, int(current_mA))
 
+        verify_current = self.get_max_current()
+        if current_mA != verify_current:
+            raise ValueError(f"Set max current {current_mA} mA does not match read back value {verify_current} mA")
+
+    def get_max_current(self):
+        return self.motor.get_axis_parameter(self.motor.AP.MaxCurrent, self.axis)
+
     def set_standby_current(self, current_mA: float):
         self.motor.set_axis_parameter(self.motor.AP.StandbyCurrent, int(current_mA))
 
-    def set_speed(self, speed_mm_s: float):
-        if speed_mm_s is None:
+        verify_current = self.get_standby_current()
+        if current_mA != verify_current:
+            raise ValueError(f"Set standby current {current_mA} mA does not match read back value {verify_current} mA")
+        
+    def get_standby_current(self):
+        return self.motor.get_axis_parameter(self.motor.AP.StandbyCurrent, self.axis)
+
+    def set_speed_rps(self, rps: float):
+        if rps is None:
             return
-        steps_per_second = self.mechanical_setup.mm_s_to_stepss(speed_mm_s, self.microsteps)
+        steps_per_second = self.mechanical_setup.rps_to_stepss(rps, self.microsteps)
         self.motor.set_axis_parameter(self.motor.AP.MaxVelocity, int(steps_per_second))
 
-    def set_acceleration(self, acceleration_mm_s2: float):
-        if acceleration_mm_s2 is None or acceleration_mm_s2 == 0:
+    def set_acceleration_rpss(self, rpss: float):
+        if rpss is None or rpss == 0:
             return
-        steps_per_second2 = self.mechanical_setup.mm_s2_to_rpss(acceleration_mm_s2)
+        steps_per_second2 = self.mechanical_setup.rpss_to_stepss(rpss, self.microsteps)
         self.motor.set_axis_parameter(self.motor.AP.MaxAcceleration, int(steps_per_second2))
 
     # --------------- HELPER METHODS ---------------
@@ -99,19 +134,19 @@ class TMC2660_MotorDriver(MotorDriver):
 
     @staticmethod
     def microstep_idx_to_steps(idx: int) -> int:
-        """Convert microstep index to actual number of microsteps."""
+        """Convert microstep index (0, 1, 2, 3...) to actual number of microsteps (1, 2, 4, 8...)."""
         if 0 <= idx <= 8:
             return 2 ** idx
         else:
             raise ValueError(f"Invalid microstep index: {idx}. Must be between 0 and 8.")
 
     @staticmethod
-    def microstep_steps_to_idx(steps: int) -> int:
-        """Convert actual number of microsteps to microstep index."""
-        if steps in [1, 2, 4, 8, 16, 32, 64, 128, 256]:
-            return int.bit_length(steps) - 1
+    def verify_microsteps(microsteps: int) -> int:
+        """ Verify that the microsteps are valid (1, 2, 4, 8...). If so, return the microstep index (0, 1, 2, 3...)."""
+        if microsteps in [1, 2, 4, 8, 16, 32, 64, 128, 256]:
+            return int.bit_length(microsteps) - 1
         else:
-            raise ValueError(f"Invalid number of microsteps: {steps}. Must be a power of 2 between 1 and 256.")
+            raise ValueError(f"Invalid number of microsteps: {microsteps}. Must be a power of 2 between 1 and 256.")
 
     def cleanup(self):
         self.disable_motor()
