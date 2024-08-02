@@ -43,8 +43,8 @@ driver = TMC2660_MotorDriver(
     interface_type="usb_tmcl" if not USE_DUMMY else "dummy_tmcl",
     port="/dev/ttyACM0" if not USE_DUMMY else None,
     step_mode=128,
-    current_mA=4000,
-    current_standstill_mA=1500,
+    current_mA=2000,
+    current_standstill_mA=200,
     loglevel=Loglevel.INFO
 )
 

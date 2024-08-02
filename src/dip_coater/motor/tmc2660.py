@@ -134,7 +134,7 @@ class TMC2660_MotorDriver(MotorDriver):
         self.motor.set_axis_parameter(self.motor.AP.StandbyCurrent, current_value)
 
         verify_current = self.get_standby_current()
-        if current_mA != verify_current:
+        if current_value != verify_current:
             raise ValueError(f"Set standby current {current_value} does not match read back value {verify_current}")
         
     def get_standby_current(self):
@@ -178,7 +178,7 @@ class TMC2660_MotorDriver(MotorDriver):
 
     def _convert_current_to_value(self, current_mA: float) -> int:
         vfs = self._get_vsense_full_scale_voltage()
-        value = int((current_mA * 32 * self.rsense * 1.4142) / vfs) - 1
+        value = int((current_mA/1000 * 32 * self.rsense * 1.4142) / vfs) - 1         # 1.4142 = sqrt(2)
         if value < 0 or value > 31:
             raise ValueError(f"Invalid current value: {value}. Must be between 0 and 31.")
         return value
@@ -187,7 +187,7 @@ class TMC2660_MotorDriver(MotorDriver):
         if value < 0 or value > 31:
             raise ValueError(f"Invalid current value: {value}. Must be between 0 and 31.")
         vfs = self._get_vsense_full_scale_voltage()
-        return (value + 1) * vfs / (32 * self.rsense * 1.4142)
+        return (value + 1) * vfs / (32 * self.rsense * 1.4142) * 1000         # 1.4142 = sqrt(2)
 
     def cleanup(self):
         self.disable_motor()
