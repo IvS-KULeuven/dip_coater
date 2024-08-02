@@ -7,12 +7,10 @@ import asyncio
 import platform
 
 from dip_coater.gpio import get_gpio_instance, GpioEdge, GpioState
-
-# ======== CONSTANTS ========
-TRANS_PER_REV = 4  # The vertical translation in mm of the coater for one revolution of the motor
+from dip_coater.motor.motor_driver_interface import MotorDriver
 
 
-class TMC2209_MotorDriver:
+class TMC2209_MotorDriver(MotorDriver):
     homing_found = False
     limit_switch_bindings = {}      # Stores the limit switch pin and the corresponding edge trigger event
 
@@ -32,6 +30,8 @@ class TMC2209_MotorDriver:
         :param log_handlers: The log handlers to use for the motor driver (default: None = log to console)
         :param log_formatter: The log formatter log the motor driver messages with (default: None = use default formatter)
         """
+        super().__init__(app_state.mechanical_setup)
+
         # Get the appropriate GPIO instance
         self.GPIO = app_state.gpio
 
@@ -60,53 +60,7 @@ class TMC2209_MotorDriver:
 
         self.tmc.set_movement_abs_rel(MovementAbsRel.RELATIVE)
 
-    def read_back_config(self):
-        self.tmc.read_ioin()
-        self.tmc.read_chopconf()
-        self.tmc.read_drv_status()
-        self.tmc.read_gconf()
-
-    def set_step_mode(self, _step_mode: int = 4):
-        """ Set the step mode of the motor driver
-
-        :param _step_mode: The step mode to set (1, 2, 4, 8, 16, 32, 64, 128, 256)
-        """
-        self.tmc.set_microstepping_resolution(_step_mode)
-
-    def set_current(self, current: int = 1000):
-        """ Set the current of the motor driver
-
-        :param current: The current to set for the motor driver in mA
-        """
-        self.tmc.set_current(current, pdn_disable=False)
-
-    def set_direction(self, invert_direction: bool = False):
-        """ Set the direction of the motor driver
-
-        :param invert_direction: Whether to invert the direction of the motor (default: False)
-        """
-        self.tmc.set_direction_reg(invert_direction)
-
-    def set_interpolation(self, interpolation: bool = True):
-        """ Set the interpolation setting of the motor driver
-
-        :param interpolation: Whether to use interpolation for the motor driver
-        """
-        self.tmc.set_interpolation(interpolation)
-
-    def set_spread_cycle(self, spread_cycle: bool = False):
-        """ Set the spread cycle/stealth chop setting of the motor driver
-
-        :param spread_cycle: Whether to use spread_cycle for the motor driver (true) or stealth chop (false)
-        """
-        self.tmc.set_spreadcycle(spread_cycle)
-
-    def set_loglevel(self, loglevel: Loglevel = Loglevel.INFO):
-        """ Set the log level for the motor driver
-
-        :param loglevel: The log level to set for the motor driver (NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL)
-        """
-        self.tmc.tmc_logger.set_loglevel(loglevel)
+    # --------------- MOTOR CONTROL ---------------
 
     def enable_motor(self):
         """ Arm the motor"""
@@ -129,32 +83,10 @@ class TMC2209_MotorDriver:
             for pin in limit_switch_pins:
                 if self._is_limit_switch_triggered(pin):
                     raise ValueError(f"Limit switch on pin {pin} is triggered. Please check the limit switches.")
-        revs = self.calculate_revs_from_distance(distance_mm)
+        revs = self.mechanical_setup.mm_to_rot(distance_mm)
         self.set_speed(speed_mm_s)
         self.set_acceleration(acceleration_mm_s2)
         self.tmc.run_to_position_revolutions_threaded(revs)
-
-    def set_speed(self, speed_mm_s: float):
-        """ Set the speed at which to move the coater
-
-        :param speed_mm_s: The speed at which to move the coater in mm/s
-        """
-        if speed_mm_s is None:
-            return
-        rps = self.calculate_rps_from_speed(speed_mm_s)
-        max_speed = rps * self.tmc.read_steps_per_rev()
-        self.tmc.set_max_speed(max_speed)
-
-    def set_acceleration(self, acceleration_mm_s2: float):
-        """ Set the acceleration at which to move the coater
-
-        :param acceleration_mm_s2: The acceleration/deceleration to use for the movement in mm/s^2
-        """
-        if acceleration_mm_s2 is None:
-            return
-        rpss = self.calculate_rpss_from_acceleration(acceleration_mm_s2)
-        acceleration = rpss * self.tmc.read_steps_per_rev()
-        self.tmc.set_acceleration(acceleration)
 
     def wait_for_motor_done(self) -> StopMode:
         """ Wait for the motor to finish moving
@@ -198,48 +130,6 @@ class TMC2209_MotorDriver:
         :param stop_mode: The stop mode to use (SOFTSTOP, HARDSTOP)
         """
         self.tmc.stop(stop_mode)
-
-    def bind_limit_switch(self, limit_switch_pin: int, NC: bool = True):
-        """ Bind a limit switch to stop the motor driver if it is triggered.
-
-        :param limit_switch_pin: The GPIO pin of the limit switch
-        :param NC: Whether the limit switch is normally closed (NC) or normally open (NO) (default: True)
-            For safety reasons, it is recommended to use NC limit switches
-        """
-        event = GpioEdge.RISING if NC else GpioEdge.FALLING
-        self.limit_switch_bindings[limit_switch_pin] = event
-        self.GPIO.remove_event_detect(limit_switch_pin)
-        self.GPIO.add_event_detect(limit_switch_pin, event, callback=self._stop_motor_callback, bouncetime=5)
-
-    def _stop_motor_callback(self, pin_number):
-        if self._wait_for_debounce(pin_number):
-            self.stop_motor(StopMode.HARDSTOP)
-
-    def _wait_for_debounce(self, pin_number, debounce_time_ms=10) -> bool:
-        """ Wait for the debounce time of the limit switch
-
-        :param pin_number: The GPIO pin of the limit switch
-        :param debounce_time_ms: The debounce time in ms
-
-        :return: True if the limit switch is triggered, False otherwise
-        """
-        time.sleep(debounce_time_ms / 1000)
-        return self._is_limit_switch_triggered(pin_number)
-
-    def _is_limit_switch_triggered(self, pin_number) -> bool:
-        """ Check whether the limit switch is triggered
-
-        :param pin_number: The GPIO pin of the limit switch
-
-        :return: True if the limit switch is triggered (pressed), False otherwise
-        """
-        event = self.limit_switch_bindings[pin_number]
-        if event == GpioEdge.RISING:
-            return self.GPIO.input(pin_number) == GpioState.HIGH
-        elif event == GpioEdge.FALLING:
-            return self.GPIO.input(pin_number) == GpioState.LOW
-        else:
-            return False
 
     def do_limit_switch_homing(self, limit_switch_up_pin: int, limit_switch_down_pin: int,
                                distance_mm: float, speed_mm_s: float = 2,
@@ -312,6 +202,177 @@ class TMC2209_MotorDriver:
 
         return self.homing_found
 
+    def do_stallguard_homing(self, revolutions: int = 25, threshold: int = 100, speed_mm_s: float = 2):
+        """ Perform the homing routine for the motor driver using StallGuard
+
+        :param revolutions: The number of revolutions to perform the homing routine. (Default: 25; the max stroke of the
+        guide is 100 mm, so 25 revolutions should be enough to reach the top or bottom)
+        :param threshold: The threshold to use for the homing routine (default: None)
+        :param speed_mm_s: The speed to use for the homing routine in mm/s (default: 2 mm/s)
+        """
+        # Homing sets the SpreadCycle to StealthChop, so we need to store the original setting and restore it afterwards
+        spread_cycle = self.tmc.get_spreadcycle()
+        speed_rpm = self.mechanical_setup.mm_s_to_rpm(speed_mm_s)
+        self.tmc.do_homing(
+            diag_pin=self.diag_pin,
+            revolutions=revolutions,
+            threshold=threshold,
+            speed_rpm=speed_rpm
+        )
+        self.tmc.set_spreadcycle(spread_cycle)
+
+    def get_current_position(self, homed_up: bool = True):
+        """ Get the current position of the motor in mm
+
+        :param homed_up: Whether the motor is homed up (True) or down (False)
+
+        :return: The current position of the motor in mm, or None if the motor is not homed
+        """
+        if not self.homing_found:
+            return None
+        steps = self.tmc.get_current_position()
+        pos = self.mechanical_setup.distance_for_steps(steps, self.get_microsteps())
+        if homed_up:
+            pos = -pos
+        return pos
+
+    def run_to_position(self, position_mm: float, speed_mm_s: float = None, acceleration_mm_s2: float = None,
+                        homed_up: bool = True):
+        """ Set the current position of the motor in mm
+
+        :param position_mm: The position to set the motor to in mm
+        :param speed_mm_s: The speed at which to move the motor to the position in mm/s (default: None = use current speed)
+        :param acceleration_mm_s2: The acceleration to use for the movement in mm/s^2 (default: None = use current acceleration)
+        :param homed_up: Whether the motor is homed up (True) or down (False)
+        """
+        if not self.homing_found:
+            raise ValueError("The motor is not homed.")
+        steps = self.mechanical_setup.steps_for_distance(position_mm, self.get_microsteps())
+        if homed_up:
+            steps = -steps
+
+        self.set_speed(speed_mm_s)
+        self.set_acceleration(acceleration_mm_s2)
+        self.tmc.run_to_position_steps_threaded(steps, movement_abs_rel=MovementAbsRel.ABSOLUTE)
+
+    # --------------- MOTOR CONFIGURATION ---------------
+
+    def set_microsteps(self, microsteps: int):
+        self.tmc.set_microstepping_resolution(microsteps)
+
+    def get_microsteps(self) -> int:
+        return self.tmc.get_microstepping_resolution()
+
+    def set_max_current(self, current: int = 1000):
+        """ Set the current of the motor driver
+
+        :param current: The current to set for the motor driver in mA
+        """
+        self.tmc.set_current(current, pdn_disable=False)
+
+    def set_standby_current(self, current_mA: float):
+        pass
+
+    def set_direction(self, invert_direction: bool = False):
+        """ Set the direction of the motor driver
+
+        :param invert_direction: Whether to invert the direction of the motor (default: False)
+        """
+        self.tmc.set_direction_reg(invert_direction)
+
+    def set_interpolation(self, interpolation: bool = True):
+        """ Set the interpolation setting of the motor driver
+
+        :param interpolation: Whether to use interpolation for the motor driver
+        """
+        self.tmc.set_interpolation(interpolation)
+
+    def set_spread_cycle(self, spread_cycle: bool = False):
+        """ Set the spread cycle/stealth chop setting of the motor driver
+
+        :param spread_cycle: Whether to use spread_cycle for the motor driver (true) or stealth chop (false)
+        """
+        self.tmc.set_spreadcycle(spread_cycle)
+
+    def set_loglevel(self, loglevel: Loglevel = Loglevel.INFO):
+        """ Set the log level for the motor driver
+
+        :param loglevel: The log level to set for the motor driver (NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL)
+        """
+        self.tmc.tmc_logger.set_loglevel(loglevel)
+
+    def set_speed(self, speed_mm_s: float):
+        """ Set the speed at which to move the coater
+
+        :param speed_mm_s: The speed at which to move the coater in mm/s
+        """
+        if speed_mm_s is None:
+            return
+        rps = self.mechanical_setup.mm_s_to_rps(speed_mm_s)
+        max_speed = rps * self.tmc.read_steps_per_rev()
+        self.tmc.set_max_speed(max_speed)
+
+    def set_acceleration(self, acceleration_mm_s2: float):
+        """ Set the acceleration at which to move the coater
+
+        :param acceleration_mm_s2: The acceleration/deceleration to use for the movement in mm/s^2
+        """
+        if acceleration_mm_s2 is None:
+            return
+        rpss = self.mechanical_setup.mm_s2_to_rpss(acceleration_mm_s2)
+        acceleration = rpss * self.tmc.read_steps_per_rev()
+        self.tmc.set_acceleration(acceleration)
+
+    def bind_limit_switch(self, limit_switch_pin: int, NC: bool = True):
+        """ Bind a limit switch to stop the motor driver if it is triggered.
+
+        :param limit_switch_pin: The GPIO pin of the limit switch
+        :param NC: Whether the limit switch is normally closed (NC) or normally open (NO) (default: True)
+            For safety reasons, it is recommended to use NC limit switches
+        """
+        event = GpioEdge.RISING if NC else GpioEdge.FALLING
+        self.limit_switch_bindings[limit_switch_pin] = event
+        self.GPIO.remove_event_detect(limit_switch_pin)
+        self.GPIO.add_event_detect(limit_switch_pin, event, callback=self._stop_motor_callback, bouncetime=5)
+
+    # --------------- HELPER METHODS ---------------
+
+    def read_back_config(self):
+        self.tmc.read_ioin()
+        self.tmc.read_chopconf()
+        self.tmc.read_drv_status()
+        self.tmc.read_gconf()
+
+    def _stop_motor_callback(self, pin_number):
+        if self._wait_for_debounce(pin_number):
+            self.stop_motor(StopMode.HARDSTOP)
+
+    def _wait_for_debounce(self, pin_number, debounce_time_ms=10) -> bool:
+        """ Wait for the debounce time of the limit switch
+
+        :param pin_number: The GPIO pin of the limit switch
+        :param debounce_time_ms: The debounce time in ms
+
+        :return: True if the limit switch is triggered, False otherwise
+        """
+        time.sleep(debounce_time_ms / 1000)
+        return self._is_limit_switch_triggered(pin_number)
+
+    def _is_limit_switch_triggered(self, pin_number) -> bool:
+        """ Check whether the limit switch is triggered
+
+        :param pin_number: The GPIO pin of the limit switch
+
+        :return: True if the limit switch is triggered (pressed), False otherwise
+        """
+        event = self.limit_switch_bindings[pin_number]
+        if event == GpioEdge.RISING:
+            return self.GPIO.input(pin_number) == GpioState.HIGH
+        elif event == GpioEdge.FALLING:
+            return self.GPIO.input(pin_number) == GpioState.LOW
+        else:
+            return False
+
     def _stop_homing_callback(self, home_pin):
         if self._wait_for_debounce(home_pin):
             self.homing_found = True
@@ -323,25 +384,6 @@ class TMC2209_MotorDriver:
             self.homing_found = False
             self.stop_motor(StopMode.HARDSTOP)
             raise ValueError("The other limit switch was triggered. Please check the limit switches.")
-
-    def do_stallguard_homing(self, revolutions: int = 25, threshold: int = 100, speed_mm_s: float = 2):
-        """ Perform the homing routine for the motor driver using StallGuard
-
-        :param revolutions: The number of revolutions to perform the homing routine. (Default: 25; the max stroke of the
-        guide is 100 mm, so 25 revolutions should be enough to reach the top or bottom)
-        :param threshold: The threshold to use for the homing routine (default: None)
-        :param speed_mm_s: The speed to use for the homing routine in mm/s (default: 2 mm/s)
-        """
-        # Homing sets the SpreadCycle to StealthChop, so we need to store the original setting and restore it afterwards
-        spread_cycle = self.tmc.get_spreadcycle()
-        speed_rpm = speed_mm_s / TRANS_PER_REV * 60
-        self.tmc.do_homing(
-            diag_pin=self.diag_pin,
-            revolutions=revolutions,
-            threshold=threshold,
-            speed_rpm=speed_rpm
-        )
-        self.tmc.set_spreadcycle(spread_cycle)
 
     def is_homing_found(self) -> bool:
         """ Check whether the motor driver is homed
@@ -363,75 +405,11 @@ class TMC2209_MotorDriver:
             steps = 2 * self.tmc.read_steps_per_rev()
         self.tmc.test_stallguard_threshold(steps)
 
-    def get_current_position(self, homed_up: bool = True):
-        """ Get the current position of the motor in mm
-
-        :param homed_up: Whether the motor is homed up (True) or down (False)
-
-        :return: The current position of the motor in mm, or None if the motor is not homed
-        """
-        if not self.homing_found:
-            return None
-        pos = (self.tmc.get_current_position() / self.tmc.read_steps_per_rev()) * TRANS_PER_REV
-        if homed_up:
-            pos = -pos
-        return pos
-
-    def run_to_position(self, position_mm: float, speed_mm_s: float = None, acceleration_mm_s2: float = None,
-                        homed_up: bool = True):
-        """ Set the current position of the motor in mm
-
-        :param position_mm: The position to set the motor to in mm
-        :param speed_mm_s: The speed at which to move the motor to the position in mm/s (default: None = use current speed)
-        :param acceleration_mm_s2: The acceleration to use for the movement in mm/s^2 (default: None = use current acceleration)
-        :param homed_up: Whether the motor is homed up (True) or down (False)
-        """
-        if not self.homing_found:
-            raise ValueError("The motor is not homed.")
-        position_steps = round((position_mm / TRANS_PER_REV) * self.tmc.read_steps_per_rev())
-        if homed_up:
-            position_steps = -position_steps
-
-        self.set_speed(speed_mm_s)
-        self.set_acceleration(acceleration_mm_s2)
-        self.tmc.run_to_position_steps_threaded(position_steps, movement_abs_rel=MovementAbsRel.ABSOLUTE)
-
-
     def cleanup(self):
         """ Clean up the motor driver for shutdown"""
         self.disable_motor()
         self.GPIO.cleanup()
         del self.tmc
-
-    @staticmethod
-    def calculate_revs_from_distance(distance_mm: float) -> float:
-        """ Transform distance from the linear to the angular domain
-
-        :param distance_mm: The distance to move the coater in mm (positive for up, negative for down)
-
-        :return: The number of revolutions to achieve the desired distance
-        """
-        return distance_mm / TRANS_PER_REV
-
-    @staticmethod
-    def calculate_rps_from_speed(speed_mm_s: float) -> float:
-        """ Transform speed from the linear to the angular domain
-
-        :param speed_mm_s: The speed at which to move the coater in mm/s (always positive)
-
-        :return: The number of revolutions per second to achieve the desired speed
-        """
-        return speed_mm_s / TRANS_PER_REV
-
-    @staticmethod
-    def calculate_rpss_from_acceleration(acceleration_mm_s2: float = 0) -> float:
-        """ Transform acceleration from the linear to the angular domain
-
-        :param acceleration_mm_s2: The acceleration/deceleration to use for the movement in mm/s^2 (default: 0)
-
-        :return: The number of revolutions per second per second to achieve the desired acceleration
-        """
-        return acceleration_mm_s2 / TRANS_PER_REV
 
 
 if __name__ == "__main__":

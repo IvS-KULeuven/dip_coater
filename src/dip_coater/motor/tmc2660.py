@@ -1,128 +1,105 @@
 """
 Move a motor back and forth using velocity and position mode of the TMC2660.
 """
-import time
-import pytrinamic
+import logging
 from pytrinamic.connections import ConnectionManager
 from pytrinamic.evalboards import TMC2660_eval
 from pytrinamic.modules import Landungsbruecke
 
-pytrinamic.show_info()
+from TMC_2209._TMC_2209_logger import Loglevel
+
+from dip_coater.motor.motor_driver_interface import MotorDriver
 
 
-USE_DUMMY = False
-FULL_STEPS = 200
+class TMC2660_MotorDriver(MotorDriver):
+    def __init__(self, app_state, interface_type="usb_tmcl", port="interactive",
+                 loglevel: Loglevel = Loglevel.ERROR, log_handlers: list = None,
+                 log_formatter: logging.Formatter = None):
+        super().__init__(app_state.mechanical_setup)
 
+        self.app_state = app_state
+        interface_txt = f"--interface {interface_type}" if interface_type else ""
+        port_txt = f"--port {port}" if port else ""
+        self.interface = ConnectionManager(f"{interface_txt} {port_txt}").connect()
+        self.eval_board = TMC2660_eval(self.interface)
+        self.lb = Landungsbruecke(self.interface)
+        self.motor = self.eval_board.motors[0]
+        self.bank = 0
+        self.microsteps = self.get_microsteps()
 
-def print_lb_content(lb: Landungsbruecke):
-    print("ID EEPROM content:")
-    print("Mc: ", lb.eeprom_drv.read_id_info())
-    print("Drv:", lb.eeprom_mc.read_id_info())
+    # --------------- MOTOR CONTROL ---------------
 
-    print("Board IDs:")
-    print(lb.get_board_ids())
+    def enable_motor(self):
+        self.interface.set_global_parameter(self.lb.GP.DriversEnable, self.bank, 1)
 
-    print("Board Names:")
-    print(lb.get_board_names())
+    def disable_motor(self):
+        self.interface.set_global_parameter(self.lb.GP.DriversEnable, self.bank, 0)
 
+    def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0):
+        self.set_speed(speed_mm_s)
+        self.set_acceleration(acceleration_mm_s2)
+        steps = int(distance_mm * self.microsteps * FULL_STEPS / TRANS_PER_REV)
+        self.motor.move_to(self.motor.actual_position + steps)
 
-def convert_microsteps_idx_to_steps(microsteps: int):
-    match microsteps:
-        case 0:
-            return 1
-        case 1:
-            return 2
-        case 2:
-            return 4
-        case 3:
-            return 8
-        case 4:
-            return 16
-        case 5:
-            return 32
-        case 6:
-            return 64
-        case 7:
-            return 128
-        case 8:
-            return 256
+    def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0):
+        self.move_up(-distance_mm, speed_mm_s, acceleration_mm_s2)
 
-def get_microsteps(eval_board, motor, axis) -> int:
-    mstep = eval_board.get_axis_parameter(motor.AP.MicrostepResolution, axis)
-    return convert_microsteps_idx_to_steps(mstep)
+    def stop_motor(self):
+        self.motor.stop()
 
-def get_vpps_from_rps(microsteps: int, rps:float) -> int:
-    return int(round(FULL_STEPS * microsteps * rps))
+    def get_current_position(self):
+        return self.motor.actual_position * TRANS_PER_REV / (self.microsteps * FULL_STEPS)
 
-def print_register_dump(eval_board):
-    drv = eval_board.ics[0]
-    print("Driver info: " + str(drv.get_info()))
-    print("Register dump for " + str(drv.get_name()) + ":")
+    def run_to_position(self, position_mm: float, speed_mm_s: float = None, acceleration_mm_s2: float = None):
+        self.set_speed(speed_mm_s)
+        self.set_acceleration(acceleration_mm_s2)
+        steps = int(position_mm * self.microsteps * FULL_STEPS / TRANS_PER_REV)
+        self.motor.move_to(steps)
 
-    print("DRVSTATUS_MSTEP:       0x{0:08X}".format(eval_board.read_register(drv.REG.DRVSTATUS_MSTEP)))
-    print("DRVSTATUS_SG:          0x{0:08X}".format(eval_board.read_register(drv.REG.DRVSTATUS_SG)))
-    print("DRVSTATUS_SG_SE:       0x{0:08X}".format(eval_board.read_register(drv.REG.DRVSTATUS_SG_SE)))
-    print("DRVCTRL:               0x{0:08X}".format(eval_board.read_register(drv.REG.DRVCTRL)))
-    print("CHOPCONF:              0x{0:08X}".format(eval_board.read_register(drv.REG.CHOPCONF)))
-    print("SMARTEN:               0x{0:08X}".format(eval_board.read_register(drv.REG.SMARTEN)))
-    print("SGCSCONF:              0x{0:08X}".format(eval_board.read_register(drv.REG.SGCSCONF)))
-    print("DRVCONF:               0x{0:08X}".format(eval_board.read_register(drv.REG.DRVCONF)))
+    # --------------- MOTOR CONFIGURATION ---------------
 
-if USE_DUMMY:
-    my_interface = ConnectionManager("--interface dummy_tmcl").connect()
-else:
-    my_interface = ConnectionManager("--interface usb_tmcl --port interactive").connect()
-print(my_interface)
+    def set_microsteps(self, microsteps: int):
+        _step_mode = self.microstep_steps_to_idx(microsteps)
+        self.motor.set_axis_parameter(self.motor.AP.MicrostepResolution, _step_mode)
 
-# Create TMC2660-EVAL class which communicates over the Landungsbrücke via TMCL
-eval_board = TMC2660_eval(my_interface)
-print_register_dump(eval_board)
+    def get_microsteps(self) -> int:
+        mstep = self.eval_board.get_axis_parameter(self.motor.AP.MicrostepResolution, 0)
+        return self.microstep_idx_to_steps(mstep)
 
-# Get the Landungsbrücke module and print its contents
-lb = Landungsbruecke(my_interface)
-print_lb_content(lb)
+    def set_max_current(self, current_mA: float):
+        self.motor.set_axis_parameter(self.motor.AP.MaxCurrent, current_mA)
 
-# Get the motor instance
-motor = eval_board.motors[0]
+    def set_standby_current(self, current_mA: float):
+        self.motor.set_axis_parameter(self.motor.AP.StandbyCurrent, current_mA)
 
-# Disable the driver
-bank = 0
-active_state = my_interface.get_global_parameter(lb.GP.DriversEnable, bank)
-print("Driver active: " + str(active_state))
-my_interface.set_global_parameter(lb.GP.DriversEnable, bank, 0)
-active_state = my_interface.get_global_parameter(lb.GP.DriversEnable, bank)
-print("Driver active: " + str(active_state))
+    def set_speed(self, speed_mm_s: float):
+        if speed_mm_s is not None:
+            rps = self.mechanical_setup.mm_s_to_rps(speed_mm_s)
+            steps_per_second = rps * self.mechanical_setup.steps_per_revolution * self.get_microsteps()
+            self.motor.set_axis_parameter(self.motor.AP.MaxVelocity, int(steps_per_second))
 
+    def set_acceleration(self, acceleration_mm_s2: float):
+        if acceleration_mm_s2 is not None:
+            self.motor.set_axis_parameter(self.motor.AP.MaxAcceleration, int(acceleration_mm_s2 * 100)) # TODO: convert value
 
+    # --------------- HELPER METHODS ---------------
 
-# Configure the motor
-motor.set_axis_parameter(motor.AP.MaxVelocity, 1000)
-motor.set_axis_parameter(motor.AP.MaxAcceleration, 10000)
-# TODO:
+    @staticmethod
+    def microstep_idx_to_steps(idx: int) -> int:
+        """Convert microstep index to actual number of microsteps."""
+        if 0 <= idx <= 8:
+            return 2 ** idx
+        else:
+            raise ValueError(f"Invalid microstep index: {idx}. Must be between 0 and 8.")
 
-# Enable the driver
-my_interface.set_global_parameter(lb.GP.DriversEnable, bank, 1)
-# TODO
+    @staticmethod
+    def microstep_steps_to_idx(steps: int) -> int:
+        """Convert actual number of microsteps to microstep index."""
+        if steps in [1, 2, 4, 8, 16, 32, 64, 128, 256]:
+            return int.bit_length(steps) - 1
+        else:
+            raise ValueError(f"Invalid number of microsteps: {steps}. Must be a power of 2 between 1 and 256.")
 
-print("Rotating...")
-microsteps = get_microsteps(eval_board, motor, 0)
-motor.rotate(get_vpps_from_rps(microsteps, 0.5))
-time.sleep(2)
-
-print("Stopping...")
-motor.stop()
-time.sleep(1)
-
-print("Moving back to 0...")
-motor.move_to(0, 10*25600)
-
-# Wait until position 0 is reached
-while motor.actual_position != 0:
-    print("Actual position: " + str(motor.actual_position))
-    time.sleep(0.2)
-
-print("Reached position 0")
-
-my_interface.close()
-
-print("\nReady.")
+    def cleanup(self):
+        self.disable_motor()
+        self.interface.close()

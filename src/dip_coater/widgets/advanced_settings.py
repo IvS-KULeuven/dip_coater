@@ -139,7 +139,7 @@ class AdvancedSettings(Static):
         self.app_state.status_advanced.update_homing_speed(self.homing_speed)
 
     def reset_settings_to_default(self):
-        self.set_step_mode(DEFAULT_STEP_MODE)
+        self.set_microsteps(DEFAULT_STEP_MODE)
         self.app_state.step_mode.query_one(f"#{DEFAULT_STEP_MODE}", RadioButton).value = True
         self.set_acceleration(DEFAULT_ACCELERATION)
         self.query_one("#acceleration-input", Input).value = f"{DEFAULT_ACCELERATION}"
@@ -232,12 +232,12 @@ class AdvancedSettings(Static):
     def update_motor_configuration(self):
         if self.threshold_speed_enabled and self.app_state.speed_controls.speed >= self.threshold_speed:
             # High-speed configuration
-            self.set_step_mode(HIGH_SPEED_STEP_MODE)
+            self.set_microsteps(HIGH_SPEED_STEP_MODE)
             self.set_interpolation(HIGH_SPEED_INTERPOLATION)
             self.set_spread_cycle(HIGH_SPEED_SPREAD_CYCLE)
         else:
             # Low-speed configuration
-            self.set_step_mode(LOW_SPEED_STEP_MODE)
+            self.set_microsteps(LOW_SPEED_STEP_MODE)
             self.set_interpolation(LOW_SPEED_INTERPOLATION)
             self.set_spread_cycle(LOW_SPEED_SPREAD_CYCLE)
         self.update_control_mode_widgets_value()
@@ -289,7 +289,7 @@ class AdvancedSettings(Static):
 
     def set_motor_current(self, motor_current: int):
         self.motor_current = clamp(motor_current, MIN_CURRENT, MAX_CURRENT)
-        self.app_state.motor_driver.set_current(self.motor_current)
+        self.app_state.motor_driver.set_max_current(self.motor_current)
         self.app_state.status_advanced.update_motor_current(self.motor_current)
 
     def set_invert_motor_direction(self, invert_direction: bool):
@@ -297,8 +297,8 @@ class AdvancedSettings(Static):
         self.app_state.motor_driver.set_direction(self.invert_motor_direction)
         self.app_state.status_advanced.update_invert_motor_direction(self.invert_motor_direction)
 
-    def set_step_mode(self, step_mode: int):
-        self.app_state.step_mode.set_step_mode(STEP_MODES[step_mode], STEP_MODE_LABELS[step_mode])
+    def set_microsteps(self, step_mode: int):
+        self.app_state.step_mode.set_microsteps(STEP_MODES[step_mode], STEP_MODE_LABELS[step_mode])
 
     def set_interpolation(self, interpolate: bool):
         self.interpolate = interpolate

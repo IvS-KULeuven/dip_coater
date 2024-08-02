@@ -18,5 +18,6 @@ class AppState:
         self.position_controls = None
         self.distance_controls = None
         self.step_mode = None
+        self.mechanical_setup = None
 
 app_state = AppState()

@@ -25,7 +25,7 @@ class TMC_2209:
         self.tmc_logger.log("Using mock TMC library", Loglevel.WARNING)
         self.tmc_logger.log("Init", Loglevel.INFO)
 
-    def set_step_mode(self, _step_mode: int):
+    def set_microsteps(self, _step_mode: int):
         pass
 
     def set_motor_enabled(self, en):
