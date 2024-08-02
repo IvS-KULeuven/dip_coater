@@ -19,6 +19,7 @@ uvloop = ">=0.19.0"
 pytrinamic = "^0.2.11"
 tmc-2209-raspberry-pi = ">=0.5.2"
 mock-gpio = "^0.1.8"
+flake8 = "^7.1.0"
 
 [tool.poetry.group.rpi]
 optional = true
