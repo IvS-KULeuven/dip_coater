@@ -63,7 +63,7 @@ class TMC2660_MotorDriver(MotorDriver):
         self.set_speed_rps(rps)
         self.set_acceleration_rpss(rpss)
         steps = self.mechanical_setup.revs_to_steps(revs, self.microsteps)
-        self.motor.move_by(0, int(steps))
+        self.interface.move_by(0, int(steps))
 
     def move(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
         revs = self.mechanical_setup.mm_to_revs(distance_mm)
@@ -117,7 +117,7 @@ class TMC2660_MotorDriver(MotorDriver):
     def set_max_current(self, current_mA: float):
         current_value = self._convert_current_to_value(current_mA)
         actual_current_mA = self._convert_value_to_current(current_value)
-        print(f"Setting max current to {current_mA} mA, value: {current_value}, actual: {actual_current_mA} mA")
+        print(f"Setting max current to {current_mA:.1f} mA, value: {current_value}, actual: {actual_current_mA:.1f} mA")
         self.motor.set_axis_parameter(self.motor.AP.MaxCurrent, current_value)
 
         verify_current = self.get_max_current()
@@ -130,7 +130,7 @@ class TMC2660_MotorDriver(MotorDriver):
     def set_standby_current(self, current_mA: float):
         current_value = self._convert_current_to_value(current_mA)
         actual_current_mA = self._convert_value_to_current(current_value)
-        print(f"Setting hold current to {current_mA} mA, value: {current_value}, actual: {actual_current_mA} mA")
+        print(f"Setting hold current to {current_mA:.1f} mA, value: {current_value}, actual: {actual_current_mA:.1f} mA")
         self.motor.set_axis_parameter(self.motor.AP.StandbyCurrent, current_value)
 
         verify_current = self.get_standby_current()

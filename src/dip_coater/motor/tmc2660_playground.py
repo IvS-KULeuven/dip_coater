@@ -55,23 +55,23 @@ print_lb_content(lb)
 # Configure the motor
 driver.set_acceleration(100)  # 100 mm/s^2
 
+# Wait for the driver to be ready
+time.sleep(0.5)
+
 # Enable the driver
 driver.enable_motor()
 
 print("Rotating...")
-#driver.motor.rotate(1000)
-#driver.move_up(8, 4)  # Move up 8mm at 4 mm/s
-driver.rotate(2, 1)
-time.sleep(2)
+driver.rotate(2, 2)    # Rotate 2 revolutions at 1 rps
+time.sleep(1.1)
 
 print("Stopping...")
 driver.stop_motor()
 time.sleep(1)
 
 print("Rotating...")
-driver.motor.rotate(-1000)
-#driver.move_down(8, 4)  # Move down 8mm at 4 mm/s
-time.sleep(2)
+driver.rotate(-1, 0.25)   # Rotate 1 revolution at 0.25 rps
+time.sleep(4.1)
 
 print("Stopping...")
 driver.motor.stop()
