@@ -29,7 +29,7 @@ class MotorDriver(ABC):
         pass
 
     @abstractmethod
-    def get_current_position(self):
+    def get_current_position_mm(self):
         pass
 
     @abstractmethod

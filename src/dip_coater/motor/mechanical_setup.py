@@ -28,6 +28,14 @@ class MechanicalSetup:
         """Convert rotations to linear position (mm)."""
         return rotations * self.mm_per_revolution * self.gearbox_ratio
 
+    def mm_to_steps(self, distance_mm: float, microsteps: int) -> int:
+        """Convert linear distance (mm) to steps."""
+        return round(distance_mm / self.mm_per_step(microsteps))
+
+    def steps_to_mm(self, steps: int, microsteps: int) -> float:
+        """Convert steps to linear distance (mm)."""
+        return steps * self.mm_per_step(microsteps)
+
     def mm_s_to_rps(self, velocity_mm_s: float) -> float:
         """Convert linear velocity (mm/s) to rotations per second."""
         return velocity_mm_s / self.mm_per_revolution / self.gearbox_ratio
@@ -44,6 +52,14 @@ class MechanicalSetup:
         """Convert rotations per minute to linear velocity (mm/s)."""
         return self.rps_to_mm_s(rpm / 60)
 
+    def mm_s_to_stepss(self, velocity_mm_s: float, microsteps: int) -> int:
+        """Convert linear velocity (mm/s) to steps per second."""
+        return round(velocity_mm_s / self.mm_per_step(microsteps))
+
+    def stepss_to_mm_s(self, stepss: int, microsteps: int) -> float:
+        """Convert steps per second to linear velocity (mm/s)."""
+        return stepss * self.mm_per_step(microsteps)
+
     def mm_s2_to_rpss(self, acceleration_mm_s2: float) -> float:
         """Convert linear acceleration (mm/s^2) to rotations per second squared."""
         return acceleration_mm_s2 / self.mm_per_revolution / self.gearbox_ratio
@@ -59,6 +75,14 @@ class MechanicalSetup:
     def rpmm_to_mm_s2(self, rpmm: float) -> float:
         """Convert rotations per minute per minute to linear acceleration (mm/s^2)."""
         return self.rpss_to_mm_s2(rpmm / 3600)
+
+    def mm_s2_to_stepss2(self, acceleration_mm_s2: float, microsteps: int) -> int:
+        """Convert linear acceleration (mm/s^2) to steps per second squared."""
+        return round(acceleration_mm_s2 / self.mm_per_step(microsteps))
+
+    def stepss2_to_mm_s2(self, stepss2: int, microsteps: int) -> float:
+        """Convert steps per second squared to linear acceleration (mm/s^2)."""
+        return stepss2 * self.mm_per_step(microsteps)
 
     def steps_to_rot(self, steps: int, microsteps: int) -> float:
         """Convert steps to rotations."""

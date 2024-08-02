@@ -15,14 +15,14 @@ class TMC2209_MotorDriver(MotorDriver):
     limit_switch_bindings = {}      # Stores the limit switch pin and the corresponding edge trigger event
 
     """ Class to control the TMC2209 motor driver for the dip coater"""
-    def __init__(self, app_state, step_mode: int = 8, current: int = 1000, invert_direction: bool = False, interpolation: bool = True,
+    def __init__(self, app_state, step_mode: int = 8, current_ma: int = 1000, invert_direction: bool = False, interpolation: bool = True,
                  spread_cycle: bool = False, loglevel: Loglevel = Loglevel.ERROR, log_handlers: list = None,
                  log_formatter: logging.Formatter = None):
         """ Initialize the motor driver
 
         :param app_state: The application state to use for the motor driver
         :param step_mode: The step mode to set (1, 2, 4, 8, 16, 32, 64, 128, 256)
-        :param current: The current to set for the motor driver in mA
+        :param current_ma: The current to set for the motor driver in mA
         :param invert_direction: Whether to invert the direction of the motor (default: False)
         :param interpolation: Whether to use interpolation for the motor driver
         :param spreadcycle: Whether to use spread_cycle for the motor driver (true) or stealthchop (false)
@@ -52,7 +52,7 @@ class TMC2209_MotorDriver(MotorDriver):
         # Set motor driver settings
         self.tmc.set_vactual(0)      # Motor is not controlled by UART
         self.tmc.set_direction_reg(invert_direction)
-        self.tmc.set_current(current, pdn_disable=False)    # mA
+        self.tmc.set_current(current_ma, pdn_disable=False)    # mA
         self.tmc.set_interpolation(interpolation)
         self.tmc.set_spreadcycle(spread_cycle)  # True: spreadcycle, False: stealthchop
         self.tmc.set_microstepping_resolution(step_mode)  # 1, 2, 4, 8, 16, 32, 64, 128, 256
@@ -221,7 +221,7 @@ class TMC2209_MotorDriver(MotorDriver):
         )
         self.tmc.set_spreadcycle(spread_cycle)
 
-    def get_current_position(self, homed_up: bool = True):
+    def get_current_position_mm(self, homed_up: bool = True):
         """ Get the current position of the motor in mm
 
         :param homed_up: Whether the motor is homed up (True) or down (False)
@@ -308,9 +308,8 @@ class TMC2209_MotorDriver(MotorDriver):
         """
         if speed_mm_s is None:
             return
-        rps = self.mechanical_setup.mm_s_to_rps(speed_mm_s)
-        max_speed = rps * self.tmc.read_steps_per_rev()
-        self.tmc.set_max_speed(max_speed)
+        steps_per_second = self.mechanical_setup.mm_s_to_stepss(speed_mm_s, self.get_microsteps())
+        self.tmc.set_max_speed(steps_per_second)
 
     def set_acceleration(self, acceleration_mm_s2: float):
         """ Set the acceleration at which to move the coater
@@ -319,9 +318,8 @@ class TMC2209_MotorDriver(MotorDriver):
         """
         if acceleration_mm_s2 is None:
             return
-        rpss = self.mechanical_setup.mm_s2_to_rpss(acceleration_mm_s2)
-        acceleration = rpss * self.tmc.read_steps_per_rev()
-        self.tmc.set_acceleration(acceleration)
+        steps_per_second2 = self.mechanical_setup.mm_s2_to_rpss(acceleration_mm_s2)
+        self.tmc.set_acceleration(steps_per_second2)
 
     def bind_limit_switch(self, limit_switch_pin: int, NC: bool = True):
         """ Bind a limit switch to stop the motor driver if it is triggered.

@@ -42,7 +42,7 @@ def create_motor_driver(driver_type: str, app_state, log_level: Loglevel, log_ha
                         interface_type="usb_tmcl", port="interactive") -> MotorDriver:
     if driver_type == "TMC2209":
         return TMC2209_MotorDriver(app_state, step_mode=STEP_MODES[DEFAULT_STEP_MODE],
-                                   current=DEFAULT_CURRENT,
+                                   current_ma=DEFAULT_CURRENT,
                                    invert_direction=INVERT_MOTOR_DIRECTION,
                                    interpolation=USE_INTERPOLATION,
                                    spread_cycle=USE_SPREAD_CYCLE,

@@ -13,6 +13,7 @@ from dip_coater.motor.motor_driver_interface import MotorDriver
 
 class TMC2660_MotorDriver(MotorDriver):
     def __init__(self, app_state, interface_type="usb_tmcl", port="interactive",
+                 step_mode: int = 8, current_ma: int = 2000, current_standstill_ma: int = 2000,
                  loglevel: Loglevel = Loglevel.ERROR, log_handlers: list = None,
                  log_formatter: logging.Formatter = None):
         super().__init__(app_state.mechanical_setup)
@@ -23,8 +24,9 @@ class TMC2660_MotorDriver(MotorDriver):
         self.interface = ConnectionManager(f"{interface_txt} {port_txt}").connect()
         self.eval_board = TMC2660_eval(self.interface)
         self.lb = Landungsbruecke(self.interface)
-        self.motor = self.eval_board.motors[0]
         self.bank = 0
+        self.axis = 0
+        self.motor = self.eval_board.motors[0]
         self.microsteps = self.get_microsteps()
 
     # --------------- MOTOR CONTROL ---------------
@@ -38,7 +40,7 @@ class TMC2660_MotorDriver(MotorDriver):
     def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0):
         self.set_speed(speed_mm_s)
         self.set_acceleration(acceleration_mm_s2)
-        steps = int(distance_mm * self.microsteps * FULL_STEPS / TRANS_PER_REV)
+        steps = self.mechanical_setup.mm_to_steps(distance_mm)
         self.motor.move_to(self.motor.actual_position + steps)
 
     def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0):
@@ -47,13 +49,14 @@ class TMC2660_MotorDriver(MotorDriver):
     def stop_motor(self):
         self.motor.stop()
 
-    def get_current_position(self):
-        return self.motor.actual_position * TRANS_PER_REV / (self.microsteps * FULL_STEPS)
+    def get_current_position_mm(self):
+        pos = self.eval_board.get_axis_parameter(self.motor.AP.ActualPosition, self.axis)
+        return self.mechanical_setup.steps_to_mm(pos)
 
     def run_to_position(self, position_mm: float, speed_mm_s: float = None, acceleration_mm_s2: float = None):
         self.set_speed(speed_mm_s)
         self.set_acceleration(acceleration_mm_s2)
-        steps = int(position_mm * self.microsteps * FULL_STEPS / TRANS_PER_REV)
+        steps = self.mechanical_setup.mm_to_steps(position_mm)
         self.motor.move_to(steps)
 
     # --------------- MOTOR CONFIGURATION ---------------
@@ -63,7 +66,7 @@ class TMC2660_MotorDriver(MotorDriver):
         self.motor.set_axis_parameter(self.motor.AP.MicrostepResolution, _step_mode)
 
     def get_microsteps(self) -> int:
-        mstep = self.eval_board.get_axis_parameter(self.motor.AP.MicrostepResolution, 0)
+        mstep = self.eval_board.get_axis_parameter(self.motor.AP.MicrostepResolution, self.axis)
         return self.microstep_idx_to_steps(mstep)
 
     def set_max_current(self, current_mA: float):
@@ -74,13 +77,13 @@ class TMC2660_MotorDriver(MotorDriver):
 
     def set_speed(self, speed_mm_s: float):
         if speed_mm_s is not None:
-            rps = self.mechanical_setup.mm_s_to_rps(speed_mm_s)
-            steps_per_second = rps * self.mechanical_setup.steps_per_revolution * self.get_microsteps()
-            self.motor.set_axis_parameter(self.motor.AP.MaxVelocity, int(steps_per_second))
+            steps_per_second = self.mechanical_setup.mm_s_to_stepss(speed_mm_s, self.get_microsteps())
+            self.motor.set_axis_parameter(self.motor.AP.MaxVelocity, steps_per_second)
 
     def set_acceleration(self, acceleration_mm_s2: float):
         if acceleration_mm_s2 is not None:
-            self.motor.set_axis_parameter(self.motor.AP.MaxAcceleration, int(acceleration_mm_s2 * 100)) # TODO: convert value
+            steps_per_second2 = self.mechanical_setup.mm_s2_to_rpss(acceleration_mm_s2)
+            self.motor.set_axis_parameter(self.motor.AP.MaxAcceleration, steps_per_second2)
 
     # --------------- HELPER METHODS ---------------
 

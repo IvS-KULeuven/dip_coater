@@ -95,7 +95,7 @@ class Status(Static):
         self.query_one("#status-position", Label).update(position)
 
     async def fetch_new_position(self):
-        position = app_state.motor_driver.get_current_position()
+        position = app_state.motor_driver.get_current_position_mm()
         await self.update_position(position)
 
     async def update_position(self, position_mm: float):

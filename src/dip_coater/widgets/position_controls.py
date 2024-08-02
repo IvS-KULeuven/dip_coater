@@ -63,7 +63,7 @@ class PositionControls(Static):
 
     @on(Button.Pressed, "#set-to-current-pos-btn")
     def set_to_current_position(self):
-        pos = self.app_state.motor_driver.get_current_position()
+        pos = self.app_state.motor_driver.get_current_position_mm()
         if pos is not None:
             self.set_position(pos)
 
