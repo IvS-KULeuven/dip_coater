@@ -12,7 +12,7 @@ packages = [{include = "dip_coater", from = "src"}]
 package-mode = true
 
 [tool.poetry.dependencies]
-python = ">=3.8,<4.0"
+python = ">=3.10,<4.0"
 textual = ">=0.73.0"
 textual-dev = "*"
 uvloop = ">=0.19.0"
