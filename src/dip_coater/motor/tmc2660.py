@@ -11,6 +11,14 @@ from TMC_2209._TMC_2209_logger import Loglevel
 from dip_coater.motor.motor_driver_interface import MotorDriver
 
 
+class VSenseFullScale:
+    """
+    VSense full scale values for the TMC2660.
+    """
+    VSENSE_FULL_SCALE_305mV = 0
+    VSENSE_FULL_SCALE_165mV = 1
+
+
 class TMC2660_MotorDriver(MotorDriver):
     def __init__(self, app_state, interface_type="usb_tmcl", port="interactive",
                  step_mode: int = 8, current_mA: int = 2000, current_standstill_mA: int = 2000,
@@ -30,6 +38,8 @@ class TMC2660_MotorDriver(MotorDriver):
         self.motor = self.eval_board.motors[0]
         self.disable_motor()
         self.set_microsteps(step_mode)
+        self.vsense_fs = VSenseFullScale.VSENSE_FULL_SCALE_305mV
+        self.rsense = 100       # Sense resistor value in mOhm
 
         self.set_max_current(current_mA)
         self.set_standby_current(current_standstill_mA)
@@ -95,22 +105,37 @@ class TMC2660_MotorDriver(MotorDriver):
         mstep = self.motor.get_axis_parameter(self.motor.AP.MicrostepResolution, self.axis)
         return self.microstep_idx_to_steps(mstep)
 
+    def set_vsense_full_scale(self, vsense_full_scale: int):
+        if vsense_full_scale not in [VSenseFullScale.VSENSE_FULL_SCALE_305mV, VSenseFullScale.VSENSE_FULL_SCALE_165mV]:
+            raise ValueError(f"Invalid VSense full scale value: {vsense_full_scale}. Must be 0 or 1.")
+        self.vsense_fs = vsense_full_scale
+        self.motor.set_axis_parameter(self.motor.AP.VSense, vsense_full_scale)
+
+    def get_vsense_full_scale(self) -> int:
+        return self.motor.get_axis_parameter(self.motor.AP.VSense, self.axis)
+
     def set_max_current(self, current_mA: float):
-        self.motor.set_axis_parameter(self.motor.AP.MaxCurrent, int(current_mA))
+        current_value = self._convert_current_to_value(current_mA)
+        actual_current_mA = self._convert_value_to_current(current_value)
+        print(f"Setting max current to {current_mA} mA, value: {current_value}, actual: {actual_current_mA} mA")
+        self.motor.set_axis_parameter(self.motor.AP.MaxCurrent, current_value)
 
         verify_current = self.get_max_current()
-        if current_mA != verify_current:
-            raise ValueError(f"Set max current {current_mA} mA does not match read back value {verify_current} mA")
+        if current_value != verify_current:
+            raise ValueError(f"Set max current {current_value} does not match read back value {verify_current}")
 
     def get_max_current(self):
         return self.motor.get_axis_parameter(self.motor.AP.MaxCurrent, self.axis)
 
     def set_standby_current(self, current_mA: float):
-        self.motor.set_axis_parameter(self.motor.AP.StandbyCurrent, int(current_mA))
+        current_value = self._convert_current_to_value(current_mA)
+        actual_current_mA = self._convert_value_to_current(current_value)
+        print(f"Setting hold current to {current_mA} mA, value: {current_value}, actual: {actual_current_mA} mA")
+        self.motor.set_axis_parameter(self.motor.AP.StandbyCurrent, current_value)
 
         verify_current = self.get_standby_current()
         if current_mA != verify_current:
-            raise ValueError(f"Set standby current {current_mA} mA does not match read back value {verify_current} mA")
+            raise ValueError(f"Set standby current {current_value} does not match read back value {verify_current}")
         
     def get_standby_current(self):
         return self.motor.get_axis_parameter(self.motor.AP.StandbyCurrent, self.axis)
@@ -147,6 +172,22 @@ class TMC2660_MotorDriver(MotorDriver):
             return int.bit_length(microsteps) - 1
         else:
             raise ValueError(f"Invalid number of microsteps: {microsteps}. Must be a power of 2 between 1 and 256.")
+
+    def _get_vsense_full_scale_voltage(self) -> int:
+        return 305 if self.vsense_fs == VSenseFullScale.VSENSE_FULL_SCALE_305mV else 165
+
+    def _convert_current_to_value(self, current_mA: float) -> int:
+        vfs = self._get_vsense_full_scale_voltage()
+        value = int((current_mA * 32 * self.rsense * 1.4142) / vfs) - 1
+        if value < 0 or value > 31:
+            raise ValueError(f"Invalid current value: {value}. Must be between 0 and 31.")
+        return value
+
+    def _convert_value_to_current(self, value: int) -> float:
+        if value < 0 or value > 31:
+            raise ValueError(f"Invalid current value: {value}. Must be between 0 and 31.")
+        vfs = self._get_vsense_full_scale_voltage()
+        return (value + 1) * vfs / (32 * self.rsense * 1.4142)
 
     def cleanup(self):
         self.disable_motor()
