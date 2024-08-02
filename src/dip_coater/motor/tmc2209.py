@@ -12,11 +12,14 @@ from dip_coater.motor.motor_driver_interface import MotorDriver
 
 class TMC2209_MotorDriver(MotorDriver):
     homing_found = False
-    limit_switch_bindings = {}      # Stores the limit switch pin and the corresponding edge trigger event
+    # Stores the limit switch pin and the corresponding edge trigger event
+    limit_switch_bindings = {}
 
     """ Class to control the TMC2209 motor driver for the dip coater"""
-    def __init__(self, app_state, step_mode: int = 8, current_ma: int = 1000, invert_direction: bool = False, interpolation: bool = True,
-                 spread_cycle: bool = False, loglevel: Loglevel = Loglevel.ERROR, log_handlers: list = None,
+    def __init__(self, app_state, step_mode: int = 8, current_ma: int = 1000,
+                 invert_direction: bool = False, interpolation: bool = True,
+                 spread_cycle: bool = False, loglevel: Loglevel = Loglevel.ERROR,
+                 log_handlers: list = None,
                  log_formatter: logging.Formatter = None):
         """ Initialize the motor driver
 
@@ -25,10 +28,14 @@ class TMC2209_MotorDriver(MotorDriver):
         :param current_ma: The current to set for the motor driver in mA
         :param invert_direction: Whether to invert the direction of the motor (default: False)
         :param interpolation: Whether to use interpolation for the motor driver
-        :param spreadcycle: Whether to use spread_cycle for the motor driver (true) or stealthchop (false)
-        :param loglevel: The log level to set for the motor driver (NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL)
-        :param log_handlers: The log handlers to use for the motor driver (default: None = log to console)
-        :param log_formatter: The log formatter log the motor driver messages with (default: None = use default formatter)
+        :param spreadcycle: Whether to use spread_cycle for the motor driver (true) or
+                    stealthchop (false)
+        :param loglevel: The log level to set for the motor driver (NONE, ERROR, INFO, DEBUG,
+                    MOVEMENT, ALL)
+        :param log_handlers: The log handlers to use for the motor driver
+                    (default: None = log to console)
+        :param log_formatter: The log formatter log the motor driver messages with
+                    (default: None = use default formatter)
         """
         super().__init__(app_state.mechanical_setup)
 
@@ -44,10 +51,12 @@ class TMC2209_MotorDriver(MotorDriver):
         # Motor driver
         if platform.system() == "Darwin" or platform.system() == "Windows":
             print("Running on non-Raspberry Pi system. Using mock TMC2209 driver.")
-            self.tmc = TMC_2209(self.en_pin, self.step_pin, self.dir_pin, loglevel=loglevel, log_handlers=log_handlers,
+            self.tmc = TMC_2209(self.en_pin, self.step_pin, self.dir_pin, loglevel=loglevel,
+                                log_handlers=log_handlers,
                                 serialport=None, skip_uart_init=True)
         else:
-            self.tmc = TMC_2209(self.en_pin, self.step_pin, self.dir_pin, loglevel=loglevel, log_handlers=log_handlers,
+            self.tmc = TMC_2209(self.en_pin, self.step_pin, self.dir_pin, loglevel=loglevel,
+                                log_handlers=log_handlers,
                                 log_formatter=log_formatter)
         # Set motor driver settings
         self.tmc.set_vactual(0)      # Motor is not controlled by UART
@@ -72,18 +81,23 @@ class TMC2209_MotorDriver(MotorDriver):
         """ Disarm the motor """
         self.tmc.set_motor_enabled(False)
 
-    def move(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0, limit_switch_pins: list = None):
+    def move(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = 0,
+             limit_switch_pins: list = None):
         """ Drive the motor to move the coater up or down by the given distance at the given speed
 
-        :param distance_mm: The distance to move the coater in mm (positive for up, negative for down)
+        :param distance_mm: The distance to move the coater in mm
+                    (positive for up, negative for down)
         :param speed_mm_s: The speed at which to move the coater in mm/s (always positive)
-        :param acceleration_mm_s2: The acceleration/deceleration to use for the movement in mm/s^2 (default: 0)
-        :param limit_switch_pins: The GPIO pins of the limit switches to use for stopping the motor (default: None)
+        :param acceleration_mm_s2: The acceleration/deceleration to use for the movement in mm/s^2
+                    (default: 0)
+        :param limit_switch_pins: The GPIO pins of the limit switches to use for stopping the motor
+                    (default: None)
         """
         if limit_switch_pins is not None:
             for pin in limit_switch_pins:
                 if self._is_limit_switch_triggered(pin):
-                    raise ValueError(f"Limit switch on pin {pin} is triggered. Please check the limit switches.")
+                    raise ValueError(f"Limit switch on pin {pin} is triggered. "
+                                     f"Please check the limit switches.")
         revs = self.mechanical_setup.mm_to_revs(distance_mm)
         rps = self.mechanical_setup.mm_s_to_rps(speed_mm_s)
         rpss = self.mechanical_setup.mm_s2_to_rpss(acceleration_mm_s2)
@@ -94,23 +108,29 @@ class TMC2209_MotorDriver(MotorDriver):
         self.set_acceleration_rpss(rpss)
         self.tmc.run_to_position_revolutions_threaded(revs)
 
-    def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None, limit_switch_pins: list = None):
+    def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None,
+                limit_switch_pins: list = None):
         """ Move the coater up by the given distance at the given speed
 
         :param distance_mm: The distance to move the coater up in mm
         :param speed_mm_s: The speed at which to move the coater up in mm/s
-        :param acceleration_mm_s2: The acceleration/deceleration to use for the movement in mm/s^2 (default: None = default accel)
-        :param limit_switch_pins: The GPIO pins of the limit switches to use for stopping the motor (default: None)
+        :param acceleration_mm_s2: The acceleration/deceleration to use for the movement in mm/s^2
+                    (default: None = default accel)
+        :param limit_switch_pins: The GPIO pins of the limit switches to use for stopping the motor
+                    (default: None)
         """
         self.move(distance_mm, speed_mm_s, acceleration_mm_s2, limit_switch_pins)
 
-    def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None, limit_switch_pins: list = None):
+    def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None,
+                  limit_switch_pins: list = None):
         """ Move the coater down by the given distance at the given speed
 
         :param distance_mm: The distance to move the coater down in mm
         :param speed_mm_s: The speed at which to move the coater down in mm/s
-        :param acceleration_mm_s2: The acceleration/deceleration to use for the movement in mm/s^2 (default: None = default accel)
-        :param limit_switch_pins: The GPIO pins of the limit switches to use for stopping the motor (default: None)
+        :param acceleration_mm_s2: The acceleration/deceleration to use for the movement in mm/s^2
+                    (default: None = default accel)
+        :param limit_switch_pins: The GPIO pins of the limit switches to use for stopping the motor
+                    (default: None)
         """
         self.move(-distance_mm, speed_mm_s, acceleration_mm_s2, limit_switch_pins)
 
@@ -124,7 +144,8 @@ class TMC2209_MotorDriver(MotorDriver):
     def wait_for_motor_done(self) -> StopMode:
         """ Wait for the motor to finish moving
 
-        :return: The StopMode of the movement (StopMode.NO for normal stop, other StopMode for early stop)
+        :return: The StopMode of the movement (StopMode.NO for normal stop, other StopMode for
+                    early stop)
         """
         return self.tmc.wait_for_movement_finished_threaded()
 
@@ -144,12 +165,17 @@ class TMC2209_MotorDriver(MotorDriver):
 
         !!! Removes the existing limit switch event bindings !!!
 
-        :param limit_switch_up_pin: The GPIO pin of the NC (normally closed) limit switch at the top of the guide
-        :param limit_switch_down_pin: The GPIO pin of the NC (normally closed)  limit switch at the bottom of the guide
-        :param distance_mm: The maximal distance to move the coater in mm (positive for up, negative for down)
+        :param limit_switch_up_pin: The GPIO pin of the NC (normally closed) limit switch at the
+                    top of the guide
+        :param limit_switch_down_pin: The GPIO pin of the NC (normally closed)  limit switch at the
+                    bottom of the guide
+        :param distance_mm: The maximal distance to move the coater in mm (positive for up, negative
+                    for down)
         :param speed_mm_s: The speed to use for the homing routine in mm/s (default: 2 mm/s)
-        :param switch_up_nc: Whether the top limit switch is normally closed (NC) or normally open (NO) (default: True)
-        :param switch_down_nc: Whether the bottom limit switch is normally closed (NC) or normally open (NO) (default: True)
+        :param switch_up_nc: Whether the top limit switch is normally closed (NC) or normally open
+                    (NO) (default: True)
+        :param switch_down_nc: Whether the bottom limit switch is normally closed (NC) or normally
+                    open (NO) (default: True)
 
         :return: True if the homing routine was successful, False otherwise
         """
@@ -165,15 +191,18 @@ class TMC2209_MotorDriver(MotorDriver):
         # Get the condition for the limit switches (when they are triggered)
         home_switch_nc = switch_down_nc if home_down else switch_up_nc
         other_switch_nc = switch_up_nc if home_down else switch_down_nc
-        home_triggered = self.GPIO.input(home_pin) == GpioState.HIGH if home_switch_nc else self.GPIO.input(home_pin) == GpioState.LOW
-        other_triggered = self.GPIO.input(other_pin) == GpioState.HIGH if other_switch_nc else self.GPIO.input(other_pin) == GpioState.LOW
+        home_triggered = self.GPIO.input(home_pin) == GpioState.HIGH if home_switch_nc \
+            else self.GPIO.input(home_pin) == GpioState.LOW
+        other_triggered = self.GPIO.input(other_pin) == GpioState.HIGH if other_switch_nc \
+            else self.GPIO.input(other_pin) == GpioState.LOW
         home_trigger_event = GpioEdge.RISING if home_switch_nc else GpioEdge.FALLING
         other_trigger_event = GpioEdge.RISING if other_switch_nc else GpioEdge.FALLING
 
         # The home switch is already pressed
         if home_triggered:
             if other_triggered:
-                raise ValueError("Both limit switches are triggered. Please check the limit switches.")
+                raise ValueError("Both limit switches are triggered. "
+                                 "Please check the limit switches.")
 
             # Move the coater away from the home switch to start the homing routine
             if home_down:
@@ -184,14 +213,18 @@ class TMC2209_MotorDriver(MotorDriver):
                 self.wait_for_motor_done()
 
         # If the limit switch is still triggered after moving away, raise an error
-        home_triggered = self.GPIO.input(home_pin) == GpioState.HIGH if home_switch_nc else self.GPIO.input(home_pin) == GpioState.LOW
+        home_triggered = self.GPIO.input(home_pin) == GpioState.HIGH if home_switch_nc \
+            else self.GPIO.input(home_pin) == GpioState.LOW
         if home_triggered:
-            raise ValueError("The home switch is still triggered after backing off. Please check the limit switches.")
+            raise ValueError("The home switch is still triggered after backing off. "
+                             "Please check the limit switches.")
 
         # Move the coater towards the home switch and wait for the home switch to be triggered
         self.homing_found = False
-        self.GPIO.add_event_detect(home_pin, home_trigger_event, callback=self._stop_homing_callback, bouncetime=5)
-        self.GPIO.add_event_detect(other_pin, other_trigger_event, callback=self._stop_homing_callback_other_pin, bouncetime=5)
+        self.GPIO.add_event_detect(home_pin, home_trigger_event,
+                                   callback=self._stop_homing_callback, bouncetime=5)
+        self.GPIO.add_event_detect(other_pin, other_trigger_event,
+                                   callback=self._stop_homing_callback_other_pin, bouncetime=5)
         self.move(distance_mm, speed_mm_s)
         self.wait_for_motor_done()
         self.GPIO.remove_event_detect(home_pin)
@@ -208,15 +241,18 @@ class TMC2209_MotorDriver(MotorDriver):
 
         return self.homing_found
 
-    def do_stallguard_homing(self, revolutions: int = 25, threshold: int = 100, speed_mm_s: float = 2):
+    def do_stallguard_homing(self, revolutions: int = 25, threshold: int = 100,
+                             speed_mm_s: float = 2):
         """ Perform the homing routine for the motor driver using StallGuard
 
-        :param revolutions: The number of revolutions to perform the homing routine. (Default: 25; the max stroke of the
+        :param revolutions: The number of revolutions to perform the homing routine. (Default: 25;
+                    the max stroke of the
         guide is 100 mm, so 25 revolutions should be enough to reach the top or bottom)
         :param threshold: The threshold to use for the homing routine (default: None)
         :param speed_mm_s: The speed to use for the homing routine in mm/s (default: 2 mm/s)
         """
-        # Homing sets the SpreadCycle to StealthChop, so we need to store the original setting and restore it afterwards
+        # Homing sets the SpreadCycle to StealthChop, so we need to store the original setting and
+        # restore it afterwards
         spread_cycle = self.tmc.get_spreadcycle()
         speed_rpm = self.mechanical_setup.mm_s_to_rpm(speed_mm_s)
         self.tmc.do_homing(
@@ -242,13 +278,15 @@ class TMC2209_MotorDriver(MotorDriver):
             pos = -pos
         return pos
 
-    def run_to_position(self, position_mm: float, speed_mm_s: float = None, acceleration_mm_s2: float = None,
-                        homed_up: bool = True):
+    def run_to_position(self, position_mm: float, speed_mm_s: float = None,
+                        acceleration_mm_s2: float = None, homed_up: bool = True):
         """ Set the current position of the motor in mm
 
         :param position_mm: The position to set the motor to in mm
-        :param speed_mm_s: The speed at which to move the motor to the position in mm/s (default: None = use current speed)
-        :param acceleration_mm_s2: The acceleration to use for the movement in mm/s^2 (default: None = use current acceleration)
+        :param speed_mm_s: The speed at which to move the motor to the position in mm/s
+                    (default: None = use current speed)
+        :param acceleration_mm_s2: The acceleration to use for the movement in mm/s^2
+                    (default: None = use current acceleration)
         :param homed_up: Whether the motor is homed up (True) or down (False)
         """
         if not self.homing_found:
@@ -297,14 +335,16 @@ class TMC2209_MotorDriver(MotorDriver):
     def set_spread_cycle(self, spread_cycle: bool = False):
         """ Set the spread cycle/stealth chop setting of the motor driver
 
-        :param spread_cycle: Whether to use spread_cycle for the motor driver (true) or stealth chop (false)
+        :param spread_cycle: Whether to use spread_cycle for the motor driver (true) or
+                    stealth chop (false)
         """
         self.tmc.set_spreadcycle(spread_cycle)
 
     def set_loglevel(self, loglevel: Loglevel = Loglevel.INFO):
         """ Set the log level for the motor driver
 
-        :param loglevel: The log level to set for the motor driver (NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL)
+        :param loglevel: The log level to set for the motor driver (NONE, ERROR, INFO, DEBUG,
+                    MOVEMENT, ALL)
         """
         self.tmc.tmc_logger.set_loglevel(loglevel)
 
@@ -324,7 +364,8 @@ class TMC2209_MotorDriver(MotorDriver):
         """ Bind a limit switch to stop the motor driver if it is triggered.
 
         :param limit_switch_pin: The GPIO pin of the limit switch
-        :param NC: Whether the limit switch is normally closed (NC) or normally open (NO) (default: True)
+        :param NC: Whether the limit switch is normally closed (NC) or normally open (NO)
+                    (default: True)
             For safety reasons, it is recommended to use NC limit switches
         """
         event = GpioEdge.RISING if NC else GpioEdge.FALLING
@@ -380,7 +421,8 @@ class TMC2209_MotorDriver(MotorDriver):
         if self._wait_for_debounce(other_pin):
             self.homing_found = False
             self.stop_motor(StopMode.HARDSTOP)
-            raise ValueError("The other limit switch was triggered. Please check the limit switches.")
+            raise ValueError("The other limit switch was triggered. "
+                             "Please check the limit switches.")
 
     def is_homing_found(self) -> bool:
         """ Check whether the motor driver is homed
@@ -433,7 +475,8 @@ if __name__ == "__main__":
     _loglevel = Loglevel.INFO  # NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL
 
     # ======== INIT ========
-    motor_driver = TMC2209_MotorDriver(get_gpio_instance(), step_mode=_step_mode, loglevel=_loglevel)
+    motor_driver = TMC2209_MotorDriver(get_gpio_instance(), step_mode=_step_mode,
+                                       loglevel=_loglevel)
 
     # ======== MOVE DOWN ========
     motor_driver.move_down(distance_down, speed_down, accel_down)

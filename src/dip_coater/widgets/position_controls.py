@@ -22,11 +22,16 @@ class PositionControls(Static):
     def compose(self) -> ComposeResult:
         with Horizontal():
             yield Label("Position: ", id="position-label")
-            yield Button(f"-- {DISTANCE_STEP_COARSE}", id="position-down-coarse", classes="btn-position-control btn-position")
-            yield Button(f"- {DISTANCE_STEP_FINE}", id="position-down-fine", classes="btn-position-control btn-position")
-            yield Button(f"+ {DISTANCE_STEP_FINE}", id="position-up-fine", classes="btn-position-control btn-position")
-            yield Button(f"++ {DISTANCE_STEP_COARSE}", id="position-up-coarse", classes="btn-position-control btn-position")
-            yield Button("Set to current position", id="set-to-current-pos-btn", classes="btn-position")
+            yield Button(f"-- {DISTANCE_STEP_COARSE}", id="position-down-coarse",
+                         classes="btn-position-control btn-position")
+            yield Button(f"- {DISTANCE_STEP_FINE}", id="position-down-fine",
+                         classes="btn-position-control btn-position")
+            yield Button(f"+ {DISTANCE_STEP_FINE}", id="position-up-fine",
+                         classes="btn-position-control btn-position")
+            yield Button(f"++ {DISTANCE_STEP_COARSE}", id="position-up-coarse",
+                         classes="btn-position-control btn-position")
+            yield Button("Set to current position", id="set-to-current-pos-btn",
+                         classes="btn-position")
             yield Input(
                 value="0",
                 type="number",
@@ -36,7 +41,8 @@ class PositionControls(Static):
                 validators=[Number(minimum=0, maximum=250)],
             )
             yield Label("mm", id="position-unit")
-            yield Button("Move to position", id="move-to-position-btn", variant="primary", classes="btn-small btn-position")
+            yield Button("Move to position", id="move-to-position-btn", variant="primary",
+                         classes="btn-small btn-position")
 
     def _on_mount(self, event: events.Mount) -> None:
         self.update_button_states(self.app_state.motor_driver.is_homing_found())
@@ -74,9 +80,10 @@ class PositionControls(Static):
         accel = self.app_state.advanced_settings.acceleration
         await self.move_to_position(pos, speed, accel)
 
-    async def move_to_position(self, position_mm: float, speed_mm_s: float = None, acceleration_mm_s2: float = None,
-                               home_up: bool = HOME_UP):
-        self.app_state.motor_driver.run_to_position(position_mm, speed_mm_s, acceleration_mm_s2, home_up)
+    async def move_to_position(self, position_mm: float, speed_mm_s: float = None,
+                               acceleration_mm_s2: float = None, home_up: bool = HOME_UP):
+        self.app_state.motor_driver.run_to_position(position_mm, speed_mm_s, acceleration_mm_s2,
+                                                    home_up)
 
     def set_position(self, position: float):
         validated_position = clamp(position, MIN_POSITION, MAX_POSITION)

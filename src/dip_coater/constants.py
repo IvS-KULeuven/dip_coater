@@ -70,7 +70,7 @@ LIMIT_SWITCH_DOWN_PIN = 26
 LIMIT_SWITCH_DOWN_NC = True     # Normally closed (NC) or normally open (NO)
 
 # Homing settings
-#HOMING_REVOLUTIONS = 25
+# HOMING_REVOLUTIONS = 25
 HOMING_REVOLUTIONS = 5  # For testing
 HOMING_MAX_DISTANCE = 100   # mm
 HOMING_MIN_REVOLUTIONS = 1

@@ -23,8 +23,8 @@ from dip_coater.logging.motor_logger import MotorLoggerHandler
 from dip_coater.commands.help_command import HelpCommand
 from dip_coater.screens.help_screen import HelpScreen
 from dip_coater.constants import (
-    STEP_MODES, DEFAULT_STEP_MODE, DEFAULT_CURRENT, INVERT_MOTOR_DIRECTION, USE_INTERPOLATION, USE_SPREAD_CYCLE,
-    DEFAULT_LOGGING_LEVEL, USE_DUMMY_DRIVER
+    STEP_MODES, DEFAULT_STEP_MODE, DEFAULT_CURRENT, INVERT_MOTOR_DIRECTION, USE_INTERPOLATION,
+    USE_SPREAD_CYCLE, DEFAULT_LOGGING_LEVEL, USE_DUMMY_DRIVER
 )
 
 from dip_coater.widgets.tabs.main_tab import MainTab
@@ -38,7 +38,8 @@ from dip_coater.motor.tmc2209 import TMC2209_MotorDriver
 from dip_coater.motor.tmc2660 import TMC2660_MotorDriver
 
 
-def create_motor_driver(driver_type: str, app_state, log_level: Loglevel, log_handlers, log_formatter,
+def create_motor_driver(driver_type: str, app_state, log_level: Loglevel, log_handlers,
+                        log_formatter,
                         interface_type="usb_tmcl", port="interactive") -> MotorDriver:
     if driver_type == "TMC2209":
         return TMC2209_MotorDriver(app_state, step_mode=STEP_MODES[DEFAULT_STEP_MODE],
@@ -78,14 +79,16 @@ class DipCoaterApp(App):
     ]
     COMMANDS = App.COMMANDS | {HelpCommand}
 
-    def __init__(self, driver_type: str, mechanical_setup: MechanicalSetup, log_level: Loglevel = Loglevel.INFO):
+    def __init__(self, driver_type: str, mechanical_setup: MechanicalSetup,
+                 log_level: Loglevel = Loglevel.INFO):
         super().__init__()
         app_state.motor_logger_widget = RichLog(markup=True, id="motor-logger")
         app_state.mechanical_setup = mechanical_setup
         motor_logger_handler = MotorLoggerHandler(app_state)
-        logging_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", "%Y%m%d %H:%M:%S")
-        app_state.motor_driver = create_motor_driver(driver_type, app_state, log_level, [motor_logger_handler],
-                                                     logging_format)
+        logging_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s",
+                                           "%Y%m%d %H:%M:%S")
+        app_state.motor_driver = create_motor_driver(driver_type, app_state, log_level,
+                                                     [motor_logger_handler], logging_format)
 
     def on_mount(self):
         # on_mount() is called after compose(), so the RichLog is known
@@ -131,7 +134,8 @@ class DipCoaterApp(App):
 
 def main():
     parser = argparse.ArgumentParser(description='Process logging level and motor driver type.')
-    parser.add_argument('-l', '--log-level', type=str, default=DEFAULT_LOGGING_LEVEL.name,
+    parser.add_argument('-l', '--log-level', type=str,
+                        default=DEFAULT_LOGGING_LEVEL.name,
                         choices=['NONE', 'ERROR', 'INFO', 'DEBUG', 'MOVEMENT', 'ALL'],
                         help='Set the logging level')
     parser.add_argument('-d', '--driver', type=str, default="TMC2209",
