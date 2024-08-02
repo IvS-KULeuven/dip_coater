@@ -10,11 +10,7 @@ from dip_coater.constants import (
     LIMIT_SWITCH_DOWN_PIN, LIMIT_SWITCH_DOWN_NC,
     HOME_UP, HOMING_MAX_DISTANCE
 )
-from dip_coater.widgets.status import Status
-from dip_coater.widgets.distance_controls import DistanceControls
-from dip_coater.widgets.speed_controls import SpeedControls
 from dip_coater.widgets.advanced_settings import AdvancedSettings
-from dip_coater.widgets.step_mode import StepMode
 from dip_coater.widgets.position_controls import PositionControls
 
 from dip_coater.gpio import GpioMode, GpioEdge, GpioPUD, GpioState

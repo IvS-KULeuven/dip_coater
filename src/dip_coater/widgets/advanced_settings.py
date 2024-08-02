@@ -17,6 +17,7 @@ from dip_coater.constants import (
 from dip_coater.widgets.step_mode import StepMode
 from dip_coater.utils.helpers import clamp
 
+
 class AdvancedSettings(Static):
     acceleration = reactive(DEFAULT_ACCELERATION)
     motor_current = reactive(DEFAULT_CURRENT)
