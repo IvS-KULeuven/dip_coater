@@ -41,7 +41,7 @@ app_state = DummyAppState(mechanical_setup)
 driver = TMC2660_MotorDriver(
     app_state,
     interface_type="dummy_tmcl" if USE_DUMMY else "usb_tmcl",
-    port="interactive" if not USE_DUMMY else None,
+    port="/dev/ttyACM0" if not USE_DUMMY else None,
     step_mode=8,
     current_ma=2000,
     current_standstill_ma=1000,
@@ -53,14 +53,14 @@ lb = Landungsbruecke(driver.interface)
 print_lb_content(lb)
 
 # Configure the motor
-driver.set_speed(10)  # 10 mm/s
-driver.set_acceleration(100)  # 100 mm/s^2
+#driver.set_acceleration(100)  # 100 mm/s^2
 
 # Enable the driver
 driver.enable_motor()
 
 print("Rotating...")
-driver.move_up(10, 5)  # Move up 10mm at 5 mm/s
+driver.motor.rotate(5000)
+#driver.move_up(10, 5)  # Move up 10mm at 5 mm/s
 time.sleep(2)
 
 print("Stopping...")
