@@ -86,10 +86,11 @@ print_lb_content(lb)
 motor = eval_board.motors[0]
 
 # Disable the driver
-active_state = my_interface.get_global_parameter(lb.GP.DriversEnable)
+bank = 0
+active_state = my_interface.get_global_parameter(lb.GP.DriversEnable, bank)
 print("Driver active: " + str(active_state))
-my_interface.set_global_parameter(lb.GP.DriversEnable, 0)
-active_state = my_interface.get_global_parameter(lb.GP.DriversEnable)
+my_interface.set_global_parameter(lb.GP.DriversEnable, bank, 0)
+active_state = my_interface.get_global_parameter(lb.GP.DriversEnable, bank)
 print("Driver active: " + str(active_state))
 
 
@@ -100,7 +101,7 @@ motor.set_axis_parameter(motor.AP.MaxAcceleration, 10000)
 # TODO:
 
 # Enable the driver
-my_interface.set_global_parameter(lb.GP.DriversEnable, 1)
+my_interface.set_global_parameter(lb.GP.DriversEnable, bank, 1)
 # TODO
 
 print("Rotating...")
