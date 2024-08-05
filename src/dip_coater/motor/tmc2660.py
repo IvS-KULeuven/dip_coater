@@ -35,7 +35,7 @@ class DriveMode:
 
 class TMC2660_MotorDriver(MotorDriver):
     def __init__(self, app_state, interface_type="usb_tmcl", port="interactive",
-                 step_mode: int = 8, current_mA: int = 2000, current_standstill_mA: int = 2000,
+                 step_mode: int = 8, current_mA: int = 2000, current_standstill_mA: int = 250,
                  loglevel: Loglevel = Loglevel.ERROR, log_handlers: list = None,
                  log_formatter: logging.Formatter = None):
         super().__init__(app_state.mechanical_setup)
