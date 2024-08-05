@@ -114,7 +114,7 @@ class TMC2209_MotorDriver(MotorDriver):
         self.tmc.run_to_position_revolutions_threaded(revs)
 
     def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None,
-                limit_switch_pins: list = None):
+                limit_switch_pins: list = None, *args, **kwargs):
         """ Move the coater up by the given distance at the given speed
 
         :param distance_mm: The distance to move the coater up in mm
@@ -127,7 +127,7 @@ class TMC2209_MotorDriver(MotorDriver):
         self.move(distance_mm, speed_mm_s, acceleration_mm_s2, limit_switch_pins)
 
     def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None,
-                  limit_switch_pins: list = None):
+                  limit_switch_pins: list = None, *args, **kwargs):
         """ Move the coater down by the given distance at the given speed
 
         :param distance_mm: The distance to move the coater down in mm

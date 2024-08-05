@@ -5,6 +5,7 @@ from textual.app import ComposeResult
 from textual import on, events
 
 from dip_coater.widgets.position_controls import PositionControls
+from dip_coater.motor.motor_driver_interface import AvailableMotorDrivers
 
 from dip_coater.gpio import GpioMode, GpioEdge, GpioPUD, GpioState
 from TMC_2209._TMC_2209_move import StopMode
@@ -21,15 +22,17 @@ class MotorControls(Static):
         yield Button("Move DOWN ↓", id="move-down", variant="primary")
         yield Button("ENABLE motor", id="enable-motor", variant="success")
         yield Button("DISABLE motor", id="disable-motor", variant="error")
-        yield Button("Do HOMING", id="do-homing")
+        if self.app_state.driver_type == AvailableMotorDrivers.TMC2209:
+            yield Button("Do HOMING", id="do-homing")
         #yield Button("STOP moving", id="stop-moving", variant="error")         Doesn't work currently...
 
     def _on_mount(self, event: events.Mount) -> None:
         self.update_status_widgets()
-        self.setup_limit_switches_io()
-        self.bind_limit_switches_to_ui()
-        self.update_limit_switch_up_status(self.app_state.config.LIMIT_SWITCH_UP_PIN)
-        self.update_limit_switch_down_status(self.app_state.config.LIMIT_SWITCH_DOWN_PIN)
+        if self.app_state.driver_type == AvailableMotorDrivers.TMC2209:
+            self.setup_limit_switches_io()
+            self.bind_limit_switches_to_ui()
+            self.update_limit_switch_up_status(self.app_state.config.LIMIT_SWITCH_UP_PIN)
+            self.update_limit_switch_down_status(self.app_state.config.LIMIT_SWITCH_DOWN_PIN)
 
     def update_status_widgets(self):
         self.app_state.status.update_homing_found(self.app_state.homing_found)
@@ -49,10 +52,11 @@ class MotorControls(Static):
     def set_motor_state(self, state: str):
         self.app_state.motor_state = state
         self.update_status_widgets()
-        if state == "moving":
-            self.bind_limit_switches_to_motor()
-        else:
-            self.bind_limit_switches_to_ui()
+        if self.app_state.driver_type == AvailableMotorDrivers.TMC2209:
+            if state == "moving":
+                self.bind_limit_switches_to_motor()
+            else:
+                self.bind_limit_switches_to_ui()
 
     @on(Button.Pressed, "#move-up")
     async def move_up_action(self):
@@ -71,7 +75,7 @@ class MotorControls(Static):
             await asyncio.sleep(0.1)
             try:
                 self.app_state.motor_driver.move_up(distance_mm, speed_mm_s, acceleration_mm_s2,
-                                                    [self.app_state.config.LIMIT_SWITCH_UP_PIN])
+                                                    limit_switch_pins=[self.app_state.config.LIMIT_SWITCH_UP_PIN])
                 stop = await self.app_state.motor_driver.wait_for_motor_done_async()
                 if stop == StopMode.NO:
                     log.write(f"-> Finished moving up.")
@@ -103,7 +107,7 @@ class MotorControls(Static):
             await asyncio.sleep(0.1)
             try:
                 self.app_state.motor_driver.move_down(distance_mm, speed_mm_s, acceleration_mm_s2,
-                                                      [self.app_state.config.LIMIT_SWITCH_DOWN_PIN])
+                                                      limit_switch_pins=[self.app_state.config.LIMIT_SWITCH_DOWN_PIN])
                 stop = await self.app_state.motor_driver.wait_for_motor_done_async()
                 if stop == StopMode.NO:
                     log.write(f"-> Finished moving down.")

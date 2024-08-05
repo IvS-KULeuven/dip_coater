@@ -41,15 +41,23 @@ class MotorDriver(ABC):
         pass
 
     @abstractmethod
-    def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
+    def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None, *args, **kwargs):
         pass
 
     @abstractmethod
-    def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
+    def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None, *args, **kwargs):
         pass
 
     @abstractmethod
     def stop_motor(self):
+        pass
+
+    @abstractmethod
+    def wait_for_motor_done(self):
+        pass
+    
+    @abstractmethod
+    async def wait_for_motor_done_async(self):
         pass
 
     @abstractmethod

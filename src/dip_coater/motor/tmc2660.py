@@ -2,6 +2,7 @@
 Move a motor back and forth using velocity and position mode of the TMC2660.
 """
 import logging
+import asyncio
 from pytrinamic.connections import ConnectionManager
 from pytrinamic.evalboards import TMC2660_eval
 from pytrinamic.modules import Landungsbruecke
@@ -87,10 +88,10 @@ class TMC2660_MotorDriver(MotorDriver):
         rpss = self.mechanical_setup.mm_s2_to_rpss(acceleration_mm_s2)
         self.rotate(revs, rps, rpss)
 
-    def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
+    def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None, *args, **kwargs):
         self.move(distance_mm, speed_mm_s, acceleration_mm_s2)
 
-    def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
+    def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None, *args, **kwargs):
         self.move(-distance_mm, speed_mm_s, acceleration_mm_s2)
 
     def stop_motor(self):
@@ -110,9 +111,13 @@ class TMC2660_MotorDriver(MotorDriver):
         """Check if the target position and actual position are equal."""
         return self.motor.get_axis_parameter(self.motor.AP.PositionReachedFlag, self.axis)
 
-    def wait_until_target_reached(self):
+    def wait_for_motor_done(self):
         while not self.is_target_reached():
             pass
+
+    async def wait_for_motor_done_async(self):
+        while not self.is_target_reached():
+            await asyncio.sleep(0.1)
     
     def is_homing_found(self):
         return False

@@ -1,5 +1,6 @@
 from textual.app import ComposeResult
 from textual.containers import Horizontal
+from textual.events import Mount
 from textual.reactive import reactive
 from textual.validation import Number
 from textual import on
@@ -9,10 +10,11 @@ from dip_coater.utils.helpers import clamp
 
 
 class DistanceControls(Static):
+    distance = reactive(None)
+
     def __init__(self, app_state):
         super().__init__()
         self.app_state = app_state
-        self.distance = reactive(self.app_state.config.DEFAULT_DISTANCE)
 
     def compose(self) -> ComposeResult:
         with Horizontal():
@@ -35,6 +37,9 @@ class DistanceControls(Static):
                                    maximum=self.app_state.config.MAX_DISTANCE)],
             )
             yield Label("mm", id="distance-unit")
+    
+    def _on_mount(self, event: Mount) -> None:
+        self.distance = self.app_state.config.DEFAULT_DISTANCE
 
     @on(Button.Pressed, "#distance-down-coarse")
     def decrease_distance_coarse(self):
