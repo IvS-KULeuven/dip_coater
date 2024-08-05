@@ -1,6 +1,10 @@
 from dip_coater.config.config_base import *
+from dip_coater.logging.tmc2660_logger import TMC2660LogLevel
 
 # TMC2660 specific settings
+
+# Logging settings
+DEFAULT_LOGGING_LEVEL = TMC2660LogLevel.INFO
 
 # Current settings (in mA)
 DEFAULT_CURRENT = 2000

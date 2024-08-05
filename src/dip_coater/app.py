@@ -19,7 +19,7 @@ except ModuleNotFoundError:
 from TMC_2209._TMC_2209_logger import Loglevel
 from dip_coater.app_state import AppState
 
-from dip_coater.logging.motor_logger import MotorLoggerHandler
+from dip_coater.logging.motor_logger import MotorLoggerHandler, TempLoggerHandler
 from dip_coater.commands.help_command import HelpCommand
 from dip_coater.screens.help_screen import HelpScreen
 
@@ -88,13 +88,17 @@ class DipCoaterApp(App):
     ]
     COMMANDS = App.COMMANDS | {HelpCommand}
 
-    def __init__(self, app_state, driver: MotorDriver, mechanical_setup: MechanicalSetup,
-                 log_level: Loglevel = Loglevel.INFO):
+    def __init__(self, app_state):
         super().__init__()
         self.app_state = app_state
         self.app_state.motor_logger_widget = RichLog(markup=True, id="motor-logger")
-        self.app_state.mechanical_setup = mechanical_setup
-        self.app_state.motor_driver = driver
+
+        temp_handler = self.app_state.motor_logger_handler
+        self.app_state.motor_logger_handler = MotorLoggerHandler(app_state)
+        self.app_state.motor_driver.remove_log_handler(temp_handler)
+        self.app_state.motor_driver.add_log_handler(self.app_state.motor_logger_handler)
+        for entry in temp_handler.get_entries():
+            self.app_state.motor_logger_handler.emit(entry)
 
     def on_mount(self):
         # on_mount() is called after compose(), so the RichLog is known
@@ -145,7 +149,7 @@ def main():
                         default=Loglevel.INFO.name,
                         choices=['NONE', 'ERROR', 'INFO', 'DEBUG', 'MOVEMENT', 'ALL'],
                         help='Set the logging level')
-    parser.add_argument('-d', '--driver', type=AvailableMotorDrivers, default=AvailableMotorDrivers.TMC2660,
+    parser.add_argument('-d', '--driver', type=AvailableMotorDrivers, default=AvailableMotorDrivers.TMC2209,
                         choices=[AvailableMotorDrivers.TMC2209, AvailableMotorDrivers.TMC2660],
                         help='Set the motor driver type')
     parser.add_argument('-i', '--interface', type=str, default='usb_tmcl',
@@ -172,9 +176,10 @@ def main():
         mm_per_revolution=args.mm_per_revolution,
         gearbox_ratio=args.gearbox_ratio
     )
+    app_state.mechanical_setup = mechanical_setup
 
     # Build the motor driver
-    motor_logger_handler = MotorLoggerHandler(app_state)
+    app_state.motor_logger_handler = TempLoggerHandler()
     logging_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s",
                                        "%Y%m%d %H:%M:%S")
     log_level = get_log_level(args.driver, args.log_level)
@@ -182,16 +187,17 @@ def main():
         driver_type=args.driver,
         app_state=app_state,
         log_level=log_level,
-        log_handlers=[motor_logger_handler],
+        log_handlers=[app_state.motor_logger_handler],
         log_formatter=logging_format,
         interface_type=args.interface,
         port=args.port
     )
+    app_state.motor_driver = driver
 
     # Build and start the application
     package_version = version("dip-coater")
     print(f"Starting Dip Coater v{package_version}, driver: {args.driver}, log level: {log_level}")
-    app = DipCoaterApp(app_state, driver, mechanical_setup, log_level)
+    app = DipCoaterApp(app_state)
     app.title = f"Dip Coater v{package_version}"
     app.run()
 

@@ -121,5 +121,13 @@ class MotorDriver(ABC):
         raise NotImplementedError()
 
     @abstractmethod
+    def add_log_handler(self, handler):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def remove_log_handler(self, handler):
+        raise NotImplementedError()
+
+    @abstractmethod
     def cleanup(self):
         raise NotImplementedError()

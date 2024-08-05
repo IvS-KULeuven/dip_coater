@@ -56,7 +56,7 @@ class AdvancedSettingsTab(TabPane):
                 self.app_state.motor_driver.set_current_standstill(event.value)
                 self.app_state.status_advanced.update_current_standstill(event.value)
             case "invert_direction":
-                self.app_state.motor_driver.set_direction(event.value)
+                self.app_state.motor_driver.invert_direction(event.value)
                 self.app_state.status_advanced.update_invert_motor_direction(event.value)
             case "interpolation":
                 self.app_state.motor_driver.set_interpolation(event.value)

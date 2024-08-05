@@ -27,7 +27,7 @@ class Status(Static):
 
     def compose(self) -> ComposeResult:
         with Vertical():
-            yield Label(f"Driver type: [blue]{self.app_state.driver_type}[/]")
+            yield Label(f"Driver type: [blue]{self.app_state.driver_type.name}[/]")
             yield Rule()
             yield Label(id="status-speed")
             yield Label(id="status-distance")

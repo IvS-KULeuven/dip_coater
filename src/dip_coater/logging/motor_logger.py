@@ -3,13 +3,25 @@ from logging import Handler
 from TMC_2209._TMC_2209_logger import Loglevel
 
 
+class TempLoggerHandler(Handler):
+    def __init__(self):
+        super().__init__()
+        self.entries = []
+
+    def emit(self, record):
+        self.entries.append(record)
+
+    def get_entries(self):
+        return self.entries
+
+
 class MotorLoggerHandler(Handler):
     def __init__(self, app_state) -> None:
         super().__init__()
-        self.logger_widget = app_state.motor_logger_widget
+        self.app_state = app_state
 
     def emit(self, record) -> None:
-        self.logger_widget.write(self.colorize(record))
+        self.app_state.motor_logger_widget.write(self.colorize(record))
 
     def colorize(self, record):
         message = self.format(record)

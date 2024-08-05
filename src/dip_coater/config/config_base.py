@@ -1,5 +1,3 @@
-from TMC_2209._TMC_2209_logger import Loglevel
-
 # Common settings for all drivers
 
 # Dummy driver settings
@@ -10,7 +8,6 @@ CONFIG_FILE = "dip_coater_config.json"
 
 # Logging settings
 STEP_MODE_WRITE_TO_LOG = False
-DEFAULT_LOGGING_LEVEL = Loglevel.INFO  # NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL
 
 # Step mode settings
 STEP_MODES = {

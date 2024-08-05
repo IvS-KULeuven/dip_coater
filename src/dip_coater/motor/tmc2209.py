@@ -19,8 +19,7 @@ class MotorDriverTMC2209(MotorDriver):
     def __init__(self, app_state, step_mode: int = 8, current_mA: int = 1000, current_standstill_mA: int = 150,
                  invert_direction: bool = False, interpolation: bool = True,
                  spread_cycle: bool = False, loglevel: Loglevel = Loglevel.ERROR,
-                 log_handlers: list = None,
-                 log_formatter: logging.Formatter = None):
+                 log_handlers: list = None, log_formatter: logging.Formatter = None):
         """ Initialize the motor driver
 
         :param app_state: The application state to use for the motor driver
@@ -59,6 +58,7 @@ class MotorDriverTMC2209(MotorDriver):
             self.tmc = TMC_2209(self.en_pin, self.step_pin, self.dir_pin, loglevel=loglevel,
                                 log_handlers=log_handlers,
                                 log_formatter=log_formatter)
+            self.tmc.lo
         # Set motor driver settings
         self.tmc.set_vactual(0)      # Motor is not controlled by UART
         self.tmc.set_direction_reg(invert_direction)
@@ -455,6 +455,12 @@ class MotorDriverTMC2209(MotorDriver):
             # Perform 2 revolutions
             steps = 2 * self.tmc.read_steps_per_rev()
         self.tmc.test_stallguard_threshold(steps)
+
+    def add_log_handler(self, handler):
+        self.tmc.tmc_logger.add_handler(handler)
+
+    def remove_log_handler(self, handler):
+        self.tmc.tmc_logger.remove_handler(handler)
 
     def cleanup(self):
         """ Clean up the motor driver for shutdown"""

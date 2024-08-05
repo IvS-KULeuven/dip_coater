@@ -14,6 +14,7 @@ class AppState:
         self.motor_driver = None
         self.motor_state = "disabled"
         self.homing_found = False
+        self.motor_logger_handler = None
         self.motor_logger_widget = None
         self.status = None
         self.advanced_settings = None

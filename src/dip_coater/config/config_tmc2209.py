@@ -2,6 +2,9 @@ from dip_coater.config.config_base import *
 
 # TMC2209 specific settings
 
+# Logging settings
+DEFAULT_LOGGING_LEVEL = Loglevel.INFO  # NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL
+
 # Current settings (in mA)
 DEFAULT_CURRENT = 600
 DEFAULT_CURRENT_STANDSTILL = 100
