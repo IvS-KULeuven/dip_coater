@@ -10,7 +10,8 @@ class MechanicalSetup:
     # ------------ Calculation methods ------------
 
     def mm_per_step(self, microsteps: int) -> float:
-        return self.mm_per_revolution / (self.steps_per_revolution * self.gearbox_ratio * microsteps)
+        return self.mm_per_revolution / (self.steps_per_revolution * self.gearbox_ratio *
+                                         microsteps)
 
     def steps_for_distance(self, distance_mm: float, microsteps: int) -> int:
         return round(distance_mm / self.mm_per_step(microsteps))
@@ -27,7 +28,7 @@ class MechanicalSetup:
     def revs_to_mm(self, revs: float) -> float:
         """Convert revolutions to linear position (mm)."""
         return revs * self.mm_per_revolution * self.gearbox_ratio
-    
+
     def steps_to_revs(self, steps: int, microsteps: int) -> float:
         """Convert steps to revolutions."""
         return steps / (self.steps_per_revolution * microsteps)
@@ -51,7 +52,7 @@ class MechanicalSetup:
     def rps_to_mm_s(self, rps: float) -> float:
         """Convert rotations per second to linear velocity (mm/s)."""
         return rps * self.mm_per_revolution * self.gearbox_ratio
-    
+
     def rps_to_stepss(self, rps: float, microsteps: int) -> int:
         """Convert rotations per second to steps per second."""
         return round(rps * self.steps_per_revolution * microsteps)
@@ -74,7 +75,8 @@ class MechanicalSetup:
 
     def mm_s2_to_rpss(self, acceleration_mm_s2: float) -> float:
         """Convert linear acceleration (mm/s^2) to rotations per second squared."""
-        return None if not acceleration_mm_s2 else acceleration_mm_s2 / self.mm_per_revolution / self.gearbox_ratio
+        return None if not acceleration_mm_s2 else (acceleration_mm_s2 / self.mm_per_revolution /
+                                                    self.gearbox_ratio)
 
     def rpss_to_mm_s2(self, rpss: float) -> float:
         """Convert rotations per second squared to linear acceleration (mm/s^2)."""
@@ -94,9 +96,9 @@ class MechanicalSetup:
 
     def mm_s2_to_stepss2(self, acceleration_mm_s2: float, microsteps: int) -> int:
         """Convert linear acceleration (mm/s^2) to steps per second squared."""
-        return None if not acceleration_mm_s2 else round(acceleration_mm_s2 / self.mm_per_step(microsteps))
+        return None if not acceleration_mm_s2 else round(acceleration_mm_s2 /
+                                                         self.mm_per_step(microsteps))
 
     def stepss2_to_mm_s2(self, stepss2: int, microsteps: int) -> float:
         """Convert steps per second squared to linear acceleration (mm/s^2)."""
         return None if not stepss2 else stepss2 * self.mm_per_step(microsteps)
-

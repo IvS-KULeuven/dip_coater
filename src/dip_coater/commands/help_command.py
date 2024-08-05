@@ -1,6 +1,7 @@
 from textual.command import Provider
 from textual.command import Hit, Hits, DiscoveryHit
 
+
 class HelpCommand(Provider):
     async def discover(self) -> Hits:
         app = self.app
@@ -18,7 +19,7 @@ class HelpCommand(Provider):
 
         app = self.app
 
-        command = f"help"
+        command = "help"
         score = matcher.match(command)
         if score > 0:
             yield Hit(

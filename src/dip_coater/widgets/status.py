@@ -7,8 +7,6 @@ from textual.containers import Vertical
 from textual.widgets import Label
 from textual.widgets import Rule
 
-from dip_coater.motor.tmc2209 import TMC2209_MotorDriver
-from dip_coater.app_state import app_state
 from dip_coater.utils.threading_util import AsyncioStoppableTimer
 
 
@@ -23,12 +21,14 @@ class Status(Static):
 
     position_thread = None
 
-    def __init__(self, motor_driver: TMC2209_MotorDriver, *args, **kwargs):
+    def __init__(self, app_state, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.motor_driver = motor_driver
+        self.app_state = app_state
 
     def compose(self) -> ComposeResult:
         with Vertical():
+            yield Label(f"Driver type: [blue]{self.app_state.driver_type}[/]")
+            yield Rule()
             yield Label(id="status-speed")
             yield Label(id="status-distance")
             yield Label(id="status-homing-found")
@@ -39,7 +39,7 @@ class Status(Static):
             yield Label(id="status-position")
 
     def on_mount(self):
-        self.update_motor_state(app_state.motor_state)
+        self.update_motor_state(self.app_state.motor_state)
         self.position_thread = AsyncioStoppableTimer(0.5, self.fetch_new_position)
         self.position_thread.start()
 
@@ -95,7 +95,7 @@ class Status(Static):
         self.query_one("#status-position", Label).update(position)
 
     async def fetch_new_position(self):
-        position = app_state.motor_driver.get_current_position_mm()
+        position = self.app_state.motor_driver.get_current_position_mm()
         await self.update_position(position)
 
     async def update_position(self, position_mm: float):

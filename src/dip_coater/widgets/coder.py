@@ -9,7 +9,6 @@ from textual.widgets import Static, Label, TextArea, Button, Input, Markdown, Co
 
 from dip_coater.widgets.position_controls import PositionControls
 from dip_coater.utils.helpers import config_load_coder_filepath, config_save_coder_filepath
-from dip_coater.constants import HOME_UP
 
 
 class Coder(Static):
@@ -59,7 +58,7 @@ class Coder(Static):
                     yield Label("", id="coder-path-invalid-reasons")
 
     def _on_mount(self, event: events.Mount) -> None:
-        config_file_path = config_load_coder_filepath()
+        config_file_path = config_load_coder_filepath(self.app_state)
         self.query_one("#code-file-path-input", Input).value = config_file_path
         self.load_code_from_file(config_file_path)
 
@@ -101,7 +100,7 @@ class Coder(Static):
             return
 
         self.load_code_from_file(file_path)
-        config_save_coder_filepath(file_path)
+        config_save_coder_filepath(self.app_state, file_path)
 
     def load_code_from_file(self, file_path: str):
         if file_path is None or file_path == "":
@@ -148,20 +147,26 @@ class Coder(Static):
     def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
         # NOTE: We are purposely not changing the distance, speed and acceleration settings here,
         # as this may be undesirable in some cases.
-        self.async_run(self.app_state.motor_controls.move_up, distance_mm, speed_mm_s, acceleration_mm_s2)
+        self.async_run(self.app_state.motor_controls.move_up, distance_mm, speed_mm_s,
+                       acceleration_mm_s2)
 
     def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None):
         # NOTE: We are purposely not changing the distance, speed and acceleration settings here,
         # as this may be undesirable in some cases.
-        self.async_run(self.app_state.motor_controls.move_down, distance_mm, speed_mm_s, acceleration_mm_s2)
+        self.async_run(self.app_state.motor_controls.move_down, distance_mm, speed_mm_s,
+                       acceleration_mm_s2)
 
-    def home_motor(self, home_up: bool = HOME_UP):
+    def home_motor(self, home_up: bool = None):
+        if home_up is None:
+            home_up = self.app_state.config.HOME_UP
         self.async_run(self.app_state.motor_controls.perform_homing, home_up)
 
-    def move_to_position(self, position_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None,
-                         home_up: bool = HOME_UP):
-        self.async_run(self.app.query_one(PositionControls).move_to_position, position_mm, speed_mm_s,
-                       acceleration_mm_s2, home_up)
+    def move_to_position(self, position_mm: float, speed_mm_s: float,
+                         acceleration_mm_s2: float = None, home_up: bool = None):
+        if home_up is None:
+            home_up = self.app_state.config.HOME_UP
+        self.async_run(self.app.query_one(PositionControls).move_to_position, position_mm,
+                       speed_mm_s, acceleration_mm_s2, home_up)
 
     def sleep(self, seconds: float):
         log = self.app.query_one("#logger", RichLog)

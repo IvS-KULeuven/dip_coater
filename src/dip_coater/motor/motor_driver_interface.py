@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 from dip_coater.motor.mechanical_setup import MechanicalSetup
 
+
 class MotorDriver(ABC):
     def __init__(self, mechanical_setup: MechanicalSetup):
         self.mechanical_setup = mechanical_setup
@@ -20,10 +21,11 @@ class MotorDriver(ABC):
     @abstractmethod
     def rotate(self, revs: float, rps: float, rpss: float = None):
         """ Rotate clock-wise (viewed from the top of the motor axle)
-        
+
         :param revs: number of revolutions to turn (> 0 = clock-wise, < 0 = counter-clock-wise)
         :param rps: rotation speed in rotations per second
-        :param rpss: rotation acceleration in rotations per second^2 (or None to use the default value)
+        :param rpss: rotation acceleration in rotations per second^2 (or None to use the default
+                    value)
         """
         pass
 
@@ -44,7 +46,8 @@ class MotorDriver(ABC):
         pass
 
     @abstractmethod
-    def run_to_position(self, position_mm: float, speed_mm_s: float = None, acceleration_mm_s2: float = None):
+    def run_to_position(self, position_mm: float, speed_mm_s: float = None,
+                        acceleration_mm_s2: float = None):
         pass
 
     # --------------- MOTOR CONFIGURATION ---------------
@@ -87,11 +90,11 @@ class MotorDriver(ABC):
         pass
 
     @abstractmethod
-    def set_max_current(self, current_mA: float):
+    def set_current(self, current_mA: float):
         pass
 
     @abstractmethod
-    def set_standby_current(self, current_mA: float):
+    def set_current_standstill(self, current_mA: float):
         pass
 
     @abstractmethod

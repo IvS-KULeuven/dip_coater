@@ -19,6 +19,19 @@ class VSenseFullScale:
     VSENSE_FULL_SCALE_165mV = 1
 
 
+class DriveMode:
+    # High-precision load measurement using the back EMF on the coils
+    STALL_GUARD = 0
+    # Load-adaptive current control which reduces energy consumption by as much as 75%
+    COOL_STEP = 1
+    # High-precision chopper algorithm available as an alternative to the traditional constant
+    # off-time algorithm
+    SPREAD_CYCLE = 2
+    # High-precision chopper algorithm available as an alternative to the traditional constant
+    # off-time algorithm
+    MICRO_PLYER = 3
+
+
 class TMC2660_MotorDriver(MotorDriver):
     def __init__(self, app_state, interface_type="usb_tmcl", port="interactive",
                  step_mode: int = 8, current_mA: int = 2000, current_standstill_mA: int = 2000,
@@ -41,7 +54,7 @@ class TMC2660_MotorDriver(MotorDriver):
         self.vsense_fs = VSenseFullScale.VSENSE_FULL_SCALE_305mV
         self.rsense = 100       # Sense resistor value in mOhm
 
-        self.set_max_current(current_mA)
+        self.set_current(current_mA)
         self.set_standby_current(current_standstill_mA)
 
     # --------------- MOTOR CONTROL ---------------
@@ -122,30 +135,30 @@ class TMC2660_MotorDriver(MotorDriver):
     def get_vsense_full_scale(self) -> int:
         return self.motor.get_axis_parameter(self.motor.AP.VSense, self.axis)
 
-    def set_max_current(self, current_mA: float):
+    def set_current(self, current_mA: float):
         current_value = self._convert_current_to_value(current_mA)
         actual_current_mA = self._convert_value_to_current(current_value)
         print(f"Setting max current to {current_mA:.1f} mA, value: {current_value}, actual: {actual_current_mA:.1f} mA")
         self.motor.set_axis_parameter(self.motor.AP.MaxCurrent, current_value)
 
-        verify_current = self.get_max_current()
+        verify_current = self.get_current()
         if current_value != verify_current:
             raise ValueError(f"Set max current {current_value} does not match read back value {verify_current}")
 
-    def get_max_current(self):
+    def get_current(self):
         return self.motor.get_axis_parameter(self.motor.AP.MaxCurrent, self.axis)
 
-    def set_standby_current(self, current_mA: float):
+    def set_current_standstill(self, current_mA: float):
         current_value = self._convert_current_to_value(current_mA)
         actual_current_mA = self._convert_value_to_current(current_value)
         print(f"Setting hold current to {current_mA:.1f} mA, value: {current_value}, actual: {actual_current_mA:.1f} mA")
         self.motor.set_axis_parameter(self.motor.AP.StandbyCurrent, current_value)
 
-        verify_current = self.get_standby_current()
+        verify_current = self.get_current_standstill()
         if current_value != verify_current:
             raise ValueError(f"Set standby current {current_value} does not match read back value {verify_current}")
         
-    def get_standby_current(self):
+    def get_current_standstill(self):
         return self.motor.get_axis_parameter(self.motor.AP.StandbyCurrent, self.axis)
 
     def set_speed_rps(self, rps: float):

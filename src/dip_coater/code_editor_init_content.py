@@ -1,6 +1,7 @@
 """
 !!! USE THIS EDITOR WITH CAUTION !!!
-Stick to the provided API and do not import any modules or use any functions that are not part of the API.
+Stick to the provided API and do not import any modules or use any functions that are not part of
+the API.
 """
 
 # ====== PARAMETERS ======

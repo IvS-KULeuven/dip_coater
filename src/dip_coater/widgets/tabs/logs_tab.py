@@ -4,7 +4,6 @@ from textual.widgets import TabPane, Label, Select
 from textual import on
 
 from TMC_2209._TMC_2209_logger import Loglevel
-from dip_coater.constants import DEFAULT_LOGGING_LEVEL
 
 class LogsTab(TabPane):
     def __init__(self, app_state):
@@ -17,7 +16,7 @@ class LogsTab(TabPane):
                 yield Label("Logging level: ", id="logging-level-label")
                 options = self.create_log_level_options()
                 yield Select(options,
-                             value=DEFAULT_LOGGING_LEVEL.value,
+                             value=self.app_state.config.DEFAULT_LOGGING_LEVEL.value,
                              allow_blank=False,
                              name="Select logging level",
                              id="logging-level-select")
@@ -39,4 +38,5 @@ class LogsTab(TabPane):
         self.app_state.motor_driver.set_loglevel(level)
 
     def reset_settings_to_default(self):
-        self.query_one("#logging-level-select", Select).value = DEFAULT_LOGGING_LEVEL.value
+        self.query_one("#logging-level-select", Select).value = (
+            self.app_state.config.DEFAULT_LOGGING_LEVEL.value)
