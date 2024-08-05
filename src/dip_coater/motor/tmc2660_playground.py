@@ -62,8 +62,8 @@ time.sleep(0.5)
 driver.enable_motor()
 
 print("Rotating...")
-driver.rotate(2, 2)    # Rotate 2 revolutions at 1 rps
-time.sleep(1.1)
+driver.rotate(5, 2)    # Rotate 2 revolutions at 1 rps
+driver.wait_until_target_reached()
 
 print("Stopping...")
 driver.stop_motor()
@@ -71,7 +71,7 @@ time.sleep(1)
 
 print("Rotating...")
 driver.rotate(-1, 0.25)   # Rotate 1 revolution at 0.25 rps
-time.sleep(4.1)
+driver.wait_until_target_reached()
 
 print("Stopping...")
 driver.motor.stop()

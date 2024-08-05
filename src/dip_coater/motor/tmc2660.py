@@ -90,6 +90,14 @@ class TMC2660_MotorDriver(MotorDriver):
         steps = self.mechanical_setup.mm_to_steps(position_mm, self.microsteps)
         self.motor.move_to(steps)
 
+    def is_target_reached(self):
+        """Check if the target position and actual position are equal."""
+        return self.motor.get_axis_parameter(self.motor.AP.PositionReachedFlag, self.axis)
+
+    def wait_until_target_reached(self):
+        while not self.is_target_reached():
+            pass
+
     # --------------- MOTOR CONFIGURATION ---------------
 
     def set_microsteps(self, microsteps: int):
