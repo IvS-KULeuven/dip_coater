@@ -26,7 +26,7 @@ class MotorDriver(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def set_direction(self, invert_direction: bool = False):
+    def invert_direction(self, invert_direction: bool = False):
         raise NotImplementedError()
 
     @abstractmethod

@@ -55,7 +55,7 @@ class MotorDriverTMC2660(MotorDriver):
         self.vsense_fs = VSenseFullScale.VSENSE_FULL_SCALE_305mV
         self.rsense = 100       # Sense resistor value in mOhm
 
-        self.invert_direction = False
+        self.direction_inverted = False
 
         self.set_current(current_mA)
         self.set_current_standstill(current_standstill_mA)
@@ -75,11 +75,11 @@ class MotorDriverTMC2660(MotorDriver):
     def is_motor_enabled(self):
         return self.interface.get_global_parameter(self.lb.GP.DriversEnable, self.bank)
 
-    def set_direction(self, invert_direction: bool = False):
-        self.invert_direction = invert_direction
+    def invert_direction(self, invert_direction: bool = False):
+        self.direction_inverted = invert_direction
 
     def rotate(self, revs: float, rps: float, rpss: float = None):
-        revs = -revs if self.invert_direction else revs
+        revs = -revs if self.direction_inverted else revs
         self.set_speed_rps(rps)
         self.set_acceleration_rpss(rpss)
         steps = self.mechanical_setup.revs_to_steps(revs, self.microsteps)

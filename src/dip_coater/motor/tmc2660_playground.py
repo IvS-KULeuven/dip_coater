@@ -53,6 +53,7 @@ lb = Landungsbruecke(driver.interface)
 print_lb_content(lb)
 
 # Configure the motor
+driver.invert_direction(False)
 driver.set_acceleration(100)  # 100 mm/s^2
 
 # Wait for the driver to be ready
@@ -63,7 +64,7 @@ driver.enable_motor()
 
 print("Rotating...")
 driver.rotate(5, 2)    # Rotate 2 revolutions at 1 rps
-driver.wait_until_target_reached()
+driver.wait_for_motor_done()
 
 print("Stopping...")
 driver.stop_motor()
@@ -71,7 +72,7 @@ time.sleep(1)
 
 print("Rotating...")
 driver.rotate(-1, 0.25)   # Rotate 1 revolution at 0.25 rps
-driver.wait_until_target_reached()
+driver.wait_for_motor_done()
 
 print("Stopping...")
 driver.motor.stop()

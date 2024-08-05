@@ -327,7 +327,7 @@ class MotorDriverTMC2209(MotorDriver):
         multiplier = self.calculate_hold_current_multiplier()
         self.tmc.set_current(self.current, hold_current_multiplier=multiplier, pdn_disable=False)
 
-    def set_direction(self, invert_direction: bool = False):
+    def invert_direction(self, invert_direction: bool = False):
         """ Set the direction of the motor driver
 
         :param invert_direction: Whether to invert the direction of the motor (default: False)
