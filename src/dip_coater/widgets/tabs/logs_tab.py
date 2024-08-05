@@ -5,6 +5,8 @@ from textual import on
 
 from TMC_2209._TMC_2209_logger import Loglevel
 
+from dip_coater.motor.motor_driver_interface import AvailableMotorDrivers
+
 class LogsTab(TabPane):
     def __init__(self, app_state):
         super().__init__("Logs", id="logs-tab")
@@ -35,7 +37,8 @@ class LogsTab(TabPane):
         self.set_loglevel(level)
 
     def set_loglevel(self, level: Loglevel):
-        self.app_state.motor_driver.set_loglevel(level)
+        if self.app_state.driver_type == AvailableMotorDrivers.TMC2209:
+            self.app_state.motor_driver.set_loglevel(level)
 
     def reset_settings_to_default(self):
         self.query_one("#logging-level-select", Select).value = (

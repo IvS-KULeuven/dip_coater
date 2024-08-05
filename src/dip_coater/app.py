@@ -30,6 +30,7 @@ from dip_coater.widgets.tabs.coder_tab import CoderTab
 
 from dip_coater.motor.mechanical_setup import MechanicalSetup
 from dip_coater.motor.motor_driver_interface import MotorDriver
+from dip_coater.motor.motor_driver_interface import AvailableMotorDrivers
 from dip_coater.motor.tmc2209 import TMC2209_MotorDriver
 from dip_coater.motor.tmc2660 import TMC2660_MotorDriver
 
@@ -37,7 +38,7 @@ from dip_coater.motor.tmc2660 import TMC2660_MotorDriver
 def create_motor_driver(driver_type: str, app_state, log_level: Loglevel, log_handlers,
                         log_formatter,
                         interface_type="usb_tmcl", port="interactive") -> MotorDriver:
-    if driver_type == "TMC2209":
+    if driver_type == AvailableMotorDrivers.TMC2209:
         return TMC2209_MotorDriver(app_state,
                                    step_mode=app_state.config.STEP_MODES[
                                        app_state.config.DEFAULT_STEP_MODE],
@@ -49,7 +50,7 @@ def create_motor_driver(driver_type: str, app_state, log_level: Loglevel, log_ha
                                    loglevel=log_level,
                                    log_handlers=log_handlers,
                                    log_formatter=log_formatter)
-    elif driver_type == "TMC2660":
+    elif driver_type == AvailableMotorDrivers.TMC2660:
         if app_state.config.USE_DUMMY_DRIVER:
             interface_type = "dummy_tmcl"
             port = None
@@ -140,7 +141,7 @@ def main():
                         default=Loglevel.INFO.name,
                         choices=['NONE', 'ERROR', 'INFO', 'DEBUG', 'MOVEMENT', 'ALL'],
                         help='Set the logging level')
-    parser.add_argument('-d', '--driver', type=str, default="TMC2209",
+    parser.add_argument('-d', '--driver', type=str, default=AvailableMotorDrivers.TMC2660,
                         choices=['TMC2209', 'TMC2660'],
                         help='Set the motor driver type')
     parser.add_argument('--mm-per-revolution', type=float, default=4.0,

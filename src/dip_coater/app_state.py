@@ -1,12 +1,13 @@
 from dip_coater.gpio import get_gpio_instance
 from dip_coater.config.config_loader import Config
+from dip_coater.motor.motor_driver_interface import AvailableMotorDrivers
 
 
 class AppState:
     """
     This class is used to store a shared state of the application.
     """
-    def __init__(self, driver_type: str = "TMC2209"):
+    def __init__(self, driver_type: AvailableMotorDrivers = AvailableMotorDrivers.TMC2209):
         self.driver_type = driver_type
         self.config = Config(driver_type)
         self.gpio = get_gpio_instance()

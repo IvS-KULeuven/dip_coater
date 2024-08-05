@@ -1,11 +1,6 @@
 from dip_coater.config.config_base import *
-from TMC_2209._TMC_2209_logger import Loglevel
 
 # TMC2209 specific settings
-
-# Logging settings
-STEP_MODE_WRITE_TO_LOG = False
-DEFAULT_LOGGING_LEVEL = Loglevel.INFO  # NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL
 
 # Current settings (in mA)
 DEFAULT_CURRENT = 600

@@ -1,6 +1,13 @@
 from abc import ABC, abstractmethod
+from enum import Enum
 
 from dip_coater.motor.mechanical_setup import MechanicalSetup
+
+
+class AvailableMotorDrivers(str, Enum):
+    TMC2209 = "TMC2209",
+    TMC2660 = "TMC2660",
+
 
 
 class MotorDriver(ABC):
@@ -16,6 +23,10 @@ class MotorDriver(ABC):
 
     @abstractmethod
     def disable_motor(self):
+        pass
+
+    @abstractmethod
+    def set_direction(self, invert_direction: bool = False):
         pass
 
     @abstractmethod
@@ -48,6 +59,10 @@ class MotorDriver(ABC):
     @abstractmethod
     def run_to_position(self, position_mm: float, speed_mm_s: float = None,
                         acceleration_mm_s2: float = None):
+        pass
+
+    @abstractmethod
+    def is_homing_found(self):
         pass
 
     # --------------- MOTOR CONFIGURATION ---------------

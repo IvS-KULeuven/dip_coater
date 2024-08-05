@@ -195,7 +195,7 @@ AdvancedSettingsBase {
         border: none;
     }
 
-    #invert-motor-checkbox {
+    #invert-direction-checkbox {
         margin-right: 2;
     }
 

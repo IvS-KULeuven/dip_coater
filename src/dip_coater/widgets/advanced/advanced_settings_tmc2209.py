@@ -29,7 +29,7 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
         with Horizontal(id="interpolation-container"):
             yield Checkbox("Invert motor direction",
                            value=self.app_state.config.INVERT_MOTOR_DIRECTION,
-                           id="invert-motor-checkbox", classes="checkbox")
+                           id="invert-direction-checkbox", classes="checkbox")
             yield Checkbox("Interpolation", value=self._interpolation,
                            id="interpolation-checkbox", classes="checkbox")
             yield Checkbox("Spread Cycle (T)/Stealth Chop (F)", value=self._spread_cycle,
@@ -94,6 +94,9 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
 
     def _on_mount(self, event: events.Mount) -> None:
         super()._on_mount(event)
+
+        # Attach watchers to reactives from other widgets
+        self.watch(self.app_state.speed_controls, "speed", self.update_control_mode_widgets_value)
 
         self.reset_settings_to_default()
 

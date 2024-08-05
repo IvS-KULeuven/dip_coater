@@ -15,7 +15,7 @@ class StatusAdvancedBase(Static):
             yield Label(id="status-current")
             yield Label(id="status-current-standstill")
             yield Rule()
-            yield Label(id="status-invert-motor-direction")
+            yield Label(id="status-invert-direction")
             yield from self.additional_widgets()
 
     def additional_widgets(self) -> ComposeResult:
@@ -36,4 +36,4 @@ class StatusAdvancedBase(Static):
             f"Motor current standstill: {current_standstill} mA")
 
     def update_invert_motor_direction(self, invert_direction: bool):
-        self.query_one("#status-invert-motor-direction", Label).update(f"Invert motor direction: {invert_direction}")
+        self.query_one("#status-invert-direction", Label).update(f"Invert motor direction: {invert_direction}")

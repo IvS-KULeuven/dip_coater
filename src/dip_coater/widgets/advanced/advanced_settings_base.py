@@ -84,7 +84,7 @@ class AdvancedSettingsBase(Static):
         self.query_one("#acceleration-input", Input).value = \
             f"{self.app_state.config.DEFAULT_ACCELERATION}"
         self.update_invert_motor_direction(self.app_state.config.INVERT_MOTOR_DIRECTION)
-        self.query_one("#invert-motor-checkbox", Checkbox).value = (
+        self.query_one("#invert-direction-checkbox", Checkbox).value = (
             self.app_state.config.INVERT_MOTOR_DIRECTION)
 
         self.update_current(self.app_state.config.DEFAULT_CURRENT)
@@ -134,7 +134,7 @@ class AdvancedSettingsBase(Static):
         self._current_standstill = clamp(current_standstill, self.app_state.config.MIN_CURRENT,
                                          self.app_state.config.MAX_CURRENT)
 
-    @on(Checkbox.Changed, "#invert-motor-checkbox")
+    @on(Checkbox.Changed, "#invert-direction-checkbox")
     def toggle_invert_motor(self, event: Checkbox.Changed):
         invert_direction = event.checkbox.value
         self.update_invert_motor_direction(invert_direction)

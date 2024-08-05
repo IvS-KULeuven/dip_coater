@@ -55,7 +55,7 @@ class TMC2660_MotorDriver(MotorDriver):
         self.rsense = 100       # Sense resistor value in mOhm
 
         self.set_current(current_mA)
-        self.set_standby_current(current_standstill_mA)
+        self.set_current_standstill(current_standstill_mA)
 
     # --------------- MOTOR CONTROL ---------------
 
@@ -71,6 +71,9 @@ class TMC2660_MotorDriver(MotorDriver):
 
     def is_motor_enabled(self):
         return self.interface.get_global_parameter(self.lb.GP.DriversEnable, self.bank)
+
+    def set_direction(self, invert_direction: bool = False):
+        pass
 
     def rotate(self, revs: float, rps: float, rpss: float = None):
         self.set_speed_rps(rps)
@@ -110,6 +113,9 @@ class TMC2660_MotorDriver(MotorDriver):
     def wait_until_target_reached(self):
         while not self.is_target_reached():
             pass
+    
+    def is_homing_found(self):
+        return False
 
     # --------------- MOTOR CONFIGURATION ---------------
 

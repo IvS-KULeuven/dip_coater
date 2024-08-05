@@ -76,4 +76,3 @@ class SpeedControls(Widget):
         speed_input = self.query_one("#speed-input", Input)
         speed_input.value = f"{speed}"
         self.app_state.status.update_speed(speed)
-        self.app_state.advanced_settings.update_motor_configuration()

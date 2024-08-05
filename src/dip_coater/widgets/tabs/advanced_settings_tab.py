@@ -7,21 +7,22 @@ from dip_coater.widgets.advanced.advanced_settings_tmc2660 import AdvancedSettin
 from dip_coater.widgets.advanced.status_advanced_tmc2209 import StatusAdvancedTMC2209
 from dip_coater.widgets.advanced.status_advanced_tmc2660 import StatusAdvancedTMC2660
 from dip_coater.utils.SettingChanged import SettingChanged
+from dip_coater.motor.motor_driver_interface import AvailableMotorDrivers
 
 
 def create_advanced_settings(driver_type, app_state):
-    if driver_type == "TMC2209":
+    if driver_type == AvailableMotorDrivers.TMC2209:
         return AdvancedSettingsTMC2209(app_state)
-    elif driver_type == "TMC2660":
+    elif driver_type == AvailableMotorDrivers.TMC2660:
         return AdvancedSettingsTMC2660(app_state)
     else:
         raise ValueError(f"Unsupported driver type: '{driver_type}'")
 
 
 def create_advanced_status(driver_type, app_state, *args, **kwargs):
-    if driver_type == "TMC2209":
+    if driver_type == AvailableMotorDrivers.TMC2209:
         return StatusAdvancedTMC2209(app_state, *args, **kwargs)
-    elif driver_type == "TMC2660":
+    elif driver_type == AvailableMotorDrivers.TMC2660:
         return StatusAdvancedTMC2660(app_state, *args, **kwargs)
     else:
         raise ValueError(f"Unsupported driver type: '{driver_type}'")
