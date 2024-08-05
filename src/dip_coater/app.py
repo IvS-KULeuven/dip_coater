@@ -35,8 +35,8 @@ from dip_coater.motor.tmc2209 import MotorDriverTMC2209
 from dip_coater.motor.tmc2660 import MotorDriverTMC2660
 
 
-def create_motor_driver(driver_type: str, app_state, log_level: Loglevel, log_handlers,
-                        log_formatter,
+def create_motor_driver(driver_type: str, app_state,
+                        log_level: Loglevel, log_handlers, log_formatter,
                         interface_type="usb_tmcl", port="interactive") -> MotorDriver:
     if driver_type == AvailableMotorDrivers.TMC2209:
         return MotorDriverTMC2209(app_state,
@@ -79,19 +79,13 @@ class DipCoaterApp(App):
     ]
     COMMANDS = App.COMMANDS | {HelpCommand}
 
-    def __init__(self, driver_type: str, mechanical_setup: MechanicalSetup,
-                 log_level: Loglevel = Loglevel.INFO, use_dummy_driver: bool = None):
+    def __init__(self, app_state, driver: MotorDriver, mechanical_setup: MechanicalSetup,
+                 log_level: Loglevel = Loglevel.INFO):
         super().__init__()
-        self.app_state = AppState(driver_type)
-        if use_dummy_driver is not None:
-            self.app_state.config.USE_DUMMY_DRIVER = use_dummy_driver
+        self.app_state = app_state
         self.app_state.motor_logger_widget = RichLog(markup=True, id="motor-logger")
         self.app_state.mechanical_setup = mechanical_setup
-        motor_logger_handler = MotorLoggerHandler(self.app_state)
-        logging_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s",
-                                           "%Y%m%d %H:%M:%S")
-        self.app_state.motor_driver = create_motor_driver(driver_type, self.app_state, log_level,
-                                                     [motor_logger_handler], logging_format)
+        self.app_state.motor_driver = driver
 
     def on_mount(self):
         # on_mount() is called after compose(), so the RichLog is known
@@ -136,35 +130,59 @@ class DipCoaterApp(App):
 
 
 def main():
+    # Handle command line arguments
     parser = argparse.ArgumentParser(description='Process logging level and motor driver type.')
     parser.add_argument('-l', '--log-level', type=str,
                         default=Loglevel.INFO.name,
                         choices=['NONE', 'ERROR', 'INFO', 'DEBUG', 'MOVEMENT', 'ALL'],
                         help='Set the logging level')
-    parser.add_argument('-d', '--driver', type=str, default=AvailableMotorDrivers.TMC2660,
-                        choices=['TMC2209', 'TMC2660'],
+    parser.add_argument('-d', '--driver', type=AvailableMotorDrivers, default=AvailableMotorDrivers.TMC2660,
+                        choices=[AvailableMotorDrivers.TMC2209, AvailableMotorDrivers.TMC2660],
                         help='Set the motor driver type')
+    parser.add_argument('-i', '--interface', type=str, default='usb_tmcl',
+                        choices=['usb_tmcl', 'dummy_tmcl', 'kvaser_tmcl', 'pcan_tmcl', 'slcan_tmcl', 'socketcan_tmcl',
+                                 'serial_tmcl', 'uart_ic', 'ixxat_tmcl'],
+                        help='Set the TMC2660 interface type')
+    parser.add_argument('-p', '--port', type=str, default='/dev/ttyACM0',
+                        help='Set the TMC2660 interface port. User \'interactive\' for interactive port selection')
     parser.add_argument('--mm-per-revolution', type=float, default=4.0,
                         help='Distance in mm the platform moves for one full revolution')
     parser.add_argument('--gearbox-ratio', type=float, default=1.0,
                         help='Gearbox ratio, if any')
     parser.add_argument('--use-dummy-driver', action='store_true',
                         help='Use a dummy driver instead of the real motor driver')
-
     args = parser.parse_args()
 
+    # Build the application state
+    app_state = AppState(args.driver)
+    if args.use_dummy_driver is not None:
+        app_state.config.USE_DUMMY_DRIVER = args.use_dummy_driver
+
+    # Build the mechanical setup
     mechanical_setup = MechanicalSetup(
         mm_per_revolution=args.mm_per_revolution,
         gearbox_ratio=args.gearbox_ratio
     )
 
-    # Convert string level to the appropriate value in your Loglevel enum
-    log_level = getattr(Loglevel, args.log_level)
+    # Build the motor driver
+    motor_logger_handler = MotorLoggerHandler(app_state)
+    logging_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s",
+                                       "%Y%m%d %H:%M:%S")
+    log_level = getattr(Loglevel, args.log_level)       # Convert string level to the appropriate value
+    driver = create_motor_driver(
+        driver_type=args.driver,
+        app_state=app_state,
+        log_level=log_level,
+        log_handlers=[motor_logger_handler],
+        log_formatter=logging_format,
+        interface_type=args.interface,
+        port=args.port
+    )
 
+    # Build and start the application
     package_version = version("dip-coater")
     print(f"Starting Dip Coater v{package_version}, driver: {args.driver}, log level: {log_level}")
-    use_dummy_driver = True if args.use_dummy_driver else False
-    app = DipCoaterApp(args.driver, mechanical_setup, log_level, use_dummy_driver=use_dummy_driver)
+    app = DipCoaterApp(app_state, driver, mechanical_setup, log_level)
     app.title = f"Dip Coater v{package_version}"
     app.run()
 
