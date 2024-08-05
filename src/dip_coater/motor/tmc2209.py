@@ -16,7 +16,7 @@ class TMC2209_MotorDriver(MotorDriver):
     limit_switch_bindings = {}
 
     """ Class to control the TMC2209 motor driver for the dip coater"""
-    def __init__(self, app_state, step_mode: int = 8, current_ma: int = 1000,
+    def __init__(self, app_state, step_mode: int = 8, current_mA: int = 1000, current_standstill_mA: int = 150,
                  invert_direction: bool = False, interpolation: bool = True,
                  spread_cycle: bool = False, loglevel: Loglevel = Loglevel.ERROR,
                  log_handlers: list = None,
@@ -25,7 +25,8 @@ class TMC2209_MotorDriver(MotorDriver):
 
         :param app_state: The application state to use for the motor driver
         :param step_mode: The step mode to set (1, 2, 4, 8, 16, 32, 64, 128, 256)
-        :param current_ma: The current to set for the motor driver in mA
+        :param current_mA: The current to set for the motor driver in mA
+        :param current_standstill_mA: The current to set for the motor driver in mA when the motor is at standstill
         :param invert_direction: Whether to invert the direction of the motor (default: False)
         :param interpolation: Whether to use interpolation for the motor driver
         :param spreadcycle: Whether to use spread_cycle for the motor driver (true) or
@@ -61,7 +62,11 @@ class TMC2209_MotorDriver(MotorDriver):
         # Set motor driver settings
         self.tmc.set_vactual(0)      # Motor is not controlled by UART
         self.tmc.set_direction_reg(invert_direction)
-        self.tmc.set_current(current_ma, pdn_disable=False)    # mA
+        self.current = current_mA
+        self.current_standstill = current_standstill_mA
+        self.tmc.set_pdn_disable(False)
+        self.set_current(current_mA)
+        self.set_current_standstill(current_standstill_mA)
         self.tmc.set_interpolation(interpolation)
         self.tmc.set_spreadcycle(spread_cycle)  # True: spreadcycle, False: stealthchop
         self.tmc.set_microstepping_resolution(step_mode)  # 1, 2, 4, 8, 16, 32, 64, 128, 256
@@ -308,15 +313,19 @@ class TMC2209_MotorDriver(MotorDriver):
     def get_microsteps(self) -> int:
         return self.tmc.get_microstepping_resolution()
 
-    def set_max_current(self, current: int = 1000):
+    def set_current(self, current_mA: int = 1000):
         """ Set the current of the motor driver
 
         :param current: The current to set for the motor driver in mA
         """
-        self.tmc.set_current(current, pdn_disable=False)
+        self.current = current_mA
+        multiplier = self.calculate_hold_current_multiplier()
+        self.tmc.set_current(current_mA, hold_current_multiplier=multiplier, pdn_disable=False)
 
-    def set_standby_current(self, current_mA: float):
-        pass
+    def set_current_standstill(self, current_mA: int = 150):
+        self.current_standstill = current_mA
+        multiplier = self.calculate_hold_current_multiplier()
+        self.tmc.set_current(self.current, hold_current_multiplier=multiplier, pdn_disable=False)
 
     def set_direction(self, invert_direction: bool = False):
         """ Set the direction of the motor driver
@@ -374,6 +383,9 @@ class TMC2209_MotorDriver(MotorDriver):
         self.GPIO.add_event_detect(limit_switch_pin, event, callback=self._stop_motor_callback, bouncetime=5)
 
     # --------------- HELPER METHODS ---------------
+
+    def calculate_hold_current_multiplier(self):
+        return self.current_standstill / self.current
 
     def read_back_config(self):
         self.tmc.read_ioin()

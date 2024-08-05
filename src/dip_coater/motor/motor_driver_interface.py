@@ -90,11 +90,11 @@ class MotorDriver(ABC):
         pass
 
     @abstractmethod
-    def set_max_current(self, current_mA: float):
+    def set_current(self, current_mA: float):
         pass
 
     @abstractmethod
-    def set_standby_current(self, current_mA: float):
+    def set_current_standstill(self, current_mA: float):
         pass
 
     @abstractmethod

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dip-coater"
-version = "1.0.0"
+version = "1.1.0"
 description = "A terminal / Textual app to control a dip coater motor"
 authors = [
     "Rik Huygen <rik.huygen@kuleuven.be>",

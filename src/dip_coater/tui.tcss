@@ -184,7 +184,7 @@ PositionControls {
     width: 30%;
 }
 
-AdvancedSettings {
+AdvancedSettingsBase {
     height: 23;
     .input-fields {
         content-align: left top;
@@ -234,7 +234,7 @@ LogsTab {
     }
 }
 
-StatusAdvanced {
+StatusAdvancedBase {
     border: solid $panel;
     height: 80%;
 }
