@@ -32,11 +32,11 @@ from dip_coater.motor.mechanical_setup import MechanicalSetup
 from dip_coater.motor.motor_driver_interface import MotorDriver
 from dip_coater.motor.motor_driver_interface import AvailableMotorDrivers
 from dip_coater.motor.tmc2209 import MotorDriverTMC2209
-from dip_coater.motor.tmc2660 import MotorDriverTMC2660
+from dip_coater.motor.tmc2660 import MotorDriverTMC2660, TMC2660LogLevel
 
 
 def create_motor_driver(driver_type: str, app_state,
-                        log_level: Loglevel, log_handlers, log_formatter,
+                        log_level, log_handlers, log_formatter,
                         interface_type="usb_tmcl", port="interactive") -> MotorDriver:
     if driver_type == AvailableMotorDrivers.TMC2209:
         return MotorDriverTMC2209(app_state,
@@ -62,6 +62,15 @@ def create_motor_driver(driver_type: str, app_state,
                                   log_formatter=log_formatter)
     else:
         raise ValueError(f"Unsupported driver type: '{driver_type}'")
+
+
+def get_log_level(driver_type: str, log_level_str: str):
+    if driver_type == AvailableMotorDrivers.TMC2209:
+        return getattr(Loglevel, log_level_str)
+    elif driver_type == AvailableMotorDrivers.TMC2660:
+        return getattr(TMC2660LogLevel, log_level_str)
+    else:
+        raise ValueError(f"Unsupported driver type: {driver_type}")
 
 
 class DipCoaterApp(App):
@@ -168,7 +177,7 @@ def main():
     motor_logger_handler = MotorLoggerHandler(app_state)
     logging_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s",
                                        "%Y%m%d %H:%M:%S")
-    log_level = getattr(Loglevel, args.log_level)       # Convert string level to the appropriate value
+    log_level = get_log_level(args.driver, args.log_level)
     driver = create_motor_driver(
         driver_type=args.driver,
         app_state=app_state,

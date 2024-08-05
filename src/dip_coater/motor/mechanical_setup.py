@@ -57,6 +57,10 @@ class MechanicalSetup:
         """Convert rotations per second to steps per second."""
         return round(rps * self.steps_per_revolution * microsteps)
 
+    def stepss_to_rps(self, stepss: int, microsteps: int) -> float:
+        """Convert steps per second to rotations per second."""
+        return stepss / (self.steps_per_revolution * microsteps)
+
     def mm_s_to_rpm(self, velocity_mm_s: float) -> float:
         """Convert linear velocity (mm/s) to rotations per minute."""
         return self.mm_s_to_rps(velocity_mm_s) * 60
@@ -85,6 +89,10 @@ class MechanicalSetup:
     def rpss_to_stepss(self, rpss: float, microsteps: int) -> int:
         """Convert rotations per second squared to steps per second squared."""
         return None if not rpss else round(rpss * self.steps_per_revolution * microsteps)
+
+    def stepss_to_rpss(self, stepss: int, microsteps: int) -> float:
+        """Convert steps per second squared to rotations per second squared."""
+        return None if not stepss else stepss / (self.steps_per_revolution * microsteps)
 
     def mm_s2_to_rpmm(self, acceleration_mm_s2: float) -> float:
         """Convert linear acceleration (mm/s^2) to rotations per minute per minute."""
