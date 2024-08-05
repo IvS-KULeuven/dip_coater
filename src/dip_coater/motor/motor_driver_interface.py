@@ -19,15 +19,15 @@ class MotorDriver(ABC):
 
     @abstractmethod
     def enable_motor(self):
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def disable_motor(self):
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def set_direction(self, invert_direction: bool = False):
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def rotate(self, revs: float, rps: float, rpss: float = None):
@@ -38,46 +38,46 @@ class MotorDriver(ABC):
         :param rpss: rotation acceleration in rotations per second^2 (or None to use the default
                     value)
         """
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None, *args, **kwargs):
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None, *args, **kwargs):
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def stop_motor(self):
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def wait_for_motor_done(self):
-        pass
+        raise NotImplementedError()
     
     @abstractmethod
     async def wait_for_motor_done_async(self):
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def get_current_position_mm(self):
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def run_to_position(self, position_mm: float, speed_mm_s: float = None,
                         acceleration_mm_s2: float = None):
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def is_homing_found(self):
-        pass
+        raise NotImplementedError()
 
     # --------------- MOTOR CONFIGURATION ---------------
 
     @abstractmethod
     def set_speed_rps(self, rps: float):
-        pass
+        raise NotImplementedError()
 
     def set_speed(self, speed_mm_s: float):
         """ Set the motor speed.
@@ -91,7 +91,7 @@ class MotorDriver(ABC):
 
     @abstractmethod
     def set_acceleration_rpss(self, rpss: float):
-        pass
+        raise NotImplementedError()
 
     def set_acceleration(self, acceleration_mm_s2: float):
         """ Set the motor acceleration.
@@ -105,21 +105,21 @@ class MotorDriver(ABC):
 
     @abstractmethod
     def set_microsteps(self, microsteps: int):
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def get_microsteps(self) -> int:
         """ Returns the current microsteps setting (e.g. 1, 2, 4, 8, 16, 32, 64, 128, 256) """
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def set_current(self, current_mA: float):
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def set_current_standstill(self, current_mA: float):
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def cleanup(self):
-        pass
+        raise NotImplementedError()
