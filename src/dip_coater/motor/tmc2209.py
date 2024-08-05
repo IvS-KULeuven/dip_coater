@@ -10,7 +10,7 @@ from dip_coater.gpio import get_gpio_instance, GpioEdge, GpioState
 from dip_coater.motor.motor_driver_interface import MotorDriver
 
 
-class TMC2209_MotorDriver(MotorDriver):
+class MotorDriverTMC2209(MotorDriver):
     homing_found = False
     # Stores the limit switch pin and the corresponding edge trigger event
     limit_switch_bindings = {}
@@ -487,8 +487,8 @@ if __name__ == "__main__":
     _loglevel = Loglevel.INFO  # NONE, ERROR, INFO, DEBUG, MOVEMENT, ALL
 
     # ======== INIT ========
-    motor_driver = TMC2209_MotorDriver(get_gpio_instance(), step_mode=_step_mode,
-                                       loglevel=_loglevel)
+    motor_driver = MotorDriverTMC2209(get_gpio_instance(), step_mode=_step_mode,
+                                      loglevel=_loglevel)
 
     # ======== MOVE DOWN ========
     motor_driver.move_down(distance_down, speed_down, accel_down)

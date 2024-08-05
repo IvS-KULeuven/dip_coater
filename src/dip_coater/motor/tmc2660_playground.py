@@ -6,7 +6,7 @@ import pytrinamic
 from pytrinamic.modules import Landungsbruecke
 
 from TMC_2209._TMC_2209_logger import Loglevel
-from dip_coater.motor.tmc2660 import TMC2660_MotorDriver
+from dip_coater.motor.tmc2660 import MotorDriverTMC2660
 from dip_coater.motor.mechanical_setup import MechanicalSetup
 
 pytrinamic.show_info()
@@ -38,7 +38,7 @@ mechanical_setup = MechanicalSetup(mm_per_revolution=MM_PER_REVOLUTION, steps_pe
 app_state = DummyAppState(mechanical_setup)
 
 # Initialize the TMC2660 driver
-driver = TMC2660_MotorDriver(
+driver = MotorDriverTMC2660(
     app_state,
     interface_type="usb_tmcl" if not USE_DUMMY else "dummy_tmcl",
     port="/dev/ttyACM0" if not USE_DUMMY else None,

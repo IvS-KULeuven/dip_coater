@@ -33,7 +33,7 @@ class DriveMode:
     MICRO_PLYER = 3
 
 
-class TMC2660_MotorDriver(MotorDriver):
+class MotorDriverTMC2660(MotorDriver):
     def __init__(self, app_state, interface_type="usb_tmcl", port="interactive",
                  step_mode: int = 8, current_mA: int = 2000, current_standstill_mA: int = 250,
                  loglevel: Loglevel = Loglevel.ERROR, log_handlers: list = None,

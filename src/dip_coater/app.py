@@ -31,35 +31,35 @@ from dip_coater.widgets.tabs.coder_tab import CoderTab
 from dip_coater.motor.mechanical_setup import MechanicalSetup
 from dip_coater.motor.motor_driver_interface import MotorDriver
 from dip_coater.motor.motor_driver_interface import AvailableMotorDrivers
-from dip_coater.motor.tmc2209 import TMC2209_MotorDriver
-from dip_coater.motor.tmc2660 import TMC2660_MotorDriver
+from dip_coater.motor.tmc2209 import MotorDriverTMC2209
+from dip_coater.motor.tmc2660 import MotorDriverTMC2660
 
 
 def create_motor_driver(driver_type: str, app_state, log_level: Loglevel, log_handlers,
                         log_formatter,
                         interface_type="usb_tmcl", port="interactive") -> MotorDriver:
     if driver_type == AvailableMotorDrivers.TMC2209:
-        return TMC2209_MotorDriver(app_state,
-                                   step_mode=app_state.config.STEP_MODES[
+        return MotorDriverTMC2209(app_state,
+                                  step_mode=app_state.config.STEP_MODES[
                                        app_state.config.DEFAULT_STEP_MODE],
-                                   current_mA=app_state.config.DEFAULT_CURRENT,
-                                   current_standstill_mA=app_state.config.DEFAULT_CURRENT_STANDSTILL,
-                                   invert_direction=app_state.config.INVERT_MOTOR_DIRECTION,
-                                   interpolation=app_state.config.USE_INTERPOLATION,
-                                   spread_cycle=app_state.config.USE_SPREAD_CYCLE,
-                                   loglevel=log_level,
-                                   log_handlers=log_handlers,
-                                   log_formatter=log_formatter)
+                                  current_mA=app_state.config.DEFAULT_CURRENT,
+                                  current_standstill_mA=app_state.config.DEFAULT_CURRENT_STANDSTILL,
+                                  invert_direction=app_state.config.INVERT_MOTOR_DIRECTION,
+                                  interpolation=app_state.config.USE_INTERPOLATION,
+                                  spread_cycle=app_state.config.USE_SPREAD_CYCLE,
+                                  loglevel=log_level,
+                                  log_handlers=log_handlers,
+                                  log_formatter=log_formatter)
     elif driver_type == AvailableMotorDrivers.TMC2660:
         if app_state.config.USE_DUMMY_DRIVER:
             interface_type = "dummy_tmcl"
             port = None
-        return TMC2660_MotorDriver(app_state,
-                                   interface_type=interface_type,
-                                   port=port,
-                                   loglevel=log_level,
-                                   log_handlers=log_handlers,
-                                   log_formatter=log_formatter)
+        return MotorDriverTMC2660(app_state,
+                                  interface_type=interface_type,
+                                  port=port,
+                                  loglevel=log_level,
+                                  log_handlers=log_handlers,
+                                  log_formatter=log_formatter)
     else:
         raise ValueError(f"Unsupported driver type: '{driver_type}'")
 
