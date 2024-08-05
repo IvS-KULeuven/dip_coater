@@ -1,4 +1,5 @@
 from dip_coater.config.config_base import *
+from TMC_2209._TMC_2209_logger import Loglevel
 
 # TMC2209 specific settings
 
