@@ -10,7 +10,7 @@ from dip_coater.utils.helpers import clamp
 
 
 class DistanceControls(Static):
-    distance = reactive(None)
+    distance: reactive[float | None] = reactive(None)
 
     def __init__(self, app_state):
         super().__init__()

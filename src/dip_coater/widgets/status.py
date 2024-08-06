@@ -11,13 +11,13 @@ from dip_coater.utils.threading_util import AsyncioStoppableTimer
 
 
 class Status(Static):
-    speed = reactive("Speed: ")
-    distance = reactive("Distance: ")
-    homing_found = reactive("Homing found: ")
-    limit_switch_up = reactive("Limit switch up: ")
-    limit_switch_down = reactive("Limit switch down: ")
-    motor = reactive("Motor: ")
-    position = reactive("Position: ")
+    speed: reactive[float | None] = reactive(None)
+    distance: reactive[float | None] = reactive(None)
+    homing_found: reactive[bool | None] = reactive(None)
+    limit_switch_up: reactive[bool | None] = reactive(None)
+    limit_switch_down: reactive[bool | None] = reactive(None)
+    motor_state: reactive[str | None] = reactive(None)
+    position: reactive[float | None] = reactive(None)
 
     position_thread = None
 
@@ -35,50 +35,83 @@ class Status(Static):
             yield Label(id="status-limit-switch-up")
             yield Label(id="status-limit-switch-down")
             yield Rule()
-            yield Label(id="status-motor")
+            yield Label(id="status-motor-state")
             yield Label(id="status-position")
 
-    def on_mount(self):
+    def _on_mount(self) -> None:
+        self.speed = self.app_state.config.DEFAULT_SPEED
+        self.distance = self.app_state.config.DEFAULT_DISTANCE
+        self.homing_found = self.app_state.homing_found
+        self.limit_switch_up = False
+        self.limit_switch_down = False
+        self.position = 0
         self.update_motor_state(self.app_state.motor_state)
         self.position_thread = AsyncioStoppableTimer(0.5, self.fetch_new_position)
         self.position_thread.start()
 
-    def watch_speed(self, speed: str):
-        self.query_one("#status-speed", Label).update(speed)
-
     def update_speed(self, speed: float):
-        self.speed = f"Speed: {speed} mm/s"
-
-    def watch_distance(self, distance: str):
-        self.query_one("#status-distance", Label).update(distance)
+        self.speed = speed
 
     def update_distance(self, distance: float):
-        self.distance = f"Distance: {distance} mm"
+        self.distance = distance
 
-    def watch_homing_found(self, homing_found: str):
-        self.query_one("#status-homing-found", Label).update(homing_found)
-
-    def update_homing_found(self, homing_finished: bool):
-        self.homing_found = f"Homing found: {homing_finished}"
-
-    def watch_limit_switch_up(self, limit_switch_up: str):
-        self.query_one("#status-limit-switch-up", Label).update(limit_switch_up)
+    def update_homing_found(self, homing_found: bool):
+        self.homing_found = homing_found
 
     def update_limit_switch_up(self, limit_switch_up: bool):
-        str_limit_switch_up = "[dark_orange]Triggered[/]" if limit_switch_up else "Open"
-        self.limit_switch_up = f"Limit switch up: {str_limit_switch_up}"
-
-    def watch_limit_switch_down(self, limit_switch_down: str):
-        self.query_one("#status-limit-switch-down", Label).update(limit_switch_down)
+        self.limit_switch_up = limit_switch_up
 
     def update_limit_switch_down(self, limit_switch_down: bool):
-        str_limit_switch_down = "[dark_orange]Triggered[/]" if limit_switch_down else "Open"
-        self.limit_switch_down = f"Limit switch down: {str_limit_switch_down}"
-
-    def watch_motor(self, motor: str):
-        self.query_one("#status-motor", Label).update(motor)
+        self.limit_switch_down = limit_switch_down
 
     def update_motor_state(self, motor_state: str):
+        self.motor_state = motor_state
+
+    async def fetch_new_position(self):
+        position = self.app_state.motor_driver.get_current_position_mm()
+        await self.update_position(position)
+
+    async def update_position(self, position_mm: float):
+        self.position = position_mm
+
+    def on_unmount(self):
+        if self.position_thread is not None:
+            self.position_thread.stop()
+
+    # --------------- WATCHERS (called automatically when reactive has changed) ---------------
+
+    def watch_speed(self, speed: str):
+        if speed is None:
+            return
+        self.query_one("#status-speed", Label).update(f"Speed: {speed} mm/s")
+
+    def watch_distance(self, distance: str):
+        if distance is None:
+            return
+        self.query_one("#status-distance", Label).update(f"Distance: {distance:.1f} mm")
+    
+    def watch_homing_found(self, homing_found: str):
+        if homing_found is None:
+            return
+        self.query_one("#status-homing-found", Label).update(f"Homing found: {homing_found}")
+
+    def watch_limit_switch_up(self, limit_switch_up: str):
+        if limit_switch_up is None:
+            return
+        str_limit_switch_up = "[dark_orange]Triggered[/]" if limit_switch_up else "Open"
+        msg = f"Limit switch up: {str_limit_switch_up}"
+        self.query_one("#status-limit-switch-up", Label).update(msg)
+    
+    def watch_limit_switch_down(self, limit_switch_down: str):
+        if limit_switch_down is None:
+            return
+        str_limit_switch_down = "[dark_orange]Triggered[/]" if limit_switch_down else "Open"
+        msg = f"Limit switch down: {str_limit_switch_down}"
+        self.query_one("#status-limit-switch-down", Label).update(msg)
+
+    def watch_motor_state(self, motor_state: str):
+        if motor_state is None:
+            motor_state = "UNKNOWN"
         if motor_state == "enabled":
             color = "green"
         elif motor_state == "disabled":
@@ -89,22 +122,11 @@ class Status(Static):
             color = "blue"
         else:
             color = "red"
-        self.motor = f"Motor: [{color}]{motor_state.upper()}[/]"
+        self.query_one("#status-motor-state", Label).update(f"Motor state: [{color}]{motor_state.upper()}[/]")
 
     def watch_position(self, position: str):
-        self.query_one("#status-position", Label).update(position)
-
-    async def fetch_new_position(self):
-        position = self.app_state.motor_driver.get_current_position_mm()
-        await self.update_position(position)
-
-    async def update_position(self, position_mm: float):
-        if position_mm is None:
-            self.position = "Position: UNKNOWN (do homing first)"
+        if position is None:
+            msg = "Position: UNKNOWN (do homing first)"
         else:
-            self.position = f"Position: {position_mm} mm"
-        await asyncio.sleep(0.1)
-
-    def on_unmount(self):
-        if self.position_thread is not None:
-            self.position_thread.stop()
+            msg = f"Position: {position:.1f} mm"
+        self.query_one("#status-position", Label).update(msg)

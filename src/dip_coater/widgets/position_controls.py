@@ -14,7 +14,7 @@ class PositionControls(Static):
         super().__init__()
         self.app_state = app_state
 
-        self.position = reactive("0")
+        self.position: reactive[float | None] = reactive(None)
 
     def compose(self) -> ComposeResult:
         with Horizontal():
@@ -46,6 +46,7 @@ class PositionControls(Static):
                          classes="btn-small btn-position")
 
     def _on_mount(self, event: events.Mount) -> None:
+        self.position = 0
         self.update_button_states(self.app_state.motor_driver.is_homing_found())
 
     @on(Button.Pressed, "#position-down-coarse")
