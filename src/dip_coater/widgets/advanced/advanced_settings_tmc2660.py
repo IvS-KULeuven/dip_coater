@@ -176,7 +176,7 @@ class AdvancedSettingsTMC2660(AdvancedSettingsBase):
     def watch__stallguard_threshold(self, stallguard_threshold: int):
         if stallguard_threshold is None:
             return
-        self.post_message(SettingChanged("stallguard_threshold", stallguard_threshold))
+        self.post_message(SettingChanged("stallguard_threshold", int(stallguard_threshold)))
 
     def watch__coolstep_enabled(self, coolstep_enabled: bool):
         if coolstep_enabled is None:
@@ -186,4 +186,4 @@ class AdvancedSettingsTMC2660(AdvancedSettingsBase):
     def watch__coolstep_threshold(self, coolstep_threshold: int):
         if coolstep_threshold is None:
             return
-        self.post_message(SettingChanged("coolstep_threshold", coolstep_threshold))
+        self.post_message(SettingChanged("coolstep_threshold", int(coolstep_threshold)))
