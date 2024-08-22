@@ -16,8 +16,12 @@ class VSenseFullScale(Enum):
     """
     VSense full scale values for the TMC2660.
     """
-    VSENSE_FULL_SCALE_305mV = 0
-    VSENSE_FULL_SCALE_165mV = 1
+    VSENSE_FULL_SCALE_305mV = (0, 305)
+    VSENSE_FULL_SCALE_165mV = (1, 165)
+
+    def __init__(self, value, voltage):
+        self.value_ = value
+        self.voltage = voltage
 
 
 class ChopperMode(Enum):
@@ -28,7 +32,7 @@ class ChopperMode(Enum):
     CONSTANT_TOFF = (1, "Constant TOff")
 
     def __init__(self, value, label):
-        self.value_ = value
+        self._value_ = value
         self.label = label
 
     @classmethod
@@ -57,7 +61,7 @@ class MotorDriverTMC2660(MotorDriver):
     def __init__(self, app_state, interface_type="usb_tmcl", port="interactive",
                  step_mode: int = 8, current_mA: int = 2000, current_standstill_mA: int = 250,
                  chopper_mode: ChopperMode = ChopperMode.SPREAD_CYCLE,
-                 vsense_full_scale: int = VSenseFullScale.VSENSE_FULL_SCALE_305mV,
+                 vsense_full_scale: VSenseFullScale = VSenseFullScale.VSENSE_FULL_SCALE_305mV,
                  step_dir_source: StepDirSource = StepDirSource.INTERNAL,
                  loglevel: TMC2660LogLevel = TMC2660LogLevel.ERROR, log_handlers: list = None,
                  log_formatter: logging.Formatter = None):
@@ -93,7 +97,7 @@ class MotorDriverTMC2660(MotorDriver):
                 self.lb.GP.DriversEnable: False,
                 self.motor.AP.PositionReachedFlag: True,
                 self.motor.AP.MicrostepResolution: step_mode,
-                self.motor.AP.VSense: VSenseFullScale.VSENSE_FULL_SCALE_305mV,
+                self.motor.AP.VSense: VSenseFullScale.VSENSE_FULL_SCALE_305mV.value,
                 self.motor.AP.MaxCurrent: self._convert_current_to_value(current_mA),
                 self.motor.AP.StandbyCurrent: self._convert_current_to_value(current_standstill_mA),
                 self.motor.AP.MaxVelocity: self.app_state.mechanical_setup.rps_to_stepss(1, step_mode),
@@ -207,13 +211,13 @@ class MotorDriverTMC2660(MotorDriver):
         else:
             return self.microstep_idx_to_steps(mstep)
 
-    def set_vsense_full_scale(self, vsense_full_scale: int):
+    def set_vsense_full_scale(self, vsense_full_scale: VSenseFullScale):
         if vsense_full_scale not in [VSenseFullScale.VSENSE_FULL_SCALE_305mV, VSenseFullScale.VSENSE_FULL_SCALE_165mV]:
             msg = f"Invalid VSense full scale value: {vsense_full_scale}. Must be 0 or 1."
             self.logger.log(msg, TMC2660LogLevel.ERROR)
             raise ValueError(msg)
         self.vsense_fs = vsense_full_scale
-        self._set_axis_parameter(self.motor.AP.VSense, vsense_full_scale)
+        self._set_axis_parameter(self.motor.AP.VSense, vsense_full_scale.value)
 
     def get_vsense_full_scale(self) -> int:
         return self._get_axis_parameter(self.motor.AP.VSense, self.axis)
@@ -290,7 +294,7 @@ class MotorDriverTMC2660(MotorDriver):
             msg = f"Invalid Step/Dir source: {source}. Must be 0 or 1."
             self.logger.log(msg, TMC2660LogLevel.ERROR)
             raise ValueError(msg)
-        self._set_axis_parameter(self.motor.AP.StepDirSource, source)
+        self._set_axis_parameter(self.motor.AP.StepDirSource, source.value)
         self.logger.log(f"Step/Dir source set to {source}", TMC2660LogLevel.INFO)
 
     # --------------- ADVANCED MOTOR CONFIGURATION ---------------
@@ -307,7 +311,7 @@ class MotorDriverTMC2660(MotorDriver):
             msg = f"Invalid chopper mode: {mode}. Must be 0 or 1."
             self.logger.log(msg, TMC2660LogLevel.ERROR)
             raise ValueError(msg)
-        self._set_axis_parameter(self.motor.AP.ConstantTOffMode, mode)
+        self._set_axis_parameter(self.motor.AP.ConstantTOffMode, mode.value)
         self.logger.log(f"Chopper mode set to {mode}", TMC2660LogLevel.INFO)
 
     def configure_chopper_mode_advanced_settings(self, hysteresis_start: int, hysteresis_end: int, blank_time: int,
@@ -421,7 +425,7 @@ class MotorDriverTMC2660(MotorDriver):
             raise ValueError(msg)
 
     def _get_vsense_full_scale_voltage(self) -> int:
-        return 305 if self.vsense_fs == VSenseFullScale.VSENSE_FULL_SCALE_305mV else 165
+        return self.vsense_fs.voltage
 
     def _convert_current_to_value(self, current_mA: float) -> int:
         vfs = self._get_vsense_full_scale_voltage()
