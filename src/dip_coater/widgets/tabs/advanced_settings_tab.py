@@ -67,6 +67,21 @@ class AdvancedSettingsTab(TabPane):
             case "spread_cycle":
                 self.app_state.motor_driver.set_spread_cycle(event.value)
                 self.app_state.status_advanced.update_spread_cycle(event.value)
+            case "stallguard_enabled":
+                self.app_state.motor_driver.set_stallguard_enabled(event.value)
+                self.app_state.status_advanced.update_stallguard_enabled(event.value)
+            case "stallguard_filter_enabled":
+                self.app_state.motor_driver.set_stallguard_filter_enabled(event.value)
+                self.app_state.status_advanced.update_stallguard_filter_enabled(event.value)
+            case "stallguard_threshold":
+                self.app_state.motor_driver.set_stallguard_threshold(event.value)
+                self.app_state.status_advanced.update_stallguard_threshold(event.value)
+            case "coolstep_enabled":
+                self.app_state.motor_driver.set_coolstep_enabled(event.value)
+                self.app_state.status_advanced.update_coolstep_enabled(event.value)
+            case "coolstep_threshold":
+                self.app_state.motor_driver.set_coolstep_threshold(event.value)
+                self.app_state.status_advanced.update_coolstep_threshold(event.value)
             case "threshold_speed":
                 self.app_state.status_advanced.update_threshold_speed(event.value)
                 self.app_state.advanced_settings.update_control_mode_widgets_value()

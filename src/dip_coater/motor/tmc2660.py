@@ -58,12 +58,22 @@ class StepDirSource(Enum):
 
 
 class MotorDriverTMC2660(MotorDriver):
-    def __init__(self, app_state, interface_type="usb_tmcl", port="interactive",
-                 step_mode: int = 8, current_mA: int = 2000, current_standstill_mA: int = 250,
+    def __init__(self,
+                 app_state,
+                 interface_type="usb_tmcl",
+                 port="interactive",
+                 step_mode: int = 8,
+                 current_mA: int = 2000,
+                 current_standstill_mA: int = 250,
                  chopper_mode: ChopperMode = ChopperMode.SPREAD_CYCLE,
+                 stallguard_enabled: bool = True,
+                 stallguard_threshold: int = 0,
+                 coolstep_enabled: bool = False,
+                 coolstep_threshold: int = 0,
                  vsense_full_scale: VSenseFullScale = VSenseFullScale.VSENSE_FULL_SCALE_305mV,
                  step_dir_source: StepDirSource = StepDirSource.INTERNAL,
-                 loglevel: TMC2660LogLevel = TMC2660LogLevel.ERROR, log_handlers: list = None,
+                 loglevel: TMC2660LogLevel = TMC2660LogLevel.ERROR,
+                 log_handlers: list = None,
                  log_formatter: logging.Formatter = None):
         super().__init__(app_state.mechanical_setup)
 
@@ -87,6 +97,10 @@ class MotorDriverTMC2660(MotorDriver):
         self.motor = self.eval_board.motors[self.axis]
         self.vsense_fs = vsense_full_scale
         self.rsense = 100  # Sense resistor value in mOhm
+
+        # Set up motor driver parameters
+        self.stallguard_threshold = stallguard_threshold
+        self.coolstep_threshold = coolstep_threshold
 
         # Set up dummy driver interface
         self.is_dummy = True if interface_type == "dummy_tmcl" else False
@@ -113,6 +127,10 @@ class MotorDriverTMC2660(MotorDriver):
         self.direction_inverted = False
         self.set_current(current_mA)
         self.set_current_standstill(current_standstill_mA)
+        self.set_stallguard_enabled(stallguard_enabled)
+        self.set_stallguard_threshold(stallguard_threshold)
+        self.set_coolstep_enabled(coolstep_enabled)
+        self.set_coolstep_threshold(coolstep_threshold)
 
     # --------------- MOTOR CONTROL ---------------
 
@@ -343,8 +361,15 @@ class MotorDriverTMC2660(MotorDriver):
         self.logger.log(f"Interpolation {'enabled' if enable else 'disabled'}", TMC2660LogLevel.INFO)
 
     # StallGuard
+    def set_stallguard_enabled(self, enable: bool):
+        """Enable or disable StallGuard2.
 
-    def set_stallguard_filter(self, enable: bool):
+        :param enable: Enable or disable StallGuard2. If enabled, the StallGuard2 feature will be active.
+        """
+        self._set_axis_parameter(self.motor.AP.SG2Threshold, self.stallguard_threshold if enable else 0)
+        self.logger.log(f"StallGuard2 {'enabled' if enable else 'disabled'}", TMC2660LogLevel.INFO)
+
+    def set_stallguard_filter_enabled(self, enable: bool):
         """Enable or disable StallGuard2 filter.
 
         :param enable: Enable or disable the StallGuard2 filter. If enabled, the StallGuard2 result will be filtered.
@@ -355,26 +380,27 @@ class MotorDriverTMC2660(MotorDriver):
         self._set_axis_parameter(self.motor.AP.SG2FilterEnable, 1 if enable else 0)
         self.logger.log(f"StallGuard2 filter {'enabled' if enable else 'disabled'}", TMC2660LogLevel.INFO)
 
-    def get_stallguard_result(self) -> int:
-        """Get the StallGuard2 result."""
-        return self._get_axis_parameter(self.motor.AP.LoadValue, self.axis)
-
     def set_stallguard_threshold(self, threshold: int):
         """Set the StallGuard2 threshold.
 
         :param threshold: StallGuard2 threshold (-64 to 63). A lower value results in a higher sensitivity and requires
         less torque to indicate a stall. Values below -10 are not recommended.
         """
+        self.stallguard_threshold = threshold
         self._set_axis_parameter(self.motor.AP.SG2Threshold, threshold)
         self.logger.log(f"StallGuard2 threshold set to {threshold}", TMC2660LogLevel.INFO)
 
+    def get_stallguard_result(self) -> int:
+        """Get the StallGuard2 result."""
+        return self._get_axis_parameter(self.motor.AP.LoadValue, self.axis)
+
     # CoolStep functions
-    def enable_coolstep(self,
-                        min_current: int,
-                        current_down_step: int,
-                        current_up_step: int,
-                        hysteresis: int,
-                        threshold_speed: int):
+    def configure_coolstep(self,
+                           min_current: int,
+                           current_down_step: int,
+                           current_up_step: int,
+                           hysteresis: int,
+                           threshold_speed: int):
         """
         Enable CoolStep feature.
 
@@ -391,10 +417,20 @@ class MotorDriverTMC2660(MotorDriver):
         self._set_axis_parameter(self.motor.AP.smartEnergyThresholdSpeed, threshold_speed)
         self.logger.log("CoolStep enabled", TMC2660LogLevel.INFO)
 
-    def disable_coolstep(self):
-        """Disable CoolStep feature."""
-        self._set_axis_parameter(self.motor.AP.smartEnergyThresholdSpeed, 0)
-        self.logger.log("CoolStep disabled", TMC2660LogLevel.INFO)
+    def set_coolstep_enabled(self, enable: bool):
+        """Enable or disable CoolStep feature."""
+        self._set_axis_parameter(self.motor.AP.smartEnergyThresholdSpeed, self.coolstep_threshold if enable else 0)
+        self.logger.log(f"CoolStep {'enabled' if enable else 'disabled'}", TMC2660LogLevel.INFO)
+
+    def set_coolstep_threshold(self, threshold: int):
+        """Set the CoolStep threshold.
+
+        :param threshold: CoolStep threshold (0 to 15). The CoolStep feature is enabled when the actual speed is below
+        this threshold.
+        """
+        self.coolstep_threshold = threshold
+        self._set_axis_parameter(self.motor.AP.smartEnergyThresholdSpeed, threshold)
+        self.logger.log(f"CoolStep threshold set to {threshold}", TMC2660LogLevel.INFO)
 
     def get_coolstep_current(self) -> int:
         """Get the current CoolStep current scaling."""

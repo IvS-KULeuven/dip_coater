@@ -227,6 +227,12 @@ AdvancedSettingsBase {
     }
 }
 
+AdvancedSettingsTMC2660 {
+    #stallguard-container {
+        align: left top;
+    }
+}
+
 LogsTab {
     #logging-level-select {
         height: 3;
