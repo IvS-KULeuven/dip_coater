@@ -40,8 +40,7 @@ def create_motor_driver(driver_type: str, app_state,
                         interface_type="usb_tmcl", port="interactive") -> MotorDriver:
     if driver_type == AvailableMotorDrivers.TMC2209:
         return MotorDriverTMC2209(app_state,
-                                  step_mode=app_state.config.STEP_MODES[
-                                       app_state.config.DEFAULT_STEP_MODE],
+                                  step_mode=app_state.config.STEP_MODES[app_state.config.DEFAULT_STEP_MODE],
                                   current_mA=app_state.config.DEFAULT_CURRENT,
                                   current_standstill_mA=app_state.config.DEFAULT_CURRENT_STANDSTILL,
                                   invert_direction=app_state.config.INVERT_MOTOR_DIRECTION,
@@ -57,6 +56,12 @@ def create_motor_driver(driver_type: str, app_state,
         return MotorDriverTMC2660(app_state,
                                   interface_type=interface_type,
                                   port=port,
+                                  step_mode=app_state.config.STEP_MODES[app_state.config.DEFAULT_STEP_MODE],
+                                  current_mA=app_state.config.DEFAULT_CURRENT,
+                                  current_standstill_mA=app_state.config.DEFAULT_CURRENT_STANDSTILL,
+                                  chopper_mode=app_state.config.DEFAULT_CHOPPER_MODE,
+                                  vsense_full_scale=app_state.config.VSENSE_FULL_SCALE,
+                                  step_dir_source=app_state.config.DEFAULT_STEP_DIR_SOURCE,
                                   loglevel=log_level,
                                   log_handlers=log_handlers,
                                   log_formatter=log_formatter)

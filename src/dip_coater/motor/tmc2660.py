@@ -19,22 +19,27 @@ class VSenseFullScale:
     VSENSE_FULL_SCALE_165mV = 1
 
 
-class DriveMode:
-    # High-precision load measurement using the back EMF on the coils
-    STALL_GUARD = 0
-    # Load-adaptive current control which reduces energy consumption by as much as 75%
-    COOL_STEP = 1
-    # High-precision chopper algorithm available as an alternative to the traditional constant
-    # off-time algorithm
-    SPREAD_CYCLE = 2
-    # High-precision chopper algorithm available as an alternative to the traditional constant
-    # off-time algorithm
-    MICRO_PLYER = 3
+class ChopperMode:
+    # SpreadCycle chopper mode (provides a smoother operation and greater power efficiency over a wide range of speed
+    # and load)
+    SPREAD_CYCLE = 0
+    # Classic constant TOff chopper mode
+    CONSTANT_TOFF = 1
+
+
+class StepDirSource:
+    # Use the internal motion controller for step and direction signals
+    INTERNAL = 0
+    # Use the Step/Dir input pins for step and direction signals
+    EXTERNAL = 1
 
 
 class MotorDriverTMC2660(MotorDriver):
     def __init__(self, app_state, interface_type="usb_tmcl", port="interactive",
                  step_mode: int = 8, current_mA: int = 2000, current_standstill_mA: int = 250,
+                 chopper_mode: ChopperMode = ChopperMode.SPREAD_CYCLE,
+                 vsense_full_scale: int = VSenseFullScale.VSENSE_FULL_SCALE_305mV,
+                 step_dir_source: StepDirSource = StepDirSource.INTERNAL,
                  loglevel: TMC2660LogLevel = TMC2660LogLevel.ERROR, log_handlers: list = None,
                  log_formatter: logging.Formatter = None):
         super().__init__(app_state.mechanical_setup)
@@ -57,7 +62,7 @@ class MotorDriverTMC2660(MotorDriver):
         self.bank = 0
         self.axis = 0
         self.motor = self.eval_board.motors[self.axis]
-        self.vsense_fs = VSenseFullScale.VSENSE_FULL_SCALE_305mV
+        self.vsense_fs = vsense_full_scale
         self.rsense = 100  # Sense resistor value in mOhm
 
         # Set up dummy driver interface
@@ -79,6 +84,8 @@ class MotorDriverTMC2660(MotorDriver):
 
         # Configure the motor
         self.disable_motor()
+        self.set_step_dir_source(step_dir_source)
+        self.set_chopper_mode(chopper_mode)
         self.set_microsteps(step_mode)
         self.direction_inverted = False
         self.set_current(current_mA)
@@ -258,6 +265,118 @@ class MotorDriverTMC2660(MotorDriver):
     def get_acceleration_rpss(self) -> float:
         steps_per_second2 = self._get_axis_parameter(self.motor.AP.MaxAcceleration, self.axis)
         return self.mechanical_setup.stepss_to_rpss(steps_per_second2, self.microsteps)
+
+    def set_step_dir_source(self, source: StepDirSource):
+        if source not in [StepDirSource.INTERNAL, StepDirSource.EXTERNAL]:
+            msg = f"Invalid Step/Dir source: {source}. Must be 0 or 1."
+            self.logger.log(msg, TMC2660LogLevel.ERROR)
+            raise ValueError(msg)
+        self._set_axis_parameter(self.motor.AP.StepDirSource, source)
+        self.logger.log(f"Step/Dir source set to {source}", TMC2660LogLevel.INFO)
+
+    # --------------- ADVANCED MOTOR CONFIGURATION ---------------
+
+    # Chopper functions
+
+    def set_chopper_mode(self, mode: ChopperMode):
+        """
+        Set the chopper mode.
+
+        :param mode: Chopper mode (0 = SpreadCycle, 1 = Constant TOff)
+        """
+        if mode not in [ChopperMode.SPREAD_CYCLE, ChopperMode.CONSTANT_TOFF]:
+            msg = f"Invalid chopper mode: {mode}. Must be 0 or 1."
+            self.logger.log(msg, TMC2660LogLevel.ERROR)
+            raise ValueError(msg)
+        self._set_axis_parameter(self.motor.AP.ConstantTOffMode, mode)
+        self.logger.log(f"Chopper mode set to {mode}", TMC2660LogLevel.INFO)
+
+    def configure_chopper_mode_advanced_settings(self, hysteresis_start: int, hysteresis_end: int, blank_time: int,
+                                                 off_time: int):
+        """
+        Configure SpreadCycle chopper mode.
+
+        :param hysteresis_start: Hysteresis start (0 to 8)
+        :param hysteresis_end: Hysteresis end (0 to 15)
+        :param blank_time: Blank time (0 to 3)
+        :param off_time: Off time (0 to 15)
+        """
+        self._set_axis_parameter(self.motor.AP.ChopperHysteresisStart, hysteresis_start)
+        self._set_axis_parameter(self.motor.AP.ChopperHysteresisEnd, hysteresis_end)
+        self._set_axis_parameter(self.motor.AP.ChopperBlankTime, blank_time)
+        self._set_axis_parameter(self.motor.AP.TOff, off_time)
+        self.logger.log("SpreadCycle configured", TMC2660LogLevel.INFO)
+
+    # Interpolation (MicroPlyer)
+
+    def set_interpolation(self, enable: bool):
+        """Enable or disable microstep interpolation (MicroPlyer).
+
+        :param enable: Enable or disable interpolation. If enabled, the current microstep resolution will be
+         interpolated to 256 microsteps. This brings smooth motor operation of high-resolution microstepping to
+         applications originally designed for coarser stepping and reduces pulse bandwidth.
+        """
+        self._set_axis_parameter(self.motor.AP.Intpol, 1 if enable else 0)
+        self.logger.log(f"Interpolation {'enabled' if enable else 'disabled'}", TMC2660LogLevel.INFO)
+
+    # StallGuard
+
+    def set_stallguard_filter(self, enable: bool):
+        """Enable or disable StallGuard2 filter.
+
+        :param enable: Enable or disable the StallGuard2 filter. If enabled, the StallGuard2 result will be filtered.
+                    False:  Faster response time
+                    True:   Filtered mode, updated once for each four fullsteps to compensate for variation in motor
+                            construction, highest accuracy.
+        """
+        self._set_axis_parameter(self.motor.AP.SG2FilterEnable, 1 if enable else 0)
+        self.logger.log(f"StallGuard2 filter {'enabled' if enable else 'disabled'}", TMC2660LogLevel.INFO)
+
+    def get_stallguard_result(self) -> int:
+        """Get the StallGuard2 result."""
+        return self._get_axis_parameter(self.motor.AP.LoadValue, self.axis)
+
+    def set_stallguard_threshold(self, threshold: int):
+        """Set the StallGuard2 threshold.
+
+        :param threshold: StallGuard2 threshold (-64 to 63). A lower value results in a higher sensitivity and requires
+        less torque to indicate a stall. Values below -10 are not recommended.
+        """
+        self._set_axis_parameter(self.motor.AP.SG2Threshold, threshold)
+        self.logger.log(f"StallGuard2 threshold set to {threshold}", TMC2660LogLevel.INFO)
+
+    # CoolStep functions
+    def enable_coolstep(self,
+                        min_current: int,
+                        current_down_step: int,
+                        current_up_step: int,
+                        hysteresis: int,
+                        threshold_speed: int):
+        """
+        Enable CoolStep feature.
+
+        :param min_current: Minimum current (0 or 1)
+        :param current_down_step: Current down step (0 to 3)
+        :param current_up_step: Current up step (0 to 3)
+        :param hysteresis: Hysteresis (0 to 15)
+        :param threshold_speed: Threshold speed [pps]
+        """
+        self._set_axis_parameter(self.motor.AP.SEIMIN, min_current)
+        self._set_axis_parameter(self.motor.AP.SECDS, current_down_step)
+        self._set_axis_parameter(self.motor.AP.SECUS, current_up_step)
+        self._set_axis_parameter(self.motor.AP.smartEnergyHysteresis, hysteresis)
+        self._set_axis_parameter(self.motor.AP.smartEnergyThresholdSpeed, threshold_speed)
+        self.logger.log("CoolStep enabled", TMC2660LogLevel.INFO)
+
+    def disable_coolstep(self):
+        """Disable CoolStep feature."""
+        self._set_axis_parameter(self.motor.AP.smartEnergyThresholdSpeed, 0)
+        self.logger.log("CoolStep disabled", TMC2660LogLevel.INFO)
+
+    def get_coolstep_current(self) -> int:
+        """Get the current CoolStep current scaling."""
+        return self._get_axis_parameter(self.motor.AP.smartEnergyActualCurrent, self.axis)
+
 
     # --------------- HELPER METHODS ---------------
 
