@@ -3,6 +3,7 @@ Move a motor back and forth using velocity and position mode of the TMC2660.
 """
 import logging
 import asyncio
+from enum import Enum
 from pytrinamic.connections import ConnectionManager
 from pytrinamic.evalboards import TMC2660_eval
 from pytrinamic.modules import Landungsbruecke
@@ -11,7 +12,7 @@ from dip_coater.logging.tmc2660_logger import TMC2660Logger, TMC2660LogLevel
 from dip_coater.motor.motor_driver_interface import MotorDriver
 
 
-class VSenseFullScale:
+class VSenseFullScale(Enum):
     """
     VSense full scale values for the TMC2660.
     """
@@ -19,15 +20,33 @@ class VSenseFullScale:
     VSENSE_FULL_SCALE_165mV = 1
 
 
-class ChopperMode:
+class ChopperMode(Enum):
     # SpreadCycle chopper mode (provides a smoother operation and greater power efficiency over a wide range of speed
     # and load)
-    SPREAD_CYCLE = 0
+    SPREAD_CYCLE = (0, "SpreadCycle")
     # Classic constant TOff chopper mode
-    CONSTANT_TOFF = 1
+    CONSTANT_TOFF = (1, "Constant TOff")
+
+    def __init__(self, value, label):
+        self.value_ = value
+        self.label = label
+
+    @classmethod
+    def from_int(cls, value: int):
+        for mode in cls:
+            if mode.value == value:
+                return mode
+        raise ValueError(f"No ChopperMode with value {value}")
+
+    @classmethod
+    def from_label(cls, label: str):
+        for mode in cls:
+            if mode.label == label:
+                return mode
+        raise ValueError(f"No ChopperMode with label {label}")
 
 
-class StepDirSource:
+class StepDirSource(Enum):
     # Use the internal motion controller for step and direction signals
     INTERNAL = 0
     # Use the Step/Dir input pins for step and direction signals

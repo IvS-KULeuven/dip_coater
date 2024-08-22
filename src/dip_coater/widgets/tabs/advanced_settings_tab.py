@@ -61,6 +61,9 @@ class AdvancedSettingsTab(TabPane):
             case "interpolation":
                 self.app_state.motor_driver.set_interpolation(event.value)
                 self.app_state.status_advanced.update_interpolation(event.value)
+            case "chopper_mode":
+                self.app_state.motor_driver.set_chopper_mode(event.value)
+                self.app_state.status_advanced.update_chopper_mode(event.value)
             case "spread_cycle":
                 self.app_state.motor_driver.set_spread_cycle(event.value)
                 self.app_state.status_advanced.update_spread_cycle(event.value)
