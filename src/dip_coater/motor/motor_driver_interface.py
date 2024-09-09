@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 
-from dip_coater.motor.mechanical_setup import MechanicalSetup
+from dip_coater.mechanical.mechanical_setup import MechanicalSetup
 
 
 class AvailableMotorDrivers(str, Enum):

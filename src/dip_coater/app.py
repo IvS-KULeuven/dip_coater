@@ -28,7 +28,7 @@ from dip_coater.widgets.tabs.logs_tab import LogsTab
 from dip_coater.widgets.tabs.advanced_settings_tab import AdvancedSettingsTab
 from dip_coater.widgets.tabs.coder_tab import CoderTab
 
-from dip_coater.motor.mechanical_setup import MechanicalSetup
+from dip_coater.mechanical.mechanical_setup import MechanicalSetup
 from dip_coater.motor.motor_driver_interface import MotorDriver
 from dip_coater.motor.motor_driver_interface import AvailableMotorDrivers
 from dip_coater.motor.tmc2209 import MotorDriverTMC2209

@@ -7,7 +7,7 @@ from pytrinamic.modules import Landungsbruecke
 
 from TMC_2209._TMC_2209_logger import Loglevel
 from dip_coater.motor.tmc2660 import MotorDriverTMC2660
-from dip_coater.motor.mechanical_setup import MechanicalSetup
+from dip_coater.mechanical.mechanical_setup import MechanicalSetup
 
 pytrinamic.show_info()
 
