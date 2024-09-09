@@ -29,6 +29,8 @@ from dip_coater.widgets.tabs.advanced_settings_tab import AdvancedSettingsTab
 from dip_coater.widgets.tabs.coder_tab import CoderTab
 
 from dip_coater.mechanical.mechanical_setup import MechanicalSetup
+from dip_coater.mechanical.setup_small_coater import SetupSmallCoater
+from dip_coater.mechanical.setup_large_coater import SetupLargeCoater
 from dip_coater.motor.motor_driver_interface import MotorDriver
 from dip_coater.motor.motor_driver_interface import AvailableMotorDrivers
 from dip_coater.motor.tmc2209 import MotorDriverTMC2209
@@ -163,10 +165,12 @@ def main():
                         help='Set the TMC2660 interface type')
     parser.add_argument('-p', '--port', type=str, default='/dev/ttyACM0',
                         help='Set the TMC2660 interface port. User \'interactive\' for interactive port selection')
-    parser.add_argument('--mm-per-revolution', type=float, default=4.0,
+    parser.add_argument('--mm-per-revolution', type=float,
                         help='Distance in mm the platform moves for one full revolution')
-    parser.add_argument('--gearbox-ratio', type=float, default=1.0,
+    parser.add_argument('--gearbox-ratio', type=float,
                         help='Gearbox ratio, if any')
+    parser.add_argument('--steps-per-rev', type=int,
+                        help='Number of full steps per revolution')
     parser.add_argument('--use-dummy-driver', action='store_true',
                         help='Use a dummy driver instead of the real motor driver')
     args = parser.parse_args()
@@ -176,11 +180,23 @@ def main():
     if args.use_dummy_driver is not None:
         app_state.config.USE_DUMMY_DRIVER = args.use_dummy_driver
 
-    # Build the mechanical setup
-    mechanical_setup = MechanicalSetup(
-        mm_per_revolution=args.mm_per_revolution,
-        gearbox_ratio=args.gearbox_ratio
-    )
+    # Build the mechanical setup based on driver type and command line arguments
+    if args.mm_per_revolution is not None or args.gearbox_ratio is not None:
+        # Use custom setup if either mm_per_revolution or gearbox_ratio is provided
+        mechanical_setup = MechanicalSetup(
+            mm_per_revolution=args.mm_per_revolution if args.mm_per_revolution is not None else 3.0,
+            gearbox_ratio=args.gearbox_ratio if args.gearbox_ratio is not None else 1.0,
+            steps_per_revolution=args.steps_per_rev if args.steps_per_rev is not None else 200,
+        )
+    else:
+        # Use predefined setups based on driver type
+        if args.driver == AvailableMotorDrivers.TMC2209:
+            mechanical_setup = SetupSmallCoater()
+        elif args.driver == AvailableMotorDrivers.TMC2660:
+            mechanical_setup = SetupLargeCoater()
+        else:
+            raise ValueError(f"Unsupported driver type: {args.driver}")
+
     app_state.mechanical_setup = mechanical_setup
 
     # Build the motor driver
