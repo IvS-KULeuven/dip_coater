@@ -8,6 +8,7 @@ import platform
 
 from dip_coater.gpio import get_gpio_instance, GpioEdge, GpioState
 from dip_coater.motor.motor_driver_interface import MotorDriver
+from dip_coater.motor.tmc2209_dummy import DummyTMC2209
 
 
 class MotorDriverTMC2209(MotorDriver):
@@ -16,16 +17,18 @@ class MotorDriverTMC2209(MotorDriver):
     limit_switch_bindings = {}
 
     """ Class to control the TMC2209 motor driver for the dip coater"""
-    def __init__(self, app_state, step_mode: int = 8, current_mA: int = 1000, current_standstill_mA: int = 150,
-                 invert_direction: bool = False, interpolation: bool = True,
-                 spread_cycle: bool = False, loglevel: Loglevel = Loglevel.ERROR,
-                 log_handlers: list = None, log_formatter: logging.Formatter = None):
+    def __init__(self, app_state, step_mode: int = 8, current_mA: int = 1000,
+                 current_standstill_mA: int = 150, invert_direction: bool = False,
+                 interpolation: bool = True, spread_cycle: bool = False,
+                 loglevel: Loglevel = Loglevel.ERROR, log_handlers: list = None,
+                 log_formatter: logging.Formatter = None):
         """ Initialize the motor driver
 
         :param app_state: The application state to use for the motor driver
         :param step_mode: The step mode to set (1, 2, 4, 8, 16, 32, 64, 128, 256)
         :param current_mA: The current to set for the motor driver in mA
-        :param current_standstill_mA: The current to set for the motor driver in mA when the motor is at standstill
+        :param current_standstill_mA: The current to set for the motor driver in mA when the motor
+                    is at standstill
         :param invert_direction: Whether to invert the direction of the motor (default: False)
         :param interpolation: Whether to use interpolation for the motor driver
         :param spreadcycle: Whether to use spread_cycle for the motor driver (true) or
@@ -49,16 +52,21 @@ class MotorDriverTMC2209(MotorDriver):
         self.diag_pin = 5
 
         # Motor driver
-        if platform.system() == "Darwin" or platform.system() == "Windows":
-            print("Running on non-Raspberry Pi system. Using mock TMC2209 driver.")
-            self.tmc = TMC_2209(self.en_pin, self.step_pin, self.dir_pin, loglevel=loglevel,
-                                log_handlers=log_handlers,
-                                serialport=None, skip_uart_init=True)
+        use_dummy = (
+            app_state.config.USE_DUMMY_DRIVER
+            or platform.system() in ("Darwin", "Windows")
+        )
+        if use_dummy:
+            if app_state.config.USE_DUMMY_DRIVER:
+                print("Using mock TMC2209 driver (--use-dummy-driver).")
+            else:
+                print("Running on non-Raspberry Pi system. Using mock TMC2209 driver.")
+            self.tmc = DummyTMC2209(self.en_pin, self.step_pin, self.dir_pin, loglevel=loglevel)
         else:
             self.tmc = TMC_2209(self.en_pin, self.step_pin, self.dir_pin, loglevel=loglevel,
                                 log_handlers=log_handlers,
                                 log_formatter=log_formatter)
-            self.tmc.lo
+
         # Set motor driver settings
         self.tmc.set_vactual(0)      # Motor is not controlled by UART
         self.tmc.set_direction_reg(invert_direction)
@@ -157,7 +165,8 @@ class MotorDriverTMC2209(MotorDriver):
     async def wait_for_motor_done_async(self) -> StopMode:
         """ Wait for the motor to finish moving asynchronously
 
-        :return: The StopMode of the movement (StopMode.NO for normal stop, other StopMode for early stop)
+        :return: The StopMode of the movement (StopMode.NO for normal stop, other StopMode for
+                    early stop)
         """
         while self.tmc.distance_to_go() > 0:
             await asyncio.sleep(0.1)  # Check every 100ms
@@ -380,7 +389,12 @@ class MotorDriverTMC2209(MotorDriver):
         event = GpioEdge.RISING if NC else GpioEdge.FALLING
         self.limit_switch_bindings[limit_switch_pin] = event
         self.GPIO.remove_event_detect(limit_switch_pin)
-        self.GPIO.add_event_detect(limit_switch_pin, event, callback=self._stop_motor_callback, bouncetime=5)
+        self.GPIO.add_event_detect(
+            limit_switch_pin,
+            event,
+            callback=self._stop_motor_callback,
+            bouncetime=5
+        )
 
     # --------------- HELPER METHODS ---------------
 

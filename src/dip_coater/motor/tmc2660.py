@@ -1,15 +1,29 @@
 """
 Move a motor back and forth using velocity and position mode of the TMC2660.
 """
-import logging
 import asyncio
+import logging
+import platform
 from enum import Enum
-from pytrinamic.connections import ConnectionManager
-from pytrinamic.evalboards import TMC2660_eval
-from pytrinamic.modules import Landungsbruecke
+
+try:
+    from pytrinamic.connections import ConnectionManager
+    from pytrinamic.evalboards import TMC2660_eval
+    from pytrinamic.modules import Landungsbruecke
+    _PYTRINAMIC_AVAILABLE = True
+except ModuleNotFoundError:
+    ConnectionManager = None
+    TMC2660_eval = None
+    Landungsbruecke = None
+    _PYTRINAMIC_AVAILABLE = False
 
 from dip_coater.logging.tmc2660_logger import TMC2660Logger, TMC2660LogLevel
 from dip_coater.motor.motor_driver_interface import MotorDriver
+from dip_coater.motor.tmc2660_dummy import (
+    DummyEvalBoard,
+    DummyInterface,
+    DummyLandungsbruecke,
+)
 
 
 class VSenseFullScale(Enum):
@@ -86,15 +100,42 @@ class MotorDriverTMC2660(MotorDriver):
             formatter=log_formatter
         )
 
+        self.is_dummy = (
+            interface_type == "dummy_tmcl"
+            or app_state.config.USE_DUMMY_DRIVER
+            or platform.system() in ("Darwin", "Windows")
+        )
+        if self.is_dummy:
+            if app_state.config.USE_DUMMY_DRIVER or interface_type == "dummy_tmcl":
+                self.logger.log("Using dummy driver interface", TMC2660LogLevel.INFO)
+            else:
+                self.logger.log(
+                    "Non-Raspberry Pi system detected. Using dummy driver interface.",
+                    TMC2660LogLevel.INFO
+                )
+        elif not _PYTRINAMIC_AVAILABLE:
+            msg = ("pytrinamic is required for the TMC2660 driver. "
+                   "Install it or use --use-dummy-driver.")
+            self.logger.log(msg, TMC2660LogLevel.ERROR)
+            raise ModuleNotFoundError(msg)
+
         # Set up the TMC2660 driver and motor
         interface_txt = f"--interface {interface_type}" if interface_type else ""
         port_txt = f"--port {port}" if port else ""
-        self.interface = ConnectionManager(f"{interface_txt} {port_txt}").connect()
-        self.eval_board = TMC2660_eval(self.interface)
-        self.lb = Landungsbruecke(self.interface)
+        if self.is_dummy:
+            self.dummy_values = {}
+            self.interface = DummyInterface(self.dummy_values)
+            self.lb = DummyLandungsbruecke()
+            self.eval_board = DummyEvalBoard(self.dummy_values)
+            self.motor = self.eval_board.motors[0]
+        else:
+            self.interface = ConnectionManager(f"{interface_txt} {port_txt}").connect()
+            self.eval_board = TMC2660_eval(self.interface)
+            self.lb = Landungsbruecke(self.interface)
         self.bank = 0
         self.axis = 0
-        self.motor = self.eval_board.motors[self.axis]
+        if not self.is_dummy:
+            self.motor = self.eval_board.motors[self.axis]
         self.vsense_fs = vsense_full_scale
         self.rsense = 100  # Sense resistor value in mOhm
 
@@ -103,11 +144,9 @@ class MotorDriverTMC2660(MotorDriver):
         self.coolstep_threshold = coolstep_threshold
 
         # Set up dummy driver interface
-        self.is_dummy = True if interface_type == "dummy_tmcl" else False
         if self.is_dummy:
-            self.logger.log("Using dummy driver interface", TMC2660LogLevel.INFO)
             # Initialize dummy values
-            self.dummy_values = {
+            self.dummy_values.update({
                 self.lb.GP.DriversEnable: False,
                 self.motor.AP.PositionReachedFlag: True,
                 self.motor.AP.MicrostepResolution: step_mode,
@@ -117,7 +156,7 @@ class MotorDriverTMC2660(MotorDriver):
                 self.motor.AP.MaxVelocity: self.app_state.mechanical_setup.rps_to_stepss(1, step_mode),
                 self.motor.AP.MaxAcceleration: self.app_state.mechanical_setup.rpss_to_stepss(1, step_mode),
                 self.motor.AP.ActualPosition: 0,
-            }
+            })
 
         # Configure the motor
         self.disable_motor()
