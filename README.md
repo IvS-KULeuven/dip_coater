@@ -2,7 +2,7 @@
 
 This small App is developed for IvS to drive the motor for the dip coater. The motor is connected to a Raspberry Pi through the GPIO bus.
 
-This App is developed with [Textual](https://www.textualize.io) and the motor driver is controlled using the [TMC_2209_Raspberry_Pi library](https://github.com/Chr157i4n/TMC2209_Raspberry_Pi).
+This App is developed with [Textual](https://www.textualize.io) and the motor driver is controlled using the [PyTmcStepper library](https://github.com/Chr157i4n/PyTmcStepper) for the TMC2209 Driver and [PyTrinamic](https://github.com/analogdevicesinc/PyTrinamic) for the TMC2660 Driver. 
 
 ## Installation
 
@@ -65,6 +65,17 @@ Start the App from the command line in a terminal. You can start it also from a 
 ```bash
 $ dip-coater
 ```
+
+### Motor driver selection
+
+The app supports two motor drivers: `TMC2209` and `TMC2660`. By default, it uses `TMC2209`. You can switch drivers with the `-d/--driver` option:
+
+```bash
+$ dip-coater --driver TMC2209
+$ dip-coater --driver TMC2660
+```
+
+When using `TMC2660`, you may also need to set the interface type and port (see `--interface` and `--port` options).
 
 This will show the following App in your terminal:
 
@@ -171,4 +182,3 @@ If the RPi is on the same network as you, you can scan the IPs on your network.
 Look for your network interface and not the IP/subnet.
 3. Scan your network: e.g. `sudo nmap -sn 192.168.1.0/24`
 4. Look for an entry with "Raspberry Pi".
-
