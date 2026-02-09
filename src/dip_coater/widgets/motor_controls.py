@@ -77,7 +77,7 @@ class MotorControls(Static):
                 self.app_state.motor_driver.move_up(distance_mm, speed_mm_s, acceleration_mm_s2,
                                                     limit_switch_pins=[self.app_state.config.LIMIT_SWITCH_UP_PIN])
                 stop = await self.app_state.motor_driver.wait_for_motor_done_async()
-                if stop == StopMode.NO:
+                if stop is None or stop == StopMode.NO:
                     log.write(f"-> Finished moving up.")
                 else:
                     log.write(f"[red]-> Stopped moving up {stop}.[/]")
@@ -109,7 +109,7 @@ class MotorControls(Static):
                 self.app_state.motor_driver.move_down(distance_mm, speed_mm_s, acceleration_mm_s2,
                                                       limit_switch_pins=[self.app_state.config.LIMIT_SWITCH_DOWN_PIN])
                 stop = await self.app_state.motor_driver.wait_for_motor_done_async()
-                if stop == StopMode.NO:
+                if stop is None or stop == StopMode.NO:
                     log.write(f"-> Finished moving down.")
                 else:
                     log.write(f"[red]-> Stopped moving down {stop}.[/]")
