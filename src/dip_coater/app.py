@@ -1,7 +1,7 @@
 import argparse
-import logging
-import uvloop
 import asyncio
+import logging
+import sys
 
 from textual import on
 from textual.app import App, ComposeResult
@@ -12,7 +12,6 @@ from importlib.metadata import version
 try:
     import TMC_2209
 except ModuleNotFoundError:
-    import sys
     import MyTMC_2209 as TMC_2209
     sys.modules["TMC_2209"] = TMC_2209
 
@@ -149,6 +148,28 @@ class DipCoaterApp(App):
         await self.app_state.motor_controls.disable_motor_action()
 
 
+def configure_event_loop_policy() -> None:
+    if sys.platform == "win32":
+        try:
+            import winloop
+        except ModuleNotFoundError:
+            logging.getLogger(__name__).warning(
+                "winloop is not installed; using default asyncio event loop."
+            )
+            return
+        asyncio.set_event_loop_policy(winloop.EventLoopPolicy())
+        return
+
+    try:
+        import uvloop
+    except ModuleNotFoundError:
+        logging.getLogger(__name__).warning(
+            "uvloop is not installed; using default asyncio event loop."
+        )
+        return
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
+
 def main():
     # Handle command line arguments
     parser = argparse.ArgumentParser(description='Process logging level and motor driver type.')
@@ -224,5 +245,5 @@ def main():
 
 
 if __name__ == '__main__':
-    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    configure_event_loop_policy()
     main()
