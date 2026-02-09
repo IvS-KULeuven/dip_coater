@@ -3,6 +3,7 @@ Move a motor back and forth using velocity and position mode of the TMC2660.
 """
 import asyncio
 import logging
+import math
 import platform
 from enum import Enum
 
@@ -318,7 +319,7 @@ class MotorDriverTMC2660(MotorDriver):
         self._set_axis_parameter(self.motor.AP.MaxVelocity, int(steps_per_second))
 
         verify_speed = self.get_speed_rps()
-        if rps != verify_speed:
+        if not math.isclose(rps, verify_speed, rel_tol=1e-3, abs_tol=1e-3):
             msg = f"Set max velocity {rps} does not match read back value {verify_speed}"
             self.logger.log(msg, TMC2660LogLevel.ERROR)
             raise ValueError(msg)
@@ -335,7 +336,7 @@ class MotorDriverTMC2660(MotorDriver):
         self._set_axis_parameter(self.motor.AP.MaxAcceleration, int(steps_per_second2))
 
         verify_acceleration = self.get_acceleration_rpss()
-        if rpss != verify_acceleration:
+        if not math.isclose(rpss, verify_acceleration, rel_tol=1e-3, abs_tol=1e-3):
             msg = f"Set max acceleration {rpss} does not match read back value {verify_acceleration}"
             self.logger.log(msg, TMC2660LogLevel.ERROR)
             raise ValueError(msg)
