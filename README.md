@@ -76,6 +76,27 @@ $ dip-coater --driver TMC2660
 ```
 
 When using `TMC2660`, you may also need to set the interface type and port (see `--interface` and `--port` options).
+By default, the app starts with `--interface usb_tmcl --port /dev/ttyACM0`.
+
+If your USB controller is exposed on another serial device, set the port explicitly:
+
+```bash
+$ dip-coater --driver TMC2660 --interface usb_tmcl --port /dev/ttyACM1
+$ dip-coater --driver TMC2660 --interface usb_tmcl --port /dev/ttyUSB0
+$ dip-coater --driver TMC2660 --interface usb_tmcl --port /dev/tty.usbmodemTMCEVAL1
+```
+
+You can also let the app ask you to select a port:
+
+```bash
+$ dip-coater --driver TMC2660 --interface usb_tmcl --port interactive
+```
+
+If you see:
+
+`ConnectionError: Couldn't connect to port /dev/ttyACM0. Connection failed.`
+
+then the default port is not the correct one for your setup. Re-run with the correct port using `--port`.
 
 This will show the following App in your terminal:
 

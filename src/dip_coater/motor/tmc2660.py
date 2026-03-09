@@ -4,7 +4,6 @@ Move a motor back and forth using velocity and position mode of the TMC2660.
 import asyncio
 import logging
 import math
-import platform
 from enum import Enum
 
 try:
@@ -104,16 +103,9 @@ class MotorDriverTMC2660(MotorDriver):
         self.is_dummy = (
             interface_type == "dummy_tmcl"
             or app_state.config.USE_DUMMY_DRIVER
-            or platform.system() in ("Darwin", "Windows")
         )
         if self.is_dummy:
-            if app_state.config.USE_DUMMY_DRIVER or interface_type == "dummy_tmcl":
-                self.logger.log("Using dummy driver interface", TMC2660LogLevel.INFO)
-            else:
-                self.logger.log(
-                    "Non-Raspberry Pi system detected. Using dummy driver interface.",
-                    TMC2660LogLevel.INFO
-                )
+            self.logger.log("Using dummy driver interface", TMC2660LogLevel.INFO)
         elif not _PYTRINAMIC_AVAILABLE:
             msg = ("pytrinamic is required for the TMC2660 driver. "
                    "Install it or use --use-dummy-driver.")

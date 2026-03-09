@@ -5,12 +5,10 @@ class ConfigLoader:
     @staticmethod
     def load_config(driver_type: str):
         try:
-            print(f"dip_coater.config.config_{driver_type.lower()}")
             config_module = importlib.import_module(f"dip_coater.config.config_{driver_type.lower()}")
             return config_module
         except ImportError as e:
-            print(f"Import error: {e}")  # Add this line for debugging
-            raise ValueError(f"No configuration found for driver type: '{driver_type}'")
+            raise ValueError(f"No configuration found for driver type: '{driver_type}'") from e
 
 
 class Config:
