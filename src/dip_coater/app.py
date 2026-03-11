@@ -7,7 +7,6 @@ from textual import on
 from textual.app import App, ComposeResult
 from textual.widgets import Button, Footer, Header, RichLog, TabbedContent
 from textual.binding import Binding
-from importlib.metadata import version
 
 try:
     import TMC_2209
@@ -26,6 +25,7 @@ from dip_coater.widgets.tabs.main_tab import MainTab
 from dip_coater.widgets.tabs.logs_tab import LogsTab
 from dip_coater.widgets.tabs.advanced_settings_tab import AdvancedSettingsTab
 from dip_coater.widgets.tabs.coder_tab import CoderTab
+from dip_coater import __version__
 
 from dip_coater.mechanical.mechanical_setup import MechanicalSetup
 from dip_coater.mechanical.setup_small_coater import SetupSmallCoater
@@ -237,10 +237,9 @@ def main():
     app_state.motor_driver = driver
 
     # Build and start the application
-    package_version = version("dip-coater")
-    print(f"Starting Dip Coater v{package_version}, driver: {args.driver}, log level: {log_level}")
+    print(f"Starting Dip Coater v{__version__}, driver: {args.driver}, log level: {log_level}")
     app = DipCoaterApp(app_state)
-    app.title = f"Dip Coater v{package_version}"
+    app.title = f"Dip Coater v{__version__}"
     app.run()
 
 
