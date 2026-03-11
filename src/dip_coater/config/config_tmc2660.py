@@ -14,6 +14,8 @@ MIN_CURRENT = 74    # Minimum current that can be sensed by the TMC2660 (with 35
 MAX_CURRENT = 2190  # Absolute max limit for TMC2660 !
 
 # Other motor settings
+DEFAULT_STEP_MODE = "I256"
+DEFAULT_ACCELERATION = 5
 INVERT_MOTOR_DIRECTION = True
 USE_INTERPOLATION = False
 DEFAULT_CHOPPER_MODE = ChopperMode.SPREAD_CYCLE
