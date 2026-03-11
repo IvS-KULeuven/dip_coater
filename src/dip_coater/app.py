@@ -60,6 +60,7 @@ def create_motor_driver(driver_type: str, app_state,
                                   step_mode=app_state.config.STEP_MODES[app_state.config.DEFAULT_STEP_MODE],
                                   current_mA=app_state.config.DEFAULT_CURRENT,
                                   current_standstill_mA=app_state.config.DEFAULT_CURRENT_STANDSTILL,
+                                  invert_direction=app_state.config.INVERT_MOTOR_DIRECTION,
                                   chopper_mode=app_state.config.DEFAULT_CHOPPER_MODE,
                                   vsense_full_scale=app_state.config.VSENSE_FULL_SCALE,
                                   step_dir_source=app_state.config.DEFAULT_STEP_DIR_SOURCE,
@@ -194,12 +195,16 @@ def main():
                         help='Number of full steps per revolution')
     parser.add_argument('--use-dummy-driver', action='store_true',
                         help='Use a dummy driver instead of the real motor driver')
+    parser.add_argument('--invert-direction', action='store_true',
+                        help='Invert the motor direction for this run')
     args = parser.parse_args()
 
     # Build the application state
     app_state = AppState(args.driver)
     if args.use_dummy_driver is not None:
         app_state.config.USE_DUMMY_DRIVER = args.use_dummy_driver
+    if args.invert_direction:
+        app_state.config.INVERT_MOTOR_DIRECTION = True
 
     # Build the mechanical setup based on driver type and command line arguments
     if args.mm_per_revolution is not None or args.gearbox_ratio is not None:

@@ -79,6 +79,7 @@ class MotorDriverTMC2660(MotorDriver):
                  step_mode: int = 8,
                  current_mA: int = 2000,
                  current_standstill_mA: int = 250,
+                 invert_direction: bool = False,
                  chopper_mode: ChopperMode = ChopperMode.SPREAD_CYCLE,
                  stallguard_enabled: bool = True,
                  stallguard_threshold: int = 0,
@@ -156,7 +157,7 @@ class MotorDriverTMC2660(MotorDriver):
         self.set_step_dir_source(step_dir_source)
         self.set_chopper_mode(chopper_mode)
         self.set_microsteps(step_mode)
-        self.direction_inverted = False
+        self.invert_direction(invert_direction)
         self.set_current(current_mA)
         self.set_current_standstill(current_standstill_mA)
         self.set_stallguard_enabled(stallguard_enabled)
