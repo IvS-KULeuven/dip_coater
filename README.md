@@ -93,6 +93,18 @@ $ dip-coater --setup large --invert-direction
 $ dip-coater --setup small --home-direction down
 ```
 
+### Dummy driver mode
+
+If you want to force the app to use a dummy backend instead of real hardware, pass `--use-dummy-driver` together with the selected driver:
+
+```bash
+$ dip-coater --driver TMC2209 --use-dummy-driver
+$ dip-coater --driver TMC2660 --use-dummy-driver
+```
+
+This is useful for development and UI testing on machines without the real motor hardware attached.
+For `TMC2660`, this forces the app to use the dummy TMCL interface even if a real interface/port is configured.
+
 When using `TMC2660`, you may also need to set the interface type and port (see `--interface` and `--port` options).
 By default, the app starts with `--interface usb_tmcl --port /dev/ttyACM0`.
 
