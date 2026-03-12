@@ -56,6 +56,7 @@ class MotorDriverTMC2209(MotorDriver):
             app_state.config.USE_DUMMY_DRIVER
             or platform.system() in ("Darwin", "Windows")
         )
+        self.is_dummy = use_dummy
         if use_dummy:
             if app_state.config.USE_DUMMY_DRIVER:
                 print("Using mock TMC2209 driver (--use-dummy-driver).")

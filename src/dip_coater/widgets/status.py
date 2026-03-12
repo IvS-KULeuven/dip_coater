@@ -23,9 +23,15 @@ class Status(Static):
         super().__init__(*args, **kwargs)
         self.app_state = app_state
 
+    def _driver_label(self) -> str:
+        driver_label = self.app_state.driver_type.name
+        if getattr(self.app_state.motor_driver, "is_dummy", False):
+            driver_label += " (dummy)"
+        return driver_label
+
     def compose(self) -> ComposeResult:
         with Vertical():
-            yield Label(f"Driver type: [blue]{self.app_state.driver_type.name}[/]")
+            yield Label(f"Driver type: [blue]{self._driver_label()}[/]")
             yield Label(f"Setup: [blue]{self.app_state.setup_profile.label}[/]")
             yield Rule()
             yield Label(id="status-speed")
