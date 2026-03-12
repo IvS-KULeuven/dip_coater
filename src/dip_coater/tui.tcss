@@ -184,7 +184,7 @@ PositionControls {
     width: 30%;
 }
 
-AdvancedSettings {
+AdvancedSettingsBase {
     height: 23;
     .input-fields {
         content-align: left top;
@@ -195,7 +195,7 @@ AdvancedSettings {
         border: none;
     }
 
-    #invert-motor-checkbox {
+    #invert-direction-checkbox {
         margin-right: 2;
     }
 
@@ -227,6 +227,12 @@ AdvancedSettings {
     }
 }
 
+AdvancedSettingsTMC2660 {
+    #stallguard-container {
+        align: left top;
+    }
+}
+
 LogsTab {
     #logging-level-select {
         height: 3;
@@ -234,7 +240,7 @@ LogsTab {
     }
 }
 
-StatusAdvanced {
+StatusAdvancedBase {
     border: solid $panel;
     height: 80%;
 }

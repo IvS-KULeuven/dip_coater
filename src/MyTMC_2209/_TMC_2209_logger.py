@@ -1,12 +1,11 @@
-#pylint: disable=invalid-name
-#pylint: disable=protected-access
+# pylint: disable=invalid-name
+# pylint: disable=protected-access
 """
 TMC_2209 stepper driver logger module
 """
 
 import logging
 from enum import Enum
-
 
 
 class Loglevel(Enum):
@@ -18,7 +17,6 @@ class Loglevel(Enum):
     WARNING = 30        # error and warning messages will be logged
     ERROR = 40          # only error messages will be logged
     NONE = -1           # no messages will be logged
-
 
 
 class TMC_logger:
@@ -147,7 +145,6 @@ class TMC_logger:
         setattr(logging, level_name, level_num)
         setattr(logging.getLoggerClass(), method_name, logForLevel)
         setattr(logging, method_name, logToRoot)
-
 
     def log(self, message, loglevel: Loglevel = Loglevel.INFO):
         """logs a message

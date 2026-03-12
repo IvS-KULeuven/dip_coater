@@ -3,40 +3,44 @@ from textual.containers import Vertical, Horizontal
 from textual.widgets import TabPane, Label, Select
 from textual import on
 
-from TMC_2209._TMC_2209_logger import Loglevel
-from dip_coater.constants import DEFAULT_LOGGING_LEVEL
+from dip_coater.motor.driver_registry import get_driver_spec
+
 
 class LogsTab(TabPane):
     def __init__(self, app_state):
         super().__init__("Logs", id="logs-tab")
         self.app_state = app_state
+        self.driver_spec = get_driver_spec(self.app_state.driver_type)
 
     def compose(self) -> ComposeResult:
         with Vertical():
             with Horizontal():
                 yield Label("Logging level: ", id="logging-level-label")
                 options = self.create_log_level_options()
-                yield Select(options,
-                             value=DEFAULT_LOGGING_LEVEL.value,
-                             allow_blank=False,
-                             name="Select logging level",
-                             id="logging-level-select")
+                yield Select(
+                    options,
+                    value=self.get_current_log_level(),
+                    allow_blank=False,
+                    name="Select logging level",
+                    id="logging-level-select",
+                )
             yield self.app_state.motor_logger_widget
 
-    @staticmethod
-    def create_log_level_options() -> list:
-        options = []
-        for level in Loglevel:
-            options.append((level.name, level.value))
-        return options
+    def create_log_level_options(self) -> list:
+        return self.driver_spec.log_level_options()
+
+    def get_current_log_level(self) -> str:
+        return self.app_state.config.DEFAULT_LOGGING_LEVEL.name
 
     @on(Select.Changed, "#logging-level-select")
     def action_set_loglevel(self, event: Select.Changed):
-        level = Loglevel(event.value)
+        level = self.driver_spec.log_level_from_name(event.value)
         self.set_loglevel(level)
 
-    def set_loglevel(self, level: Loglevel):
+    def set_loglevel(self, level):
         self.app_state.motor_driver.set_loglevel(level)
 
     def reset_settings_to_default(self):
-        self.query_one("#logging-level-select", Select).value = DEFAULT_LOGGING_LEVEL.value
+        default_level = self.get_current_log_level()
+        self.query_one("#logging-level-select", Select).value = default_level
+        self.set_loglevel(self.driver_spec.log_level_from_name(default_level))

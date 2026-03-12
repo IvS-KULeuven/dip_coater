@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from enum import Enum, IntEnum
 import os
 
+
 class Board(Enum):
     """board"""
     UNKNOWN = 0
@@ -38,7 +39,8 @@ class GpioEdge(IntEnum):
 
 class GPIOBase(ABC):
     @abstractmethod
-    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = GpioPUD.PUD_OFF, active_state=None):
+    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = GpioPUD.PUD_OFF,
+              active_state=None):
         pass
 
     @abstractmethod
@@ -72,7 +74,8 @@ class RPiGPIO(GPIOBase):
         self.GPIO = GPIO
         self.GPIO.setmode(GPIO.BCM)
 
-    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = GpioPUD.PUD_OFF, active_state=None):
+    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = GpioPUD.PUD_OFF,
+              active_state=None):
         gpio_mode = self.GPIO.OUT if mode == GpioMode.OUT else self.GPIO.IN
         gpio_pud = {
             GpioPUD.PUD_OFF: self.GPIO.PUD_OFF,
@@ -115,9 +118,10 @@ class GPIOd(GPIOBase):
         self.lines = {}
         self.callbacks = {}
 
-    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = GpioPUD.PUD_OFF, active_state=None):
+    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = GpioPUD.PUD_OFF,
+              active_state=None):
         import gpiod
-        from gpiod.line import Direction, Value, Edge, Bias
+        from gpiod.line import Direction, Bias
         config = gpiod.LineSettings()
         if mode == GpioMode.OUT:
             config.direction = Direction.OUTPUT
@@ -190,15 +194,19 @@ class GPIOZero(GPIOBase):
         Device.pin_factory = LGPIOFactory()
         self.pins = {}
 
-    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD=GpioPUD.PUD_UP, active_state: GpioState=None):
+    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = GpioPUD.PUD_UP,
+              active_state: GpioState = None):
         from gpiozero import LED, Button
         if mode == GpioMode.OUT:
             self.pins[pin] = LED(pin)
         # Input
         if mode == GpioMode.IN:
-            pull_up = True if pull_up_down == GpioPUD.PUD_UP else False if pull_up_down == GpioPUD.PUD_DOWN else None
-            active_state_value = True if active_state == GpioState.HIGH else False if active_state == GpioState.LOW else None
-            pull_up = pull_up if active_state is None else None    # gpiozero doesn't support pull-up/pull-down when an active state is set
+            pull_up = True if pull_up_down == GpioPUD.PUD_UP else \
+                False if pull_up_down == GpioPUD.PUD_DOWN else None
+            active_state_value = True if active_state == GpioState.HIGH else \
+                False if active_state == GpioState.LOW else None
+            # gpiozero doesn't support pull-up/pull-down when an active state is set
+            pull_up = pull_up if active_state is None else None
             self.pins[pin] = Button(pin, pull_up=pull_up, active_state=active_state_value)
         # Output
         else:
@@ -212,7 +220,7 @@ class GPIOZero(GPIOBase):
 
     def add_event_detect(self, pin, edge: GpioEdge, callback, bouncetime=None):
         from gpiozero import Button
-        if not pin in self.pins:
+        if pin not in self.pins:
             raise ValueError(f"Pin {pin} is not set up")
         if callback and not callable(callback):
             raise ValueError("Callback must be callable")
@@ -220,7 +228,8 @@ class GPIOZero(GPIOBase):
             raise ValueError("Event detection can only be added to a button")
 
         def wrapped_callback(button):
-            """ Convert the gpiozero Button object to the pin number, to comply with the RPi.GPIO callback signature """
+            """ Convert the gpiozero Button object to the pin number, to comply with the RPi.GPIO
+            callback signature """
             callback(pin)
 
         if edge == GpioEdge.RISING:
@@ -244,7 +253,6 @@ class GPIOZero(GPIOBase):
         self.pins[pin].when_released = combined_callback
 
     def remove_event_detect(self, pin):
-        from gpiozero import Button
         self.pins[pin].when_pressed = None
         self.pins[pin].when_released = None
 
@@ -252,13 +260,15 @@ class GPIOZero(GPIOBase):
         for pin in self.pins.values():
             pin.close()
 
+
 class DummyGPIO(GPIOBase):
     def __init__(self):
         self.pins = {}
         self.events = {}
         self.callbacks = {}
 
-    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = GpioPUD.PUD_OFF, active_state=None):
+    def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = GpioPUD.PUD_OFF,
+              active_state=None):
         self.pins[pin] = GpioState.HIGH if active_state == GpioState.LOW else GpioState.LOW
 
     def output(self, pin, state: GpioState):
@@ -327,12 +337,12 @@ def get_gpio_instance():
     elif board == Board.RASPBERRY_PI:
         print("Attempting to use RPi.GPIO for Raspberry Pi")
         try:
-            import RPi.GPIO
             return RPiGPIO()
         except ImportError as err:
             print(f"ImportError: {err}")
             print("Board is Raspberry Pi but module RPi.GPIO isn't installed.")
-            print("Follow the installation instructions: https://sourceforge.net/p/raspberry-gpio-python/wiki/install")
+            print("Follow the installation instructions: https://sourceforge.net/p/"
+                  "raspberry-gpio-python/wiki/install")
             raise
     else:
         print("Unknown board or not running on a Raspberry Pi. Using dummy implementation.")

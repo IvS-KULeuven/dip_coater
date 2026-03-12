@@ -2,30 +2,60 @@
 
 This small App is developed for IvS to drive the motor for the dip coater. The motor is connected to a Raspberry Pi through the GPIO bus.
 
-This App is developed with [Textual](https://www.textualize.io) and the motor driver is controlled using the [TMC_2209_Raspberry_Pi library](https://github.com/Chr157i4n/TMC2209_Raspberry_Pi).
+This App is developed with [Textual](https://www.textualize.io) and the motor driver is controlled using the [PyTmcStepper library](https://github.com/Chr157i4n/PyTmcStepper) for the TMC2209 Driver and [PyTrinamic](https://github.com/analogdevicesinc/PyTrinamic) for the TMC2660 Driver. 
 
 ## Installation
 
 Always install in a dedicated virtual environment!
 
+### Poetry (recommended)
+
+First [install Poetry](https://python-poetry.org/docs/).
+
+On a Raspberry Pi, install the project together with the RPi packages:
+
 ```bash
 $ cd </path/to/dip-coater>
-$ python3 -m venv venv --prompt=dip-coater
-$ source venv/bin/activate
-$ python3 -m pip install --upgrade pip setuptools wheel
-$ python3 -m pip install -e .
-```
-
-On a Raspberry Pi, install the project together with the RPi package:
-
-```bash
-$ pip install dip-coater[rpi] 
+$ poetry install --with rpi
 ```
 
 When you want to develop and test on a macOS or Linux system, install without the RPi package. The App will mock the imports and functions.
 
 ```bash
-$ pip install dip-coater
+$ poetry install
+```
+
+Then activate the environment:
+
+```bash
+$ poetry shell
+```
+
+### Classic venv
+
+Create and activate the virtual environment:
+```bash
+$ cd </path/to/dip-coater>
+$ python3 -m venv venv --prompt=dip-coater
+$ source venv/bin/activate
+```
+
+On a Raspberry Pi:
+
+```bash
+$ python3 -m pip install -r <(poetry export --with rpi --dev --format=requirements.txt)
+```
+
+Or on a macOS, Linux, or Windows system:
+
+```bash
+$ python3 -m pip install -r <(poetry export --dev --format=requirements.txt)
+```
+
+### Install the package
+
+```bash
+$ python3 -m pip install -e .
 ```
 
 ## Usage
@@ -35,6 +65,68 @@ Start the App from the command line in a terminal. You can start it also from a 
 ```bash
 $ dip-coater
 ```
+
+### Motor driver selection
+
+The app supports two motor drivers: `TMC2209` and `TMC2660`. By default, it uses `TMC2209`. You can switch drivers with the `-d/--driver` option:
+
+```bash
+$ dip-coater --driver TMC2209
+$ dip-coater --driver TMC2660
+```
+
+### Setup profile selection
+
+Machine setup is now selected independently from the motor driver. The bundled setup profiles are `small` and `large`:
+
+```bash
+$ dip-coater --setup small
+$ dip-coater --setup large
+$ dip-coater --driver TMC2209 --setup large
+```
+
+If you want to override a setup profile for one run, you can layer custom geometry and direction on top:
+
+```bash
+$ dip-coater --setup small --mm-per-revolution 5.0 --gearbox-ratio 2.0
+$ dip-coater --setup large --invert-direction
+$ dip-coater --setup small --home-direction down
+```
+
+### Dummy driver mode
+
+If you want to force the app to use a dummy backend instead of real hardware, pass `--use-dummy-driver` together with the selected driver:
+
+```bash
+$ dip-coater --driver TMC2209 --use-dummy-driver
+$ dip-coater --driver TMC2660 --use-dummy-driver
+```
+
+This is useful for development and UI testing on machines without the real motor hardware attached.
+For `TMC2660`, this forces the app to use the dummy TMCL interface even if a real interface/port is configured.
+
+When using `TMC2660`, you may also need to set the interface type and port (see `--interface` and `--port` options).
+By default, the app starts with `--interface usb_tmcl --port /dev/ttyACM0`.
+
+If your USB controller is exposed on another serial device, set the port explicitly:
+
+```bash
+$ dip-coater --driver TMC2660 --interface usb_tmcl --port /dev/ttyACM1
+$ dip-coater --driver TMC2660 --interface usb_tmcl --port /dev/ttyUSB0
+$ dip-coater --driver TMC2660 --interface usb_tmcl --port /dev/tty.usbmodemTMCEVAL1
+```
+
+You can also let the app ask you to select a port:
+
+```bash
+$ dip-coater --driver TMC2660 --interface usb_tmcl --port interactive
+```
+
+If you see:
+
+`ConnectionError: Couldn't connect to port /dev/ttyACM0. Connection failed.`
+
+then the default port is not the correct one for your setup. Re-run with the correct port using `--port`.
 
 This will show the following App in your terminal:
 
@@ -141,4 +233,3 @@ If the RPi is on the same network as you, you can scan the IPs on your network.
 Look for your network interface and not the IP/subnet.
 3. Scan your network: e.g. `sudo nmap -sn 192.168.1.0/24`
 4. Look for an entry with "Raspberry Pi".
-

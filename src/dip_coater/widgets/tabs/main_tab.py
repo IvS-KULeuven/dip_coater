@@ -13,7 +13,7 @@ class MainTab(TabPane):
     def __init__(self, app_state):
         super().__init__("Main", id="main-tab")
         self.app_state = app_state
-        self.app_state.status = Status(self.app_state.motor_driver, id="status")
+        self.app_state.status = Status(self.app_state, id="status")
         self.app_state.speed_controls = SpeedControls(self.app_state)
         self.app_state.distance_controls = DistanceControls(self.app_state)
         self.app_state.position_controls = PositionControls(self.app_state)
