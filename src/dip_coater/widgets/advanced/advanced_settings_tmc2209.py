@@ -19,7 +19,7 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
     _homing_revs: reactive[float | None] = reactive(None)
     _homing_threshold: reactive[float | None] = reactive(None)
     _homing_speed: reactive[float | None] = reactive(None)
-    
+
     def __init__(self, app_state):
         super().__init__(app_state)
 
@@ -27,16 +27,29 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
 
     def additional_widgets(self) -> ComposeResult:
         with Horizontal(id="interpolation-container"):
-            yield Checkbox("Invert motor direction",
-                           value=self.app_state.config.INVERT_MOTOR_DIRECTION,
-                           id="invert-direction-checkbox", classes="checkbox")
-            yield Checkbox("Interpolation", value=self._interpolation,
-                           id="interpolation-checkbox", classes="checkbox")
-            yield Checkbox("Spread Cycle (T)/Stealth Chop (F)", value=self._spread_cycle,
-                           id="spread-cycle-checkbox", classes="checkbox")
+            yield Checkbox(
+                "Invert motor direction",
+                value=self.app_state.setup_profile.invert_motor_direction,
+                id="invert-direction-checkbox",
+                classes="checkbox",
+            )
+            yield Checkbox(
+                "Interpolation",
+                value=self._interpolation,
+                id="interpolation-checkbox",
+                classes="checkbox",
+            )
+            yield Checkbox(
+                "Spread Cycle (T)/Stealth Chop (F)",
+                value=self._spread_cycle,
+                id="spread-cycle-checkbox",
+                classes="checkbox",
+            )
         with Horizontal(id="threshold-speed-container"):
             yield Label("Enable Threshold Speed: ", id="threshold-speed-switch-label")
-            yield Switch(value=self._threshold_speed_enabled, id="threshold-speed-switch")
+            yield Switch(
+                value=self._threshold_speed_enabled, id="threshold-speed-switch"
+            )
             yield Label("Threshold Speed: ", id="threshold-speed-label")
             yield Input(
                 value=f"{self._threshold_speed}",
@@ -44,8 +57,12 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
                 placeholder="Threshold Speed (mm/s)",
                 id="threshold-speed-input",
                 validate_on=["submitted"],
-                validators=[Number(minimum=self.app_state.config.MIN_THRESHOLD_SPEED,
-                                   maximum=self.app_state.config.MAX_THRESHOLD_SPEED)],
+                validators=[
+                    Number(
+                        minimum=self.app_state.config.MIN_THRESHOLD_SPEED,
+                        maximum=self.app_state.config.MAX_THRESHOLD_SPEED,
+                    )
+                ],
                 classes="input-fields",
             )
             yield Label("mm/s", id="threshold-speed-unit")
@@ -61,8 +78,12 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
                     placeholder="Homing revolutions",
                     id="homing-revolutions-input",
                     validate_on=["submitted"],
-                    validators=[Number(minimum=self.app_state.config.HOMING_MIN_REVOLUTIONS,
-                                       maximum=self.app_state.config.HOMING_MAX_REVOLUTIONS)],
+                    validators=[
+                        Number(
+                            minimum=self.app_state.config.HOMING_MIN_REVOLUTIONS,
+                            maximum=self.app_state.config.HOMING_MAX_REVOLUTIONS,
+                        )
+                    ],
                     classes="input-fields",
                 )
             with Horizontal():
@@ -73,8 +94,12 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
                     placeholder="Homing threshold",
                     id="homing-threshold-input",
                     validate_on=["submitted"],
-                    validators=[Number(minimum=self.app_state.config.HOMING_MIN_THRESHOLD,
-                                       maximum=self.app_state.config.HOMING_MAX_THRESHOLD)],
+                    validators=[
+                        Number(
+                            minimum=self.app_state.config.HOMING_MIN_THRESHOLD,
+                            maximum=self.app_state.config.HOMING_MAX_THRESHOLD,
+                        )
+                    ],
                     classes="input-fields",
                 )
             with Horizontal():
@@ -85,8 +110,12 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
                     placeholder="Homing speed (RPM)",
                     id="homing-speed-input",
                     validate_on=["submitted"],
-                    validators=[Number(minimum=self.app_state.config.HOMING_MIN_SPEED,
-                                       maximum=self.app_state.config.HOMING_MAX_SPEED)],
+                    validators=[
+                        Number(
+                            minimum=self.app_state.config.HOMING_MIN_SPEED,
+                            maximum=self.app_state.config.HOMING_MAX_SPEED,
+                        )
+                    ],
                     classes="input-fields",
                 )
                 yield Label("RPM", id="homing-speed-unit")
@@ -96,7 +125,11 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
         super()._on_mount(event)
 
         # Attach watchers to reactives from other widgets
-        self.watch(self.app_state.speed_controls, "speed", self.update_control_mode_widgets_value)
+        self.watch(
+            self.app_state.speed_controls,
+            "speed",
+            self.update_control_mode_widgets_value,
+        )
 
         self.reset_settings_to_default()
 
@@ -104,28 +137,37 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
         super().reset_settings_to_default()
 
         self.update_interpolation(self.app_state.config.USE_INTERPOLATION)
-        self.query_one("#interpolation-checkbox", Checkbox).value = (
-            self.app_state.config.USE_INTERPOLATION)
+        self.query_one(
+            "#interpolation-checkbox", Checkbox
+        ).value = self.app_state.config.USE_INTERPOLATION
         self.update_spread_cycle(self.app_state.config.USE_SPREAD_CYCLE)
-        self.query_one("#spread-cycle-checkbox", Checkbox).value = (
-            self.app_state.config.USE_SPREAD_CYCLE)
+        self.query_one(
+            "#spread-cycle-checkbox", Checkbox
+        ).value = self.app_state.config.USE_SPREAD_CYCLE
 
         self.update_threshold_speed(self.app_state.config.DEFAULT_THRESHOLD_SPEED)
-        self.query_one("#threshold-speed-input", Input).value = \
-            f"{self.app_state.config.DEFAULT_THRESHOLD_SPEED}"
-        self.update_threshold_speed_enabled(self.app_state.config.THRESHOLD_SPEED_ENABLED)
-        self.query_one("#threshold-speed-switch", Switch).value = (
-            self.app_state.config.THRESHOLD_SPEED_ENABLED)
+        self.query_one(
+            "#threshold-speed-input", Input
+        ).value = f"{self.app_state.config.DEFAULT_THRESHOLD_SPEED}"
+        self.update_threshold_speed_enabled(
+            self.app_state.config.THRESHOLD_SPEED_ENABLED
+        )
+        self.query_one(
+            "#threshold-speed-switch", Switch
+        ).value = self.app_state.config.THRESHOLD_SPEED_ENABLED
 
         self.update_homing_revs(self.app_state.config.HOMING_REVOLUTIONS)
-        self.query_one("#homing-revolutions-input", Input).value = \
-            f"{self.app_state.config.HOMING_REVOLUTIONS}"
+        self.query_one(
+            "#homing-revolutions-input", Input
+        ).value = f"{self.app_state.config.HOMING_REVOLUTIONS}"
         self.update_homing_threshold(self.app_state.config.HOMING_THRESHOLD)
-        self.query_one("#homing-threshold-input", Input).value = \
-            f"{self.app_state.config.HOMING_THRESHOLD}"
+        self.query_one(
+            "#homing-threshold-input", Input
+        ).value = f"{self.app_state.config.HOMING_THRESHOLD}"
         self.update_homing_speed(self.app_state.config.HOMING_SPEED_MM_S)
-        self.query_one("#homing-speed-input", Input).value = \
-            f"{self.app_state.config.HOMING_SPEED_MM_S}"
+        self.query_one(
+            "#homing-speed-input", Input
+        ).value = f"{self.app_state.config.HOMING_SPEED_MM_S}"
 
     # --------------- WIDGET INTERACTIONS ---------------
 
@@ -149,9 +191,11 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
     def submit_threshold_speed_input(self):
         threshold_speed_input = self.query_one("#threshold-speed-input", Input)
         threshold_speed = float(threshold_speed_input.value)
-        threshold_speed_validated = clamp(threshold_speed,
-                                          self.app_state.config.MIN_THRESHOLD_SPEED,
-                                          self.app_state.config.MAX_THRESHOLD_SPEED)
+        threshold_speed_validated = clamp(
+            threshold_speed,
+            self.app_state.config.MIN_THRESHOLD_SPEED,
+            self.app_state.config.MAX_THRESHOLD_SPEED,
+        )
         threshold_speed_input.value = f"{threshold_speed_validated}"
         self.update_threshold_speed(threshold_speed_validated)
 
@@ -169,7 +213,9 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
     def update_control_mode_widgets_value(self):
         if not self._threshold_speed_enabled:
             return
-        self.app_state.status_advanced.update_speed_mode(self._threshold_speed_enabled, self._threshold_speed)
+        self.app_state.status_advanced.update_speed_mode(
+            self._threshold_speed_enabled, self._threshold_speed
+        )
 
         interpolation_checkbox = self.query_one("#interpolation-checkbox", Checkbox)
         spread_cycle_checkbox = self.query_one("#spread-cycle-checkbox", Checkbox)
@@ -178,14 +224,21 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
         spread_cycle_checkbox.value = self._spread_cycle
 
     def update_motor_configuration(self):
-        if self._threshold_speed_enabled and self.app_state.speed_controls.speed >= self._threshold_speed:
+        if (
+            self._threshold_speed_enabled
+            and self.app_state.speed_controls.speed >= self._threshold_speed
+        ):
             # High-speed configuration
-            self.app_state.step_mode.update_microsteps(self.app_state.config.HIGH_SPEED_STEP_MODE)
+            self.app_state.step_mode.update_microsteps(
+                self.app_state.config.HIGH_SPEED_STEP_MODE
+            )
             self.watch__interpolation(self.app_state.config.HIGH_SPEED_INTERPOLATION)
             self.watch__spread_cycle(self.app_state.config.HIGH_SPEED_SPREAD_CYCLE)
         else:
             # Low-speed configuration
-            self.app_state.step_mode.update_microsteps(self.app_state.config.LOW_SPEED_STEP_MODE)
+            self.app_state.step_mode.update_microsteps(
+                self.app_state.config.LOW_SPEED_STEP_MODE
+            )
             self.watch__interpolation(self.app_state.config.LOW_SPEED_INTERPOLATION)
             self.watch__spread_cycle(self.app_state.config.LOW_SPEED_SPREAD_CYCLE)
         self.update_control_mode_widgets_value()
@@ -203,8 +256,11 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
     def submit_homing_revs_input(self):
         homing_revs_input = self.query_one("#homing-revolutions-input", Input)
         homing_revs = int(homing_revs_input.value)
-        homing_revs_validated = clamp(homing_revs, self.app_state.config.HOMING_MIN_REVOLUTIONS,
-                                      self.app_state.config.HOMING_MAX_REVOLUTIONS)
+        homing_revs_validated = clamp(
+            homing_revs,
+            self.app_state.config.HOMING_MIN_REVOLUTIONS,
+            self.app_state.config.HOMING_MAX_REVOLUTIONS,
+        )
         homing_revs_input.value = f"{homing_revs_validated}"
         self.update_homing_revs(homing_revs_validated)
 
@@ -215,9 +271,11 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
     def submit_homing_threshold_input(self):
         homing_threshold_input = self.query_one("#homing-threshold-input", Input)
         homing_threshold = int(homing_threshold_input.value)
-        homing_threshold_validated = clamp(homing_threshold,
-                                           self.app_state.config.HOMING_MIN_THRESHOLD,
-                                           self.app_state.config.HOMING_MAX_THRESHOLD)
+        homing_threshold_validated = clamp(
+            homing_threshold,
+            self.app_state.config.HOMING_MIN_THRESHOLD,
+            self.app_state.config.HOMING_MAX_THRESHOLD,
+        )
         homing_threshold_input.value = f"{homing_threshold_validated}"
         self.update_homing_threshold(homing_threshold_validated)
 
@@ -228,8 +286,11 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
     def submit_homing_speed_input(self):
         homing_speed_input = self.query_one("#homing-speed-input", Input)
         homing_speed = float(homing_speed_input.value)
-        homing_speed_validated = clamp(homing_speed, self.app_state.config.HOMING_MIN_SPEED,
-                                       self.app_state.config.HOMING_MAX_SPEED)
+        homing_speed_validated = clamp(
+            homing_speed,
+            self.app_state.config.HOMING_MIN_SPEED,
+            self.app_state.config.HOMING_MAX_SPEED,
+        )
         homing_speed_input.value = f"{homing_speed_validated}"
         self.update_homing_speed(homing_speed_validated)
 
@@ -252,12 +313,12 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
 
     def watch__spread_cycle(self, spread_cycle: bool):
         if spread_cycle is None:
-            return 
+            return
         self.post_message(SettingChanged("spread_cycle", spread_cycle))
 
     def watch__threshold_speed(self, threshold_speed: float):
         if threshold_speed is None:
-            return 
+            return
         self.post_message(SettingChanged("threshold_speed", threshold_speed))
 
     def watch__threshold_speed_enabled(self, enabled: bool):
@@ -277,16 +338,16 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
 
     def watch__homing_speed(self, homing_speed: float):
         if homing_speed is None:
-            return 
+            return
         self.post_message(SettingChanged("homing_speed", homing_speed))
-    
+
     # --------------- GETTERS/SETTERS ---------------
 
     def get_threshold_speed(self):
         return self._threshold_speed
-    
+
     def get_threshold_speed_enabled(self):
         return self._threshold_speed_enabled
-    
+
     def get_homing_speed(self):
         return self._homing_speed

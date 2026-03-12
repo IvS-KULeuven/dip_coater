@@ -75,6 +75,24 @@ $ dip-coater --driver TMC2209
 $ dip-coater --driver TMC2660
 ```
 
+### Setup profile selection
+
+Machine setup is now selected independently from the motor driver. The bundled setup profiles are `small` and `large`:
+
+```bash
+$ dip-coater --setup small
+$ dip-coater --setup large
+$ dip-coater --driver TMC2209 --setup large
+```
+
+If you want to override a setup profile for one run, you can layer custom geometry and direction on top:
+
+```bash
+$ dip-coater --setup small --mm-per-revolution 5.0 --gearbox-ratio 2.0
+$ dip-coater --setup large --invert-direction
+$ dip-coater --setup small --home-direction down
+```
+
 When using `TMC2660`, you may also need to set the interface type and port (see `--interface` and `--port` options).
 By default, the app starts with `--interface usb_tmcl --port /dev/ttyACM0`.
 

@@ -25,7 +25,7 @@ class AdvancedSettingsBase(Static):
     # --------------- UI INIT ---------------
 
     def compose(self) -> ComposeResult:
-        with Vertical() as v:
+        with Vertical():
             yield self.app_state.step_mode
             with Horizontal():
                 with Horizontal():
@@ -36,8 +36,12 @@ class AdvancedSettingsBase(Static):
                         placeholder="Acceleration (mm/s\u00b2)",
                         id="acceleration-input",
                         validate_on=["submitted"],
-                        validators=[Number(minimum=self.app_state.config.MIN_ACCELERATION,
-                                           maximum=self.app_state.config.MAX_ACCELERATION)],
+                        validators=[
+                            Number(
+                                minimum=self.app_state.config.MIN_ACCELERATION,
+                                maximum=self.app_state.config.MAX_ACCELERATION,
+                            )
+                        ],
                         classes="input-fields",
                     )
                     yield Label("mm/s\u00b2", id="acceleration-unit")
@@ -49,21 +53,31 @@ class AdvancedSettingsBase(Static):
                         placeholder="Motor current (mA)",
                         id="current-input",
                         validate_on=["submitted"],
-                        validators=[Number(minimum=self.app_state.config.MIN_CURRENT,
-                                           maximum=self.app_state.config.MAX_CURRENT)],
+                        validators=[
+                            Number(
+                                minimum=self.app_state.config.MIN_CURRENT,
+                                maximum=self.app_state.config.MAX_CURRENT,
+                            )
+                        ],
                         classes="input-fields",
                     )
                     yield Label("mA", id="current-unit")
                 with Horizontal():
-                    yield Label("Motor standstill current: ", id="current-standstill-label")
+                    yield Label(
+                        "Motor standstill current: ", id="current-standstill-label"
+                    )
                     yield Input(
                         value=f"{self._current_standstill}",
                         type="number",
                         placeholder="Standstill current (mA)",
                         id="current-standstill-input",
                         validate_on=["submitted"],
-                        validators=[Number(minimum=self.app_state.config.MIN_CURRENT,
-                                           maximum=self.app_state.config.MAX_CURRENT)],
+                        validators=[
+                            Number(
+                                minimum=self.app_state.config.MIN_CURRENT,
+                                maximum=self.app_state.config.MAX_CURRENT,
+                            )
+                        ],
                         classes="input-fields",
                     )
                     yield Label("mA", id="current-standstill-unit")
@@ -77,22 +91,31 @@ class AdvancedSettingsBase(Static):
         self.reset_settings_to_default()
 
     def reset_settings_to_default(self):
-        self.app_state.step_mode.update_microsteps(self.app_state.config.DEFAULT_STEP_MODE)
-        self.app_state.step_mode.query_one(f"#{self.app_state.config.DEFAULT_STEP_MODE}",
-                                           RadioButton).value = True
+        self.app_state.step_mode.update_microsteps(
+            self.app_state.config.DEFAULT_STEP_MODE
+        )
+        self.app_state.step_mode.query_one(
+            f"#{self.app_state.config.DEFAULT_STEP_MODE}", RadioButton
+        ).value = True
         self.update_acceleration(self.app_state.config.DEFAULT_ACCELERATION)
-        self.query_one("#acceleration-input", Input).value = \
-            f"{self.app_state.config.DEFAULT_ACCELERATION}"
-        self.update_invert_motor_direction(self.app_state.config.INVERT_MOTOR_DIRECTION)
-        self.query_one("#invert-direction-checkbox", Checkbox).value = (
-            self.app_state.config.INVERT_MOTOR_DIRECTION)
+        self.query_one(
+            "#acceleration-input", Input
+        ).value = f"{self.app_state.config.DEFAULT_ACCELERATION}"
+        self.update_invert_motor_direction(
+            self.app_state.setup_profile.invert_motor_direction
+        )
+        self.query_one(
+            "#invert-direction-checkbox", Checkbox
+        ).value = self.app_state.setup_profile.invert_motor_direction
 
         self.update_current(self.app_state.config.DEFAULT_CURRENT)
-        self.query_one("#current-input", Input).value = \
-            f"{self.app_state.config.DEFAULT_CURRENT}"
+        self.query_one(
+            "#current-input", Input
+        ).value = f"{self.app_state.config.DEFAULT_CURRENT}"
         self.update_current_standstill(self.app_state.config.DEFAULT_CURRENT_STANDSTILL)
-        self.query_one("#current-standstill-input", Input).value = \
-            f"{self.app_state.config.DEFAULT_CURRENT_STANDSTILL}"
+        self.query_one(
+            "#current-standstill-input", Input
+        ).value = f"{self.app_state.config.DEFAULT_CURRENT_STANDSTILL}"
 
     # --------------- WIDGET INTERACTIONS ---------------
 
@@ -100,39 +123,59 @@ class AdvancedSettingsBase(Static):
     def submit_acceleration_input(self):
         acceleration_input = self.query_one("#acceleration-input", Input)
         acceleration = float(acceleration_input.value)
-        acceleration_validated = clamp(acceleration, self.app_state.config.MIN_ACCELERATION,
-                                       self.app_state.config.MAX_ACCELERATION)
+        acceleration_validated = clamp(
+            acceleration,
+            self.app_state.config.MIN_ACCELERATION,
+            self.app_state.config.MAX_ACCELERATION,
+        )
         acceleration_input.value = f"{acceleration_validated}"
         self.update_acceleration(acceleration_validated)
 
     def update_acceleration(self, acceleration: reactive[float | None]):
-        validated_acceleration = clamp(acceleration, self.app_state.config.MIN_ACCELERATION,
-                                       self.app_state.config.MAX_ACCELERATION)
+        validated_acceleration = clamp(
+            acceleration,
+            self.app_state.config.MIN_ACCELERATION,
+            self.app_state.config.MAX_ACCELERATION,
+        )
         self._acceleration = round(validated_acceleration, 1)
 
     @on(Input.Submitted, "#current-input")
     def submit_current_input(self):
         current_input = self.query_one("#current-input", Input)
         current = int(current_input.value)
-        current_validated = clamp(current, self.app_state.config.MIN_CURRENT, self.app_state.config.MAX_CURRENT)
+        current_validated = clamp(
+            current,
+            self.app_state.config.MIN_CURRENT,
+            self.app_state.config.MAX_CURRENT,
+        )
         current_input.value = f"{current_validated}"
         self.update_current(current_validated)
 
     def update_current(self, current: reactive[int | None]):
-        self._current = clamp(current, self.app_state.config.MIN_CURRENT, self.app_state.config.MAX_CURRENT)
+        self._current = clamp(
+            current,
+            self.app_state.config.MIN_CURRENT,
+            self.app_state.config.MAX_CURRENT,
+        )
 
     @on(Input.Submitted, "#current-standstill-input")
     def submit_current_standstill_input(self):
         current_standstill_input = self.query_one("#current-standstill-input", Input)
         current_standstill = int(current_standstill_input.value)
-        current_standstill_validated = clamp(current_standstill, self.app_state.config.MIN_CURRENT,
-                                             self.app_state.config.MAX_CURRENT)
+        current_standstill_validated = clamp(
+            current_standstill,
+            self.app_state.config.MIN_CURRENT,
+            self.app_state.config.MAX_CURRENT,
+        )
         current_standstill_input.value = f"{current_standstill_validated}"
         self.update_current_standstill(current_standstill_validated)
 
     def update_current_standstill(self, current_standstill: reactive[int | None]):
-        self._current_standstill = clamp(current_standstill, self.app_state.config.MIN_CURRENT,
-                                         self.app_state.config.MAX_CURRENT)
+        self._current_standstill = clamp(
+            current_standstill,
+            self.app_state.config.MIN_CURRENT,
+            self.app_state.config.MAX_CURRENT,
+        )
 
     @on(Checkbox.Changed, "#invert-direction-checkbox")
     def toggle_invert_motor(self, event: Checkbox.Changed):
@@ -143,7 +186,7 @@ class AdvancedSettingsBase(Static):
         self._invert_motor_direction = invert_direction
 
     # --------------- WATCHERS (called automatically when reactive has changed) ---------------
-    
+
     def watch__acceleration(self, acceleration: float):
         if acceleration is None:
             return

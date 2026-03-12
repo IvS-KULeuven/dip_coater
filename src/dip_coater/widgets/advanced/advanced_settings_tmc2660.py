@@ -23,24 +23,37 @@ class AdvancedSettingsTMC2660(AdvancedSettingsBase):
         super().__init__(app_state)
 
         self.update_interpolation(self.app_state.config.USE_INTERPOLATION)
-        self.update_chopper_mode(ChopperMode.from_int(self.app_state.config.DEFAULT_CHOPPER_MODE.value))
-        self.update_stallguard_threshold(self.app_state.config.DEFAULT_STALLGUARD_THRESHOLD)
+        self.update_chopper_mode(
+            ChopperMode.from_int(self.app_state.config.DEFAULT_CHOPPER_MODE.value)
+        )
+        self.update_stallguard_threshold(
+            self.app_state.config.DEFAULT_STALLGUARD_THRESHOLD
+        )
         self.update_coolstep_enabled(self.app_state.config.DEFAULT_COOLSTEP_ENABLED)
         self.update_coolstep_threshold(self.app_state.config.DEFAULT_COOLSTEP_THRESHOLD)
 
     def additional_widgets(self) -> ComposeResult:
         with Horizontal(id="interpolation-container"):
-            yield Checkbox("Invert motor direction",
-                           value=self.app_state.config.INVERT_MOTOR_DIRECTION,
-                           id="invert-direction-checkbox", classes="checkbox")
-            yield Checkbox("Interpolation", value=self._interpolation,
-                           id="interpolation-checkbox", classes="checkbox")
+            yield Checkbox(
+                "Invert motor direction",
+                value=self.app_state.setup_profile.invert_motor_direction,
+                id="invert-direction-checkbox",
+                classes="checkbox",
+            )
+            yield Checkbox(
+                "Interpolation",
+                value=self._interpolation,
+                id="interpolation-checkbox",
+                classes="checkbox",
+            )
             yield Select(
                 [(mode.label, mode.label) for mode in ChopperMode],
                 id="chopper-mode-select",
-                value=ChopperMode.from_int(self.app_state.config.DEFAULT_CHOPPER_MODE.value).label,
+                value=ChopperMode.from_int(
+                    self.app_state.config.DEFAULT_CHOPPER_MODE.value
+                ).label,
                 allow_blank=False,
-                classes="select"
+                classes="select",
             )
 
         with Horizontal(id="stallguard-container"):
@@ -49,14 +62,16 @@ class AdvancedSettingsTMC2660(AdvancedSettingsBase):
                 yield Switch(id="stallguard-switch", value=self._stallguard_enabled)
             with Vertical():
                 yield Label("Enable StallGuard Filter")
-                yield Switch(id="stallguard-filter-switch", value=self._stallguard_filter_enabled)
+                yield Switch(
+                    id="stallguard-filter-switch", value=self._stallguard_filter_enabled
+                )
             yield Label("StallGuard Threshold")
             yield Input(
                 id="stallguard-threshold",
                 type="number",
                 value=str(self._stallguard_threshold),
                 classes="input-fields",
-                validators=[Number(minimum=-64, maximum=63)]
+                validators=[Number(minimum=-64, maximum=63)],
             )
 
         with Horizontal(id="coolstep-container"):
@@ -69,27 +84,39 @@ class AdvancedSettingsTMC2660(AdvancedSettingsBase):
                 type="number",
                 value=str(self._coolstep_threshold),
                 classes="input-fields",
-                validators=[Number(minimum=0, maximum=15)]
+                validators=[Number(minimum=0, maximum=15)],
             )
 
     def reset_settings_to_default(self):
         super().reset_settings_to_default()
 
         self.update_interpolation(self.app_state.config.USE_INTERPOLATION)
-        self.query_one("#interpolation-checkbox", Checkbox).value = (
-            self.app_state.config.USE_INTERPOLATION)
+        self.query_one(
+            "#interpolation-checkbox", Checkbox
+        ).value = self.app_state.config.USE_INTERPOLATION
 
         default_chopper_mode = self.app_state.config.DEFAULT_CHOPPER_MODE
         self.update_chopper_mode(default_chopper_mode)
-        self.query_one("#chopper-mode-select", Select).value = default_chopper_mode.label
+        self.query_one(
+            "#chopper-mode-select", Select
+        ).value = default_chopper_mode.label
 
         # Reset StallGuard and CoolStep settings to default values
-        self.query_one("#stallguard-switch", Switch).value = self.app_state.config.DEFAULT_STALLGUARD_ENABLED
-        self.query_one("#stallguard-filter-switch", Switch).value = (
-            self.app_state.config.DEFAULT_STALLGUARD_FILTER_ENABLED)
-        self.query_one("#stallguard-threshold", Input).value = str(self.app_state.config.DEFAULT_STALLGUARD_THRESHOLD)
-        self.query_one("#coolstep-switch", Switch).value = self.app_state.config.DEFAULT_COOLSTEP_ENABLED
-        self.query_one("#coolstep-threshold", Input).value = str(self.app_state.config.DEFAULT_COOLSTEP_THRESHOLD)
+        self.query_one(
+            "#stallguard-switch", Switch
+        ).value = self.app_state.config.DEFAULT_STALLGUARD_ENABLED
+        self.query_one(
+            "#stallguard-filter-switch", Switch
+        ).value = self.app_state.config.DEFAULT_STALLGUARD_FILTER_ENABLED
+        self.query_one("#stallguard-threshold", Input).value = str(
+            self.app_state.config.DEFAULT_STALLGUARD_THRESHOLD
+        )
+        self.query_one(
+            "#coolstep-switch", Switch
+        ).value = self.app_state.config.DEFAULT_COOLSTEP_ENABLED
+        self.query_one("#coolstep-threshold", Input).value = str(
+            self.app_state.config.DEFAULT_COOLSTEP_THRESHOLD
+        )
 
     # --------------- WIDGET INTERACTIONS ---------------
 
@@ -122,7 +149,9 @@ class AdvancedSettingsTMC2660(AdvancedSettingsBase):
         stallguard_filter_enabled = event.switch.value
         self.update_stallguard_filter_enabled(stallguard_filter_enabled)
 
-    def update_stallguard_filter_enabled(self, stallguard_filter_enabled: reactive[bool | None]):
+    def update_stallguard_filter_enabled(
+        self, stallguard_filter_enabled: reactive[bool | None]
+    ):
         self._stallguard_filter_enabled = stallguard_filter_enabled
 
     @on(Input.Submitted, "#stallguard-threshold")
@@ -171,12 +200,16 @@ class AdvancedSettingsTMC2660(AdvancedSettingsBase):
     def watch__stallguard_filter_enabled(self, stallguard_filter_enabled: bool):
         if stallguard_filter_enabled is None:
             return
-        self.post_message(SettingChanged("stallguard_filter_enabled", stallguard_filter_enabled))
+        self.post_message(
+            SettingChanged("stallguard_filter_enabled", stallguard_filter_enabled)
+        )
 
     def watch__stallguard_threshold(self, stallguard_threshold: int):
         if stallguard_threshold is None:
             return
-        self.post_message(SettingChanged("stallguard_threshold", int(stallguard_threshold)))
+        self.post_message(
+            SettingChanged("stallguard_threshold", int(stallguard_threshold))
+        )
 
     def watch__coolstep_enabled(self, coolstep_enabled: bool):
         if coolstep_enabled is None:
