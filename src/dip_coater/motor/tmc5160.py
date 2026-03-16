@@ -62,6 +62,8 @@ class MotorDriverTMC5160(MotorDriver):
     # TMC5160 sense resistor voltage (V_FS = 0.325V with VSENSE=0)
     V_FS_HIGH = 325  # mV, VSENSE=0 (full scale)
     V_FS_LOW = 180   # mV, VSENSE=1 (low range)
+    ABSOLUTE_MAX_CURRENT = 4530     #mA
+    ABSOLUTE_MAX_CURRENT_STANDSTILL = 4530  # mA
 
     def __init__(
         self,
@@ -284,8 +286,8 @@ class MotorDriverTMC5160(MotorDriver):
             return mstep    # No idx translation required
 
     def set_current(self, current_mA: float):
-        cs = self._convert_current_to_cs(current_mA)
-        actual_mA = self._convert_cs_to_current(cs)
+        cs = self._convert_current_to_cs(current_mA, self.ABSOLUTE_MAX_CURRENT)
+        actual_mA = self._convert_cs_to_current(self.get_current(), self.ABSOLUTE_MAX_CURRENT)
         self._set_axis_parameter(self.motor.AP.MaxCurrent, cs)
 
         verify_cs = self.get_current()
@@ -302,8 +304,8 @@ class MotorDriverTMC5160(MotorDriver):
         return self._get_axis_parameter(self.motor.AP.MaxCurrent, self.axis)
 
     def set_current_standstill(self, current_mA: float):
-        cs = self._convert_current_to_cs(current_mA)
-        actual_mA = self._convert_cs_to_current(cs)
+        cs = self._convert_current_to_cs(current_mA, self.ABSOLUTE_MAX_CURRENT_STANDSTILL)
+        actual_mA = self._convert_cs_to_current(cs, self.ABSOLUTE_MAX_CURRENT_STANDSTILL)
         self._set_axis_parameter(self.motor.AP.StandbyCurrent, cs)
 
         verify_cs = self.get_current_standstill()
@@ -601,29 +603,20 @@ class MotorDriverTMC5160(MotorDriver):
         """Return effective global scaler (0 is treated as 256)."""
         return 256 if self.global_scaler_value == 0 else self.global_scaler_value
 
-    def _convert_current_to_cs(self, current_mA: float) -> int:
+    def _convert_current_to_cs(self, current_mA: float, absolute_max_current: float) -> int:
         """Convert desired current (mA) to CS value (0-31) for IRUN/IHOLD.
-
-        TMC5160 current formula:
-            I_rms = (GLOBALSCALER/256) * (CS+1)/32 * V_FS / R_SENSE * 1/sqrt(2)
-        Solving for CS:
-            CS = (current_mA/1000 * 32 * R_SENSE * sqrt(2) * 256) / (GLOBALSCALER * V_FS/1000) - 1
         """
         gs = self._effective_global_scaler()
-        v_fs = self.V_FS_HIGH  # mV
-        # current_mA = (gs/256) * (cs+1)/32 * (v_fs/1000) / (rsense/1000) * 1/sqrt(2) * 1000
-        # Simplifies to: cs = (current_mA * 32 * rsense * sqrt(2) * 256) / (gs * v_fs * 1000) - 1
-        cs = (current_mA * 32 * self.rsense * 1.4142 * 256) / (gs * v_fs * 1000) - 1
-        cs = int(round(cs))
-        cs = max(0, min(cs, 31))
-        return cs
+        if gs != 0 and gs != 256:
+            raise ValueError(f"FIXME: calculate current with gs ({gs})")
+        return int(31 * current_mA / absolute_max_current)
 
-    def _convert_cs_to_current(self, cs: int) -> float:
+    def _convert_cs_to_current(self, cs: int, absolute_max_current: float) -> float:
         """Convert CS value (0-31) to actual RMS current in mA."""
         gs = self._effective_global_scaler()
-        v_fs = self.V_FS_HIGH  # mV
-        # I_rms (mA) = (gs/256) * (cs+1)/32 * (v_fs / rsense) / sqrt(2) * 1000
-        return (gs / 256) * (cs + 1) / 32 * (v_fs / self.rsense) / 1.4142 * 1000
+        if gs != 0 and gs != 256:
+            raise ValueError(f"FIXME: calculate current with gs {gs}")
+        return int(cs / absolute_max_current)
 
     def _get_axis_parameter(self, parameter, axis):
         if self.is_dummy:
