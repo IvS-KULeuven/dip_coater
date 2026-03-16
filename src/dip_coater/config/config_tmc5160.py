@@ -20,7 +20,7 @@ DEFAULT_ACCELERATION = 10
 DEFAULT_GLOBAL_SCALER = 0
 
 # Sense resistor (mOhm) — depends on the evaluation board
-DEFAULT_RSENSE = 75
+DEFAULT_RSENSE = 50
 
 # Chopper settings
 DEFAULT_CHOPPER_MODE = "SpreadCycle"

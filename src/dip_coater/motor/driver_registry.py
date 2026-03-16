@@ -111,6 +111,7 @@ def _create_tmc5160_driver(
         current_mA=app_state.config.DEFAULT_CURRENT,
         current_standstill_mA=app_state.config.DEFAULT_CURRENT_STANDSTILL,
         invert_direction=app_state.setup_profile.invert_motor_direction,
+        interpolation=app_state.config.USE_INTERPOLATION,
         global_scaler=app_state.config.DEFAULT_GLOBAL_SCALER,
         rsense_mOhm=app_state.config.DEFAULT_RSENSE,
         loglevel=log_level,

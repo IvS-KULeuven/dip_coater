@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from dip_coater.mechanical.mechanical_setup import MechanicalSetup
+from dip_coater.motor import tmc5160 as tmc5160_module
 from dip_coater.motor.tmc5160 import MotorDriverTMC5160
 
 
@@ -24,8 +25,10 @@ def _make_driver(**kwargs) -> MotorDriverTMC5160:
     )
 
 
-def test_tmc5160_requires_pytrinamic_when_not_dummy():
-    with pytest.raises((NotImplementedError, ModuleNotFoundError, ConnectionError)):
+def test_tmc5160_requires_pytrinamic_when_not_dummy(monkeypatch):
+    monkeypatch.setattr(tmc5160_module, "_PYTRINAMIC_AVAILABLE", False)
+
+    with pytest.raises(ModuleNotFoundError):
         MotorDriverTMC5160(DummyAppState(use_dummy_driver=False))
 
 
@@ -93,11 +96,14 @@ def test_tmc5160_global_scaler_roundtrip():
     driver.set_global_scaler(128)
     assert driver.get_global_scaler() == 128
 
+    driver.set_global_scaler(10)
+    assert driver.get_global_scaler() == 10
+
     driver.set_global_scaler(0)
     assert driver.get_global_scaler() == 0
 
     with pytest.raises(ValueError):
-        driver.set_global_scaler(10)  # 1-31 is invalid
+        driver.set_global_scaler(256)
 
 
 def test_tmc5160_current_conversion():
@@ -105,16 +111,67 @@ def test_tmc5160_current_conversion():
     # With GLOBAL_SCALER=0 (256), rsense=75mOhm, V_FS=325mV:
     # At CS=31: I_rms ≈ 3065 mA
     cs = driver._convert_current_to_cs(3000)
-    assert 28 <= cs <= 31
+    assert cs in (30, 31)
     actual = driver._convert_cs_to_current(cs)
-    assert abs(actual - 3000) < 200  # within 200mA
+    assert abs(actual - 3000) < 100
+
+    with pytest.raises(ValueError):
+        driver._convert_current_to_cs(4000)
+
+
+def test_tmc5160_current_setters_write_ihold_irun_fields():
+    driver = _make_driver(global_scaler=0, rsense_mOhm=50)
+
+    driver.set_current(2500)
+    driver.set_current_standstill(70)
+
+    assert driver.eval_board.read_register_field(driver.mc.FIELD.IRUN) == driver.get_current()
+    assert driver.eval_board.read_register_field(driver.mc.FIELD.IHOLD) == driver.get_current_standstill()
+
+
+def test_tmc5160_zero_standstill_current_enables_freewheeling():
+    driver = _make_driver()
+
+    driver.set_current_standstill(0)
+
+    assert driver.eval_board.read_register_field(driver.mc.FIELD.IHOLD) == 0
+    assert driver.dummy_values[driver.motor.AP.FreewheelingMode] == 1
 
 
 def test_tmc5160_microsteps():
     driver = _make_driver()
     assert driver.get_microsteps() == 16
+    assert driver.dummy_values[driver.motor.AP.MicrostepResolution] == 16
     driver.set_microsteps(32)
     assert driver.get_microsteps() == 32
+    assert driver.dummy_values[driver.motor.AP.MicrostepResolution] == 32
+
+
+def test_tmc5160_interpolation_uses_register_field():
+    driver = _make_driver()
+    driver.set_interpolation(True)
+    assert driver.eval_board.read_register_field(driver.mc.FIELD.INTPOL) == 1
+
+    driver.set_interpolation(False)
+    assert driver.eval_board.read_register_field(driver.mc.FIELD.INTPOL) == 0
+
+
+def test_tmc5160_feature_toggles_preserve_disabled_state():
+    driver = _make_driver(
+        stallguard_enabled=False,
+        stallguard_threshold=12,
+        coolstep_enabled=False,
+        coolstep_threshold=345,
+    )
+
+    assert driver.dummy_values[driver.motor.AP.SG2Threshold] == 0
+    assert driver.dummy_values[driver.motor.AP.smartEnergyThresholdSpeed] == 0
+
+    driver.set_stallguard_enabled(True)
+    driver.set_coolstep_enabled(True)
+
+    assert driver.dummy_values[driver.motor.AP.SG2Threshold] == 12
+    assert driver.dummy_values[driver.motor.AP.smartEnergyThresholdSpeed] == 345
 
 
 def test_tmc5160_move_down():

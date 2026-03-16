@@ -59,11 +59,9 @@ class MotorDriverTMC5160(MotorDriver):
     and UI testing.
     """
 
-    # TMC5160 sense resistor voltage (V_FS = 0.325V with VSENSE=0)
-    V_FS_HIGH = 325  # mV, VSENSE=0 (full scale)
-    V_FS_LOW = 180   # mV, VSENSE=1 (low range)
-    ABSOLUTE_MAX_CURRENT = 4530     #mA
-    ABSOLUTE_MAX_CURRENT_STANDSTILL = 4530  # mA
+    # TMC5160 datasheet current scaling uses a fixed full-scale voltage of 325mV.
+    V_FS_MV = 325
+    CURRENT_SCALE_MAX = 31
 
     def __init__(
         self,
@@ -74,8 +72,9 @@ class MotorDriverTMC5160(MotorDriver):
         current_mA: int = 1200,
         current_standstill_mA: int = 150,
         invert_direction: bool = False,
+        interpolation: bool = True,
         global_scaler: int = 0,
-        rsense_mOhm: int = 75,
+        rsense_mOhm: int = 50,
         chopper_mode: ChopperMode = ChopperMode.SPREAD_CYCLE,
         stallguard_enabled: bool = False,
         stallguard_threshold: int = 0,
@@ -126,15 +125,16 @@ class MotorDriverTMC5160(MotorDriver):
             self.motor = self.eval_board.motors[0]
 
         self.mc = self.eval_board.ics[0]
-        self.motor = self.eval_board.motors[0]
         self.bank = 0
         self.axis = 0
-        self.rsense = rsense_mOhm
+        self.rsense = rsense_mOhm / 1000
         self.global_scaler_value = global_scaler
 
         # Driver state
         self.stallguard_threshold = stallguard_threshold
         self.coolstep_threshold = coolstep_threshold
+        self.stallguard_enabled = stallguard_enabled
+        self.coolstep_enabled = coolstep_enabled
         self.direction_inverted = invert_direction
 
         # Initialise dummy axis-parameter store
@@ -162,13 +162,14 @@ class MotorDriverTMC5160(MotorDriver):
         self.set_global_scaler(global_scaler)
         self.set_chopper_mode(chopper_mode)
         self.set_microsteps(step_mode)
+        self.set_interpolation(interpolation)
         self.invert_direction(invert_direction)
         self.set_current(current_mA)
         self.set_current_standstill(current_standstill_mA)
-        self.set_stallguard_enabled(stallguard_enabled)
         self.set_stallguard_threshold(stallguard_threshold)
-        self.set_coolstep_enabled(coolstep_enabled)
         self.set_coolstep_threshold(coolstep_threshold)
+        self.set_stallguard_enabled(stallguard_enabled)
+        self.set_coolstep_enabled(coolstep_enabled)
 
     # --------------- MOTOR CONTROL ---------------
 
@@ -279,15 +280,10 @@ class MotorDriverTMC5160(MotorDriver):
         self.logger.log(f"Microsteps set to {microsteps}", TMC5160LogLevel.INFO)
 
     def get_microsteps(self) -> int:
-        mstep = self._get_axis_parameter(self.motor.AP.MicrostepResolution, self.axis)
-        if self.is_dummy:
-            return mstep
-        else:
-            return mstep    # No idx translation required
+        return self._get_axis_parameter(self.motor.AP.MicrostepResolution, self.axis)
 
     def set_current(self, current_mA: float):
-        cs = self._convert_current_to_cs(current_mA, self.ABSOLUTE_MAX_CURRENT)
-        actual_mA = self._convert_cs_to_current(self.get_current(), self.ABSOLUTE_MAX_CURRENT)
+        cs = self._convert_current_to_cs(current_mA)
         self._set_axis_parameter(self.motor.AP.MaxCurrent, cs)
 
         verify_cs = self.get_current()
@@ -295,6 +291,7 @@ class MotorDriverTMC5160(MotorDriver):
             msg = f"Set max current CS={cs} does not match read back value {verify_cs}"
             self.logger.log(msg, TMC5160LogLevel.ERROR)
             raise ValueError(msg)
+        actual_mA = self._convert_cs_to_current(verify_cs)
         self.logger.log(
             f"Max current set to {current_mA:.1f} mA, CS: {cs}, actual: {actual_mA:.1f} mA",
             TMC5160LogLevel.INFO,
@@ -304,8 +301,7 @@ class MotorDriverTMC5160(MotorDriver):
         return self._get_axis_parameter(self.motor.AP.MaxCurrent, self.axis)
 
     def set_current_standstill(self, current_mA: float):
-        cs = self._convert_current_to_cs(current_mA, self.ABSOLUTE_MAX_CURRENT_STANDSTILL)
-        actual_mA = self._convert_cs_to_current(cs, self.ABSOLUTE_MAX_CURRENT_STANDSTILL)
+        cs = self._convert_current_to_cs(current_mA)
         self._set_axis_parameter(self.motor.AP.StandbyCurrent, cs)
 
         verify_cs = self.get_current_standstill()
@@ -313,6 +309,7 @@ class MotorDriverTMC5160(MotorDriver):
             msg = f"Set standby current CS={cs} does not match read back value {verify_cs}"
             self.logger.log(msg, TMC5160LogLevel.ERROR)
             raise ValueError(msg)
+        actual_mA = self._convert_cs_to_current(verify_cs)
         self.logger.log(
             f"Standstill current set to {current_mA:.1f} mA, CS: {cs}, actual: {actual_mA:.1f} mA",
             TMC5160LogLevel.INFO,
@@ -470,12 +467,12 @@ class MotorDriverTMC5160(MotorDriver):
     # --------------- GLOBAL SCALER / CURRENT SCALING ---------------
 
     def set_global_scaler(self, value: int):
-        """Set GLOBAL_SCALER register (0 or 32-256).
+        """Set GLOBAL_SCALER register.
 
-        0 means full scale (equivalent to 256). Values 1-31 are not allowed.
+        Valid values are 0-255. Per the datasheet, 0 means full scale (256/256).
         """
-        if value != 0 and (value < 32 or value > 256):
-            msg = f"GLOBAL_SCALER must be 0 or 32-256, got {value}"
+        if value < 0 or value > 255:
+            msg = f"GLOBAL_SCALER must be between 0 and 255, got {value}"
             self.logger.log(msg, TMC5160LogLevel.ERROR)
             raise ValueError(msg)
         self.global_scaler_value = value
@@ -509,7 +506,7 @@ class MotorDriverTMC5160(MotorDriver):
     # Interpolation
 
     def set_interpolation(self, enable: bool):
-        self._set_axis_parameter(self.motor.AP.Intpol, 1 if enable else 0)
+        self._write_register_field(self.mc.FIELD.INTPOL, 1 if enable else 0)
         self.logger.log(
             f"Interpolation {'enabled' if enable else 'disabled'}",
             TMC5160LogLevel.INFO,
@@ -518,10 +515,8 @@ class MotorDriverTMC5160(MotorDriver):
     # StallGuard2
 
     def set_stallguard_enabled(self, enable: bool):
-        self._set_axis_parameter(
-            self.motor.AP.SG2Threshold,
-            self.stallguard_threshold if enable else 0,
-        )
+        self.stallguard_enabled = enable
+        self._apply_stallguard_threshold()
         self.logger.log(
             f"StallGuard2 {'enabled' if enable else 'disabled'}",
             TMC5160LogLevel.INFO,
@@ -536,7 +531,7 @@ class MotorDriverTMC5160(MotorDriver):
 
     def set_stallguard_threshold(self, threshold: int):
         self.stallguard_threshold = threshold
-        self._set_axis_parameter(self.motor.AP.SG2Threshold, threshold)
+        self._apply_stallguard_threshold()
         self.logger.log(f"StallGuard2 threshold set to {threshold}", TMC5160LogLevel.INFO)
 
     def get_stallguard_result(self) -> int:
@@ -560,10 +555,8 @@ class MotorDriverTMC5160(MotorDriver):
         self.logger.log("CoolStep configured", TMC5160LogLevel.INFO)
 
     def set_coolstep_enabled(self, enable: bool):
-        self._set_axis_parameter(
-            self.motor.AP.smartEnergyThresholdSpeed,
-            self.coolstep_threshold if enable else 0,
-        )
+        self.coolstep_enabled = enable
+        self._apply_coolstep_threshold()
         self.logger.log(
             f"CoolStep {'enabled' if enable else 'disabled'}",
             TMC5160LogLevel.INFO,
@@ -571,7 +564,7 @@ class MotorDriverTMC5160(MotorDriver):
 
     def set_coolstep_threshold(self, threshold: int):
         self.coolstep_threshold = threshold
-        self._set_axis_parameter(self.motor.AP.smartEnergyThresholdSpeed, threshold)
+        self._apply_coolstep_threshold()
         self.logger.log(f"CoolStep threshold set to {threshold}", TMC5160LogLevel.INFO)
 
     def get_coolstep_current(self) -> int:
@@ -603,20 +596,63 @@ class MotorDriverTMC5160(MotorDriver):
         """Return effective global scaler (0 is treated as 256)."""
         return 256 if self.global_scaler_value == 0 else self.global_scaler_value
 
-    def _convert_current_to_cs(self, current_mA: float, absolute_max_current: float) -> int:
-        """Convert desired current (mA) to CS value (0-31) for IRUN/IHOLD.
+    def _convert_current_to_cs(self, current_mA: float) -> int:
+        """Convert desired RMS current in mA to the IRUN/IHOLD CS value.
+        Formula taken from TMCL-IDE, Current settings, Sense Resistors tah
         """
-        gs = self._effective_global_scaler()
-        if gs != 0 and gs != 256:
-            raise ValueError(f"FIXME: calculate current with gs ({gs})")
-        return int(31 * current_mA / absolute_max_current)
+        if current_mA < 0:
+            msg = f"Invalid current value: {current_mA}. Must be non-negative."
+            self.logger.log(msg, TMC5160LogLevel.ERROR)
+            raise ValueError(msg)
 
-    def _convert_cs_to_current(self, cs: int, absolute_max_current: float) -> float:
-        """Convert CS value (0-31) to actual RMS current in mA."""
         gs = self._effective_global_scaler()
-        if gs != 0 and gs != 256:
-            raise ValueError(f"FIXME: calculate current with gs {gs}")
-        return int(cs / absolute_max_current)
+        current_a = current_mA / 1000
+        cs = round(
+            (current_a * 32 * 256 * self.rsense * math.sqrt(2))
+            / (gs * (self.V_FS_MV / 1000))
+            - 1
+        )
+        cs = max(cs, 0) # Can be -1 if current setting is low
+
+        if not 0 <= cs <= self.CURRENT_SCALE_MAX:
+            max_current_mA = self._convert_cs_to_current(self.CURRENT_SCALE_MAX)
+            msg = (
+                f"Requested current {current_mA:.1f} mA is out of range for "
+                f"GLOBAL_SCALER={self.global_scaler_value} and RSENSE={self.rsense:.3f} ohm. "
+                f"Maximum is {max_current_mA:.1f} mA."
+                f"Calculated cs is {cs}."
+            )
+            self.logger.log(msg, TMC5160LogLevel.ERROR)
+            raise ValueError(msg)
+        return cs
+
+    def _convert_cs_to_current(self, cs: int) -> float:
+        """Convert IRUN/IHOLD CS value (0-31) to RMS current in mA."""
+        if not 0 <= cs <= self.CURRENT_SCALE_MAX:
+            msg = f"Invalid current scale value: {cs}. Must be between 0 and 31."
+            self.logger.log(msg, TMC5160LogLevel.ERROR)
+            raise ValueError(msg)
+
+        gs = self._effective_global_scaler()
+        current_a = (
+            (gs / 256)
+            * ((cs + 1) / 32)
+            * ((self.V_FS_MV / 1000) / self.rsense)
+            * (1 / math.sqrt(2))
+        )
+        return current_a * 1000
+
+    def _apply_stallguard_threshold(self):
+        self._set_axis_parameter(
+            self.motor.AP.SG2Threshold,
+            self.stallguard_threshold if self.stallguard_enabled else 0,
+        )
+
+    def _apply_coolstep_threshold(self):
+        self._set_axis_parameter(
+            self.motor.AP.smartEnergyThresholdSpeed,
+            self.coolstep_threshold if self.coolstep_enabled else 0,
+        )
 
     def _get_axis_parameter(self, parameter, axis):
         if self.is_dummy:
@@ -645,6 +681,9 @@ class MotorDriverTMC5160(MotorDriver):
             self.register_values[register_address] = value
         else:
             self.eval_board.write_register(register_address, value)
+
+    def _write_register_field(self, field, value):
+        self.eval_board.write_register_field(field, value)
 
     def _read_register(self, register_address, signed=False):
         if self.is_dummy:
