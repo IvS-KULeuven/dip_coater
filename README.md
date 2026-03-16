@@ -2,7 +2,8 @@
 
 This small App is developed for IvS to drive the motor for the dip coater. The motor is connected to a Raspberry Pi through the GPIO bus.
 
-This App is developed with [Textual](https://www.textualize.io) and the motor driver is controlled using the [PyTmcStepper library](https://github.com/Chr157i4n/PyTmcStepper) for the TMC2209 Driver and [PyTrinamic](https://github.com/analogdevicesinc/PyTrinamic) for the TMC2660 Driver. 
+This App is developed with [Textual](https://www.textualize.io) and the motor driver is controlled using the [PyTmcStepper library](https://github.com/Chr157i4n/PyTmcStepper) 
+for the TMC2209 Driver and [PyTrinamic](https://github.com/analogdevicesinc/PyTrinamic) for the TMC2660 Driver. 
 
 ## Installation
 
@@ -68,12 +69,15 @@ $ dip-coater
 
 ### Motor driver selection
 
-The app supports two motor drivers: `TMC2209` and `TMC2660`. By default, it uses `TMC2209`. You can switch drivers with the `-d/--driver` option:
+The app supports three motor drivers: `TMC2209`, `TMC2660`, and `TMC5160`. By default, it uses `TMC2209`. You can switch drivers with the `-d/--driver` option:
 
 ```bash
 $ dip-coater --driver TMC2209
 $ dip-coater --driver TMC2660
+$ dip-coater --driver TMC5160 --use-dummy-driver
 ```
+
+The `TMC5160` driver uses [PyTrinamic](https://github.com/analogdevicesinc/PyTrinamic) for hardware communication via a Landungsbrücke evaluation board.
 
 ### Setup profile selection
 
@@ -100,10 +104,12 @@ If you want to force the app to use a dummy backend instead of real hardware, pa
 ```bash
 $ dip-coater --driver TMC2209 --use-dummy-driver
 $ dip-coater --driver TMC2660 --use-dummy-driver
+$ dip-coater --driver TMC5160 --use-dummy-driver
 ```
 
 This is useful for development and UI testing on machines without the real motor hardware attached.
 For `TMC2660`, this forces the app to use the dummy TMCL interface even if a real interface/port is configured.
+For `TMC5160`, this forces the app to use a dummy backend instead of communicating with the real evaluation board.
 
 When using `TMC2660`, you may also need to set the interface type and port (see `--interface` and `--port` options).
 By default, the app starts with `--interface usb_tmcl --port /dev/ttyACM0`.

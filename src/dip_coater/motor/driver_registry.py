@@ -4,12 +4,14 @@ from typing import Any, Callable
 from TMC_2209._TMC_2209_logger import Loglevel
 
 from dip_coater.logging.tmc2660_logger import TMC2660LogLevel
+from dip_coater.logging.tmc5160_logger import TMC5160LogLevel
 from dip_coater.motor.motor_driver_interface import AvailableMotorDrivers, MotorDriver
 from dip_coater.motor.tmc2209 import MotorDriverTMC2209
 from dip_coater.motor.tmc2660 import (
     MotorDriverTMC2660,
     TMC2660LogLevel as TMC2660DriverLogLevel,
 )
+from dip_coater.motor.tmc5160 import MotorDriverTMC5160
 from dip_coater.setup_profiles.machine_profile import AvailableMachineSetups
 from dip_coater.widgets.advanced.advanced_settings_tmc2209 import (
     AdvancedSettingsTMC2209,
@@ -17,8 +19,12 @@ from dip_coater.widgets.advanced.advanced_settings_tmc2209 import (
 from dip_coater.widgets.advanced.advanced_settings_tmc2660 import (
     AdvancedSettingsTMC2660,
 )
+from dip_coater.widgets.advanced.advanced_settings_tmc5160 import (
+    AdvancedSettingsTMC5160,
+)
 from dip_coater.widgets.advanced.status_advanced_tmc2209 import StatusAdvancedTMC2209
 from dip_coater.widgets.advanced.status_advanced_tmc2660 import StatusAdvancedTMC2660
+from dip_coater.widgets.advanced.status_advanced_tmc5160 import StatusAdvancedTMC5160
 
 
 @dataclass(frozen=True)
@@ -85,6 +91,34 @@ def _create_tmc2660_driver(
     )
 
 
+def _create_tmc5160_driver(
+    app_state,
+    *,
+    log_level,
+    log_handlers,
+    log_formatter,
+    interface_type="usb_tmcl",
+    port="interactive",
+) -> MotorDriver:
+    if app_state.config.USE_DUMMY_DRIVER:
+        interface_type = "dummy_tmcl"
+        port = None
+    return MotorDriverTMC5160(
+        app_state,
+        interface_type=interface_type,
+        port=port,
+        step_mode=app_state.config.STEP_MODES[app_state.config.DEFAULT_STEP_MODE],
+        current_mA=app_state.config.DEFAULT_CURRENT,
+        current_standstill_mA=app_state.config.DEFAULT_CURRENT_STANDSTILL,
+        invert_direction=app_state.setup_profile.invert_motor_direction,
+        global_scaler=app_state.config.DEFAULT_GLOBAL_SCALER,
+        rsense_mOhm=app_state.config.DEFAULT_RSENSE,
+        loglevel=log_level,
+        log_handlers=log_handlers,
+        log_formatter=log_formatter,
+    )
+
+
 _SPECS = {
     AvailableMotorDrivers.TMC2209: MotorDriverSpec(
         driver_type=AvailableMotorDrivers.TMC2209,
@@ -109,6 +143,20 @@ _SPECS = {
         ],
         create_advanced_settings=lambda app_state: AdvancedSettingsTMC2660(app_state),
         create_advanced_status=lambda app_state, *args, **kwargs: StatusAdvancedTMC2660(
+            app_state, *args, **kwargs
+        ),
+    ),
+    AvailableMotorDrivers.TMC5160: MotorDriverSpec(
+        driver_type=AvailableMotorDrivers.TMC5160,
+        requires_gpio=False,
+        default_setup=AvailableMachineSetups.LARGE_COATER,
+        driver_factory=_create_tmc5160_driver,
+        log_level_from_name=lambda name: getattr(TMC5160LogLevel, name),
+        log_level_options=lambda: [
+            (level.name, level.name) for level in TMC5160LogLevel
+        ],
+        create_advanced_settings=lambda app_state: AdvancedSettingsTMC5160(app_state),
+        create_advanced_status=lambda app_state, *args, **kwargs: StatusAdvancedTMC5160(
             app_state, *args, **kwargs
         ),
     ),

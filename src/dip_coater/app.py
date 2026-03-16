@@ -148,7 +148,11 @@ def main():
         "--driver",
         type=AvailableMotorDrivers,
         default=AvailableMotorDrivers.TMC2209,
-        choices=[AvailableMotorDrivers.TMC2209, AvailableMotorDrivers.TMC2660],
+        choices=[
+            AvailableMotorDrivers.TMC2209,
+            AvailableMotorDrivers.TMC2660,
+            AvailableMotorDrivers.TMC5160,
+        ],
         help="Set the motor driver type",
     )
     parser.add_argument(

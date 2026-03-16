@@ -45,6 +45,7 @@ _PROFILES = {
 DEFAULT_SETUP_BY_DRIVER = {
     AvailableMotorDrivers.TMC2209: AvailableMachineSetups.SMALL_COATER,
     AvailableMotorDrivers.TMC2660: AvailableMachineSetups.LARGE_COATER,
+    AvailableMotorDrivers.TMC5160: AvailableMachineSetups.LARGE_COATER,
 }
 
 
