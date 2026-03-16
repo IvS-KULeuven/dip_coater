@@ -281,12 +281,9 @@ class MotorDriverTMC5160(MotorDriver):
         if self.is_dummy:
             return mstep
         else:
-            return self.microstep_idx_to_steps(mstep)
+            return mstep    # No idx translation required
 
     def set_current(self, current_mA: float):
-        # Set global scaler
-        self.mc.REG.GLOBAL_SCALER = 0
-        
         cs = self._convert_current_to_cs(current_mA)
         actual_mA = self._convert_cs_to_current(cs)
         self._set_axis_parameter(self.motor.AP.MaxCurrent, cs)
@@ -590,15 +587,6 @@ class MotorDriverTMC5160(MotorDriver):
 
     def get_actual_position(self):
         return self.eval_board.get_axis_parameter(self.motor.AP.ActualPosition, self.axis)
-
-    def microstep_idx_to_steps(self, idx: int) -> int:
-        """Convert microstep index (0, 1, 2, ..., 8) to actual microsteps (1, 2, 4, ..., 256)."""
-        if 0 <= idx <= 8:
-            return 2 ** idx
-        else:
-            msg = f"Invalid microstep index: {idx}. Must be between 0 and 8."
-            self.logger.log(msg, TMC5160LogLevel.ERROR)
-            raise ValueError(msg)
 
     def verify_microsteps(self, microsteps: int) -> int:
         """Verify microsteps are valid (1, 2, 4, ..., 256). Returns the microstep index."""
