@@ -134,6 +134,37 @@ If you see:
 
 then the default port is not the correct one for your setup. Re-run with the correct port using `--port`.
 
+### Hardware testing for TMC5160
+
+The regular `src/test/test_tmc5160.py` test file uses the dummy backend. To run the TMC5160 tests against a real
+Landungsbruecke + TMC5160-EVAL board, use the hardware-only pytest module:
+
+```bash
+$ DIP_COATER_TMC5160_PORT=/dev/tty.usbmodemTMCEVAL1 \
+  python -m pytest -m hardware src/test/test_tmc5160_hardware.py
+```
+
+These tests are skipped by default unless `DIP_COATER_TMC5160_PORT` is set.
+
+If you also want to run the optional motion smoke test:
+
+```bash
+$ DIP_COATER_TMC5160_PORT=/dev/tty.usbmodemTMCEVAL1 \
+  DIP_COATER_TMC5160_RUN_MOTION=1 \
+  python -m pytest -m hardware src/test/test_tmc5160_hardware.py
+```
+
+Supported environment variables:
+
+- `DIP_COATER_TMC5160_PORT` required to enable the hardware tests
+- `DIP_COATER_TMC5160_INTERFACE` defaults to `usb_tmcl`
+- `DIP_COATER_TMC5160_STEP_MODE` defaults to `16`
+- `DIP_COATER_TMC5160_CURRENT_MA` defaults to `500`
+- `DIP_COATER_TMC5160_STANDSTILL_MA` defaults to `0`
+- `DIP_COATER_TMC5160_STANDSTILL_NONZERO_MA` defaults to `140`
+- `DIP_COATER_TMC5160_GLOBAL_SCALER` defaults to `0`
+- `DIP_COATER_TMC5160_RSENSE_MOHM` defaults to `50`
+
 This will show the following App in your terminal:
 
 ![](https://raw.githubusercontent.com/IvS-KULeuven/dip_coater/develop/images/dip-coater-dark.png)

@@ -34,6 +34,12 @@ dip-coater = "dip_coater.app:main"
 [tool.poetry.urls]
 repository = "https://github.com/IvS-KULeuven/dip_coater"
 
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "hardware: integration tests that require connected hardware",
+]
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
