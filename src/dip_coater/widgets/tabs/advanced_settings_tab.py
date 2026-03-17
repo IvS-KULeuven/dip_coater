@@ -3,7 +3,7 @@ from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, TabPane
 
 from dip_coater.utils.SettingChanged import SettingChanged
-from dip_coater.motor.driver_registry import get_driver_spec
+from dip_coater.motor_driver.driver_registry import get_driver_spec
 
 
 class AdvancedSettingsTab(TabPane):

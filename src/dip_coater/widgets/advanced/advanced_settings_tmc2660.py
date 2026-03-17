@@ -7,7 +7,7 @@ from textual.widgets import Label, Checkbox, Select, Switch, Input
 
 from dip_coater.widgets.advanced.advanced_settings_base import AdvancedSettingsBase
 from dip_coater.utils.SettingChanged import SettingChanged
-from dip_coater.motor.tmc2660 import ChopperMode
+from dip_coater.motor_driver.tmc2660 import ChopperMode
 
 
 class AdvancedSettingsTMC2660(AdvancedSettingsBase):

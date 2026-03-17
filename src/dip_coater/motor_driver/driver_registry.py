@@ -5,13 +5,13 @@ from TMC_2209._TMC_2209_logger import Loglevel
 
 from dip_coater.logging.tmc2660_logger import TMC2660LogLevel
 from dip_coater.logging.tmc5160_logger import TMC5160LogLevel
-from dip_coater.motor.motor_driver_interface import AvailableMotorDrivers, MotorDriver
-from dip_coater.motor.tmc2209 import MotorDriverTMC2209
-from dip_coater.motor.tmc2660 import (
+from dip_coater.motor_driver.motor_driver_interface import AvailableMotorDrivers, MotorDriver
+from dip_coater.motor_driver.tmc2209 import MotorDriverTMC2209
+from dip_coater.motor_driver.tmc2660 import (
     MotorDriverTMC2660,
     TMC2660LogLevel as TMC2660DriverLogLevel,
 )
-from dip_coater.motor.tmc5160 import MotorDriverTMC5160
+from dip_coater.motor_driver.tmc5160 import MotorDriverTMC5160
 from dip_coater.setup_profiles.machine_profile import AvailableMachineSetups
 from dip_coater.widgets.advanced.advanced_settings_tmc2209 import (
     AdvancedSettingsTMC2209,

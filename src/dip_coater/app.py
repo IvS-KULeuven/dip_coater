@@ -27,8 +27,8 @@ from dip_coater.widgets.tabs.advanced_settings_tab import AdvancedSettingsTab
 from dip_coater.widgets.tabs.coder_tab import CoderTab
 from dip_coater import __version__
 
-from dip_coater.motor.motor_driver_interface import AvailableMotorDrivers
-from dip_coater.motor.driver_registry import get_driver_spec
+from dip_coater.motor_driver.motor_driver_interface import AvailableMotorDrivers
+from dip_coater.motor_driver.driver_registry import get_driver_spec
 from dip_coater.services import MotionController
 from dip_coater.setup_profiles import (
     create_custom_profile,

@@ -3,7 +3,7 @@ from textual.containers import Vertical, Horizontal
 from textual.widgets import TabPane, Label, Select
 from textual import on
 
-from dip_coater.motor.driver_registry import get_driver_spec
+from dip_coater.motor_driver.driver_registry import get_driver_spec
 
 
 class LogsTab(TabPane):

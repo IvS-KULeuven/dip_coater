@@ -21,8 +21,8 @@ except ModuleNotFoundError:
     _PYTRINAMIC_AVAILABLE = False
 
 from dip_coater.logging.tmc5160_logger import TMC5160LogLevel, TMC5160Logger
-from dip_coater.motor.motor_driver_interface import MotorDriver
-from dip_coater.motor.tmc5160_dummy import (
+from dip_coater.motor_driver.motor_driver_interface import MotorDriver
+from dip_coater.motor_driver.tmc5160_dummy import (
     DummyEvalBoard,
     DummyInterface,
     DummyLandungsbruecke,

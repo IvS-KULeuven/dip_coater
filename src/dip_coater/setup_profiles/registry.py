@@ -1,7 +1,7 @@
 from dip_coater.mechanical.mechanical_setup import MechanicalSetup
 from dip_coater.mechanical.setup_large_coater import SetupLargeCoater
 from dip_coater.mechanical.setup_small_coater import SetupSmallCoater
-from dip_coater.motor.motor_driver_interface import AvailableMotorDrivers
+from dip_coater.motor_driver.motor_driver_interface import AvailableMotorDrivers
 from dip_coater.setup_profiles.machine_profile import (
     AvailableMachineSetups,
     HomeDirection,

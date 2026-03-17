@@ -3,8 +3,8 @@ from types import SimpleNamespace
 import pytest
 
 from dip_coater.mechanical.mechanical_setup import MechanicalSetup
-from dip_coater.motor import tmc5160 as tmc5160_module
-from dip_coater.motor.tmc5160 import MotorDriverTMC5160
+from dip_coater.motor_driver import tmc5160 as tmc5160_module
+from dip_coater.motor_driver.tmc5160 import MotorDriverTMC5160
 
 
 class DummyAppState:

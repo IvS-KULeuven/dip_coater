@@ -19,7 +19,7 @@ from types import SimpleNamespace
 
 from dip_coater.logging.tmc5160_logger import TMC5160LogLevel
 from dip_coater.mechanical.mechanical_setup import MechanicalSetup
-from dip_coater.motor.tmc5160 import MotorDriverTMC5160
+from dip_coater.motor_driver.tmc5160 import MotorDriverTMC5160
 
 
 def make_app_state(*, use_dummy: bool):

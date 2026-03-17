@@ -1,6 +1,6 @@
 from dip_coater.config.config_base import *
 from dip_coater.logging.tmc2660_logger import TMC2660LogLevel
-from dip_coater.motor.tmc2660 import ChopperMode, VSenseFullScale, StepDirSource
+from dip_coater.motor_driver.tmc2660 import ChopperMode, VSenseFullScale, StepDirSource
 
 # TMC2660 specific settings
 

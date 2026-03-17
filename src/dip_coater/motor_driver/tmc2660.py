@@ -18,8 +18,8 @@ except ModuleNotFoundError:
     _PYTRINAMIC_AVAILABLE = False
 
 from dip_coater.logging.tmc2660_logger import TMC2660Logger, TMC2660LogLevel
-from dip_coater.motor.motor_driver_interface import MotorDriver
-from dip_coater.motor.tmc2660_dummy import (
+from dip_coater.motor_driver.motor_driver_interface import MotorDriver
+from dip_coater.motor_driver.tmc2660_dummy import (
     DummyEvalBoard,
     DummyInterface,
     DummyLandungsbruecke,
