@@ -285,6 +285,7 @@ class MotorDriverTMC5160(MotorDriver):
     def set_current(self, current_mA: float):
         cs = self._convert_current_to_cs(current_mA)
         self._set_axis_parameter(self.motor.AP.MaxCurrent, cs)
+        self._write_register_field(self.mc.FIELD.IRUN, cs)
 
         verify_cs = self.get_current()
         if cs != verify_cs:
@@ -303,6 +304,12 @@ class MotorDriverTMC5160(MotorDriver):
     def set_current_standstill(self, current_mA: float):
         cs = self._convert_current_to_cs(current_mA)
         self._set_axis_parameter(self.motor.AP.StandbyCurrent, cs)
+        self._write_register_field(self.mc.FIELD.IHOLD, cs)
+
+        if cs == 0:
+            self._set_axis_parameter(self.motor.AP.FreewheelingMode, 1)
+        else:
+            self._set_axis_parameter(self.motor.AP.FreewheelingMode, 0)
 
         verify_cs = self.get_current_standstill()
         if cs != verify_cs:
