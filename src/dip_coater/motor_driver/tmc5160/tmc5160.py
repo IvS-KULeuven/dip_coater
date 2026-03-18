@@ -605,7 +605,7 @@ class MotorDriverTMC5160(MotorDriver):
 
     def _convert_current_to_cs(self, current_mA: float) -> int:
         """Convert desired RMS current in mA to the IRUN/IHOLD CS value.
-        Formula taken from TMCL-IDE, Current settings, Sense Resistors tah
+        Formula taken from TMCL-IDE, Current settings, Sense Resistors tab
         """
         if current_mA < 0:
             msg = f"Invalid current value: {current_mA}. Must be non-negative."

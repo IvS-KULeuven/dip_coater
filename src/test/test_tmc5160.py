@@ -119,6 +119,149 @@ def test_tmc5160_current_conversion():
         driver._convert_current_to_cs(4000)
 
 
+@pytest.mark.parametrize("current_mA, gs, rsense, expected_cs", [
+    # GLOBAL_SCALER=0 (full scale=256), Rsense=50mOhm
+    (500,  0, 50,  2),
+    (1000, 0, 50,  6),
+    (1500, 0, 50,  9),
+    (2000, 0, 50, 13),
+    (3000, 0, 50, 20),
+    (4000, 0, 50, 27),
+    # GLOBAL_SCALER=0 (full scale=256), Rsense=75mOhm
+    (500,  0, 75,  4),
+    (1000, 0, 75,  9),
+    (1500, 0, 75, 15),
+    (2000, 0, 75, 20),
+    (3000, 0, 75, 30),
+    # GLOBAL_SCALER=128 (half scale), Rsense=50mOhm
+    (500,  128, 50,  6),
+    (1000, 128, 50, 13),
+    (1500, 128, 50, 20),
+    (2000, 128, 50, 27),
+])
+def test_tmc5160_current_to_cs_hardcoded(current_mA, gs, rsense, expected_cs):
+    driver = _make_driver(global_scaler=gs, rsense_mOhm=rsense)
+    assert driver._convert_current_to_cs(current_mA) == expected_cs
+
+
+@pytest.mark.parametrize("cs, gs, rsense, expected_mA", [
+    # GLOBAL_SCALER=0 (full scale=256), Rsense=50mOhm
+    (0,  0, 50,  143.6),
+    (6,  0, 50, 1005.4),
+    (13, 0, 50, 2010.8),
+    (31, 0, 50, 4596.2),
+    # GLOBAL_SCALER=0 (full scale=256), Rsense=75mOhm
+    (0,  0, 75,   95.8),
+    (9,  0, 75,  957.5),
+    (31, 0, 75, 3064.1),
+    # GLOBAL_SCALER=128, Rsense=50mOhm — half the full-scale values
+    (0,  128, 50,   71.8),
+    (13, 128, 50, 1005.4),
+    (31, 128, 50, 2298.1),
+])
+def test_tmc5160_cs_to_current_hardcoded(cs, gs, rsense, expected_mA):
+    driver = _make_driver(global_scaler=gs, rsense_mOhm=rsense)
+    assert driver._convert_cs_to_current(cs) == pytest.approx(expected_mA, abs=0.1)
+
+
+def test_tmc5160_current_conversion_roundtrip():
+    """CS -> mA -> CS should be identity for all valid CS values."""
+    driver = _make_driver(global_scaler=0, rsense_mOhm=75)
+    for cs in range(0, 32):
+        current = driver._convert_cs_to_current(cs)
+        assert driver._convert_current_to_cs(current) == cs
+
+
+def test_tmc5160_current_conversion_zero():
+    """0 mA maps to CS=0; CS=0 is 1/32 of full scale, not 0 mA."""
+    driver = _make_driver(global_scaler=0, rsense_mOhm=50)
+    assert driver._convert_current_to_cs(0) == 0
+    # CS=0 means (0+1)/32 of full scale, so it's a small but non-zero current
+    assert driver._convert_cs_to_current(0) > 0
+
+
+def test_tmc5160_current_conversion_negative_raises():
+    driver = _make_driver(global_scaler=0, rsense_mOhm=50)
+    with pytest.raises(ValueError):
+        driver._convert_current_to_cs(-100)
+
+
+def test_tmc5160_current_conversion_with_global_scaler():
+    """Lower GLOBAL_SCALER reduces the max achievable current."""
+    driver_full = _make_driver(global_scaler=0, rsense_mOhm=50)
+    driver_half = _make_driver(global_scaler=128, rsense_mOhm=50)
+
+    max_full = driver_full._convert_cs_to_current(31)
+    max_half = driver_half._convert_cs_to_current(31)
+    assert max_half == pytest.approx(max_full / 2, rel=0.01)
+
+    # Same target current requires higher CS with lower scaler
+    target = 1000
+    cs_full = driver_full._convert_current_to_cs(target)
+    cs_half = driver_half._convert_current_to_cs(target)
+    assert cs_half > cs_full
+
+
+def test_tmc5160_current_conversion_scaler_changes():
+    """Changing global scaler on the same driver affects conversion."""
+    driver = _make_driver(global_scaler=0, rsense_mOhm=50)
+    cs_full = driver._convert_current_to_cs(1500)
+
+    driver.set_global_scaler(128)
+    cs_half = driver._convert_current_to_cs(1500)
+    assert cs_half > cs_full
+
+
+def test_tmc5160_current_conversion_different_rsense():
+    """Higher Rsense means more current per CS step."""
+    driver_50 = _make_driver(global_scaler=0, rsense_mOhm=50)
+    driver_75 = _make_driver(global_scaler=0, rsense_mOhm=75)
+
+    # Higher rsense -> lower max current (V_FS is fixed)
+    max_50 = driver_50._convert_cs_to_current(31)
+    max_75 = driver_75._convert_cs_to_current(31)
+    assert max_50 > max_75
+
+    # Same target current needs higher CS with higher rsense
+    target = 1500
+    cs_50 = driver_50._convert_current_to_cs(target)
+    cs_75 = driver_75._convert_current_to_cs(target)
+    assert cs_75 > cs_50
+
+
+def test_tmc5160_current_exceeds_range_with_low_scaler():
+    """Current that fits at full scale should overflow with low scaler."""
+    driver = _make_driver(global_scaler=128, rsense_mOhm=50)
+    max_current = driver._convert_cs_to_current(31)
+
+    with pytest.raises(ValueError):
+        driver._convert_current_to_cs(max_current + 100)
+
+
+@pytest.mark.parametrize("standstill_mA, gs, rsense, expected_cs, expect_freewheel", [
+    # GLOBAL_SCALER=0 (full scale=256), Rsense=50mOhm
+    (0,    0, 50,  0, True),
+    (500,  0, 50,  2, False),
+    (1000, 0, 50,  6, False),
+    (1500, 0, 50,  9, False),
+    # GLOBAL_SCALER=0 (full scale=256), Rsense=75mOhm
+    (0,    0, 75,  0, True),
+    (500,  0, 75,  4, False),
+    (1000, 0, 75,  9, False),
+    # GLOBAL_SCALER=128 (half scale), Rsense=50mOhm
+    (0,    128, 50,  0, True),
+    (500,  128, 50,  6, False),
+    (1000, 128, 50, 13, False),
+])
+def test_tmc5160_standstill_current_hardcoded(standstill_mA, gs, rsense, expected_cs, expect_freewheel):
+    driver = _make_driver(global_scaler=gs, rsense_mOhm=rsense)
+    driver.set_current_standstill(standstill_mA)
+
+    assert driver.get_current_standstill() == expected_cs
+    assert driver.eval_board.read_register_field(driver.mc.FIELD.IHOLD) == expected_cs
+    assert driver.dummy_values.get(driver.motor.AP.FreewheelingMode, 0) == (1 if expect_freewheel else 0)
+
+
 def test_tmc5160_current_setters_write_ihold_irun_fields():
     driver = _make_driver(global_scaler=0, rsense_mOhm=50)
 
