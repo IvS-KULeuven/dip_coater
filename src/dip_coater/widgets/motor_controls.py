@@ -81,6 +81,8 @@ class MotorControls(Static):
                 stop = (
                     await self.app_state.motion_controller.wait_for_motor_done_async()
                 )
+                if self.app_state.motor_state == "disabled":
+                    return
                 if stop is None or stop == StopMode.NO:
                     log.write("[green]-> Finished moving up.[/]")
                 else:
@@ -88,7 +90,8 @@ class MotorControls(Static):
                 self.set_motor_state("enabled")
             except ValueError as e:
                 log.write(f"[red]{e}[/]")
-                self.set_motor_state("enabled")
+                if self.app_state.motor_state != "disabled":
+                    self.set_motor_state("enabled")
         else:
             log.write("[red]We cannot move up when the motor is disabled[/]")
 
@@ -118,6 +121,8 @@ class MotorControls(Static):
                 stop = (
                     await self.app_state.motion_controller.wait_for_motor_done_async()
                 )
+                if self.app_state.motor_state == "disabled":
+                    return
                 if stop is None or stop == StopMode.NO:
                     log.write("[green]-> Finished moving down.[/]")
                 else:
@@ -125,7 +130,8 @@ class MotorControls(Static):
                 self.set_motor_state("enabled")
             except ValueError as e:
                 log.write(f"[red]{e}[/]")
-                self.set_motor_state("enabled")
+                if self.app_state.motor_state != "disabled":
+                    self.set_motor_state("enabled")
         else:
             log.write("[red]We cannot move down when the motor is disabled[/]")
 
@@ -137,15 +143,13 @@ class MotorControls(Static):
             self.set_motor_state("enabled")
             log.write("[green]Motor is now enabled.[/]")
 
-    @on(Button.Pressed, "#disable-motor")
     async def disable_motor_action(self):
         log = self.app.query_one("#logger", RichLog)
-        if self.app_state.motor_state == "homing":
-            log.write("[red]We cannot disable the motor while homing is in progress[/]")
-            return
-        elif self.app_state.motor_state == "moving":
-            log.write("[red]We cannot disable the motor while homing is moving[/]")
-            return
+        if self.app_state.motor_state in ("moving", "homing"):
+            self.app_state.motion_controller.stop_motor()
+            self.app_state.motion_controller.disable_motor()
+            self.set_motor_state("disabled")
+            log.write("[dark_orange]Emergency stop: motor stopped and disabled.[/]")
         elif self.app_state.motor_state == "enabled":
             self.app_state.motion_controller.disable_motor()
             self.set_motor_state("disabled")
@@ -195,7 +199,8 @@ class MotorControls(Static):
             self.set_homing_found(homing_found)
         except ValueError as e:
             log.write(f"[red]{e}[/]")
-        self.set_motor_state("enabled")
+        if self.app_state.motor_state != "disabled":
+            self.set_motor_state("enabled")
 
     def set_homing_found(self, homing_found: bool):
         self.app_state.homing_found = homing_found

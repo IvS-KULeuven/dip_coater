@@ -51,7 +51,7 @@ class DipCoaterApp(App):
         Binding("w", "move_up", "Move up", show=False),
         Binding("s", "move_down", "Move down", show=False),
         Binding("a", "enable_motor", "Enable the motor", show=False),
-        Binding("d", "disable_motor", "Disable the motor", show=False),
+        Binding("d", "disable_motor", "Emergency STOP motor", priority=True),
     ]
     COMMANDS = App.COMMANDS | {HelpCommand}
 
@@ -105,6 +105,7 @@ class DipCoaterApp(App):
     async def action_enable_motor(self) -> None:
         await self.app_state.motor_controls.enable_motor_action()
 
+    @on(Button.Pressed, "#disable-motor")
     async def action_disable_motor(self) -> None:
         await self.app_state.motor_controls.disable_motor_action()
 
