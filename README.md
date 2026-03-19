@@ -97,6 +97,39 @@ $ dip-coater --setup large --invert-direction
 $ dip-coater --setup small --home-direction down
 ```
 
+### Environment variables
+
+Every CLI option can also be set via an environment variable. CLI flags always take precedence over environment variables.
+
+| Environment variable | CLI flag | Example value |
+|---|---|---|
+| `DIP_COATER_DRIVER` | `--driver` | `TMC5160` |
+| `DIP_COATER_INTERFACE` | `--interface` | `usb_tmcl` |
+| `DIP_COATER_PORT` | `--port` | `/dev/tty.usbmodemTMCEVAL1` |
+| `DIP_COATER_LOG_LEVEL` | `--log-level` | `DEBUG` |
+| `DIP_COATER_SETUP` | `--setup` | `small` |
+| `DIP_COATER_MM_PER_REVOLUTION` | `--mm-per-revolution` | `8.0` |
+| `DIP_COATER_GEARBOX_RATIO` | `--gearbox-ratio` | `2.0` |
+| `DIP_COATER_STEPS_PER_REV` | `--steps-per-rev` | `200` |
+| `DIP_COATER_USE_DUMMY_DRIVER` | `--use-dummy-driver` | `true` |
+| `DIP_COATER_INVERT_DIRECTION` | `--invert-direction` | `true` |
+| `DIP_COATER_HOME_DIRECTION` | `--home-direction` | `down` |
+
+#### Using a `.env` file
+
+The app does **not** load `.env` files automatically. To use one, export the variables before running:
+
+```bash
+# Option 1: source + export (bash/zsh)
+set -a && source .env && set +a
+dip-coater
+
+# Option 2: inline with env
+env $(grep -v '^#' .env | xargs) dip-coater
+```
+
+An example `.env.example` file is provided in the repository root.
+
 ### Dummy driver mode
 
 If you want to force the app to use a dummy backend instead of real hardware, pass `--use-dummy-driver` together with the selected driver:

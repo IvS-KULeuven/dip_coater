@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import logging
+import os
 import sys
 
 from textual import on
@@ -139,34 +140,37 @@ def main():
         "-l",
         "--log-level",
         type=str,
-        default="INFO",
+        default=os.environ.get("DIP_COATER_LOG_LEVEL", "INFO"),
         choices=["NONE", "ERROR", "INFO", "DEBUG", "MOVEMENT", "ALL"],
-        help="Set the logging level",
+        help="Set the logging level (env: DIP_COATER_LOG_LEVEL)",
     )
     parser.add_argument(
         "-d",
         "--driver",
         type=AvailableMotorDrivers,
-        default=AvailableMotorDrivers.TMC2209,
+        default=AvailableMotorDrivers(os.environ["DIP_COATER_DRIVER"])
+        if "DIP_COATER_DRIVER" in os.environ
+        else AvailableMotorDrivers.TMC2209,
         choices=[
             AvailableMotorDrivers.TMC2209,
             AvailableMotorDrivers.TMC2660,
             AvailableMotorDrivers.TMC5160,
         ],
-        help="Set the motor driver type",
+        help="Set the motor driver type (env: DIP_COATER_DRIVER)",
     )
     parser.add_argument(
         "-s",
         "--setup",
         type=str,
+        default=os.environ.get("DIP_COATER_SETUP"),
         choices=[setup.value for setup in list_machine_setups()],
-        help="Set the machine setup profile independently from the motor driver",
+        help="Set the machine setup profile independently from the motor driver (env: DIP_COATER_SETUP)",
     )
     parser.add_argument(
         "-i",
         "--interface",
         type=str,
-        default="usb_tmcl",
+        default=os.environ.get("DIP_COATER_INTERFACE", "usb_tmcl"),
         choices=[
             "usb_tmcl",
             "dummy_tmcl",
@@ -178,39 +182,59 @@ def main():
             "uart_ic",
             "ixxat_tmcl",
         ],
-        help="Set the TMC2660 interface type",
+        help="Set the TMC2660 interface type (env: DIP_COATER_INTERFACE)",
     )
     parser.add_argument(
         "-p",
         "--port",
         type=str,
-        default="/dev/ttyACM0",
-        help="Set the TMC2660 interface port. User 'interactive' for interactive port selection",
+        default=os.environ.get("DIP_COATER_PORT", "/dev/ttyACM0"),
+        help="Set the TMC2660 interface port. Use 'interactive' for interactive port selection (env: DIP_COATER_PORT)",
     )
     parser.add_argument(
         "--mm-per-revolution",
         type=float,
-        help="Distance in mm the platform moves for one full revolution",
+        default=float(os.environ["DIP_COATER_MM_PER_REVOLUTION"])
+        if "DIP_COATER_MM_PER_REVOLUTION" in os.environ
+        else None,
+        help="Distance in mm the platform moves for one full revolution (env: DIP_COATER_MM_PER_REVOLUTION)",
     )
-    parser.add_argument("--gearbox-ratio", type=float, help="Gearbox ratio, if any")
     parser.add_argument(
-        "--steps-per-rev", type=int, help="Number of full steps per revolution"
+        "--gearbox-ratio",
+        type=float,
+        default=float(os.environ["DIP_COATER_GEARBOX_RATIO"])
+        if "DIP_COATER_GEARBOX_RATIO" in os.environ
+        else None,
+        help="Gearbox ratio, if any (env: DIP_COATER_GEARBOX_RATIO)",
+    )
+    parser.add_argument(
+        "--steps-per-rev",
+        type=int,
+        default=int(os.environ["DIP_COATER_STEPS_PER_REV"])
+        if "DIP_COATER_STEPS_PER_REV" in os.environ
+        else None,
+        help="Number of full steps per revolution (env: DIP_COATER_STEPS_PER_REV)",
     )
     parser.add_argument(
         "--use-dummy-driver",
         action="store_true",
-        help="Use a dummy driver instead of the real motor driver",
+        default=os.environ.get("DIP_COATER_USE_DUMMY_DRIVER", "").lower()
+        in ("1", "true", "yes"),
+        help="Use a dummy driver instead of the real motor driver (env: DIP_COATER_USE_DUMMY_DRIVER)",
     )
     parser.add_argument(
         "--invert-direction",
         action="store_true",
-        help="Invert the motor direction for this run",
+        default=os.environ.get("DIP_COATER_INVERT_DIRECTION", "").lower()
+        in ("1", "true", "yes"),
+        help="Invert the motor direction for this run (env: DIP_COATER_INVERT_DIRECTION)",
     )
     parser.add_argument(
         "--home-direction",
         type=str,
+        default=os.environ.get("DIP_COATER_HOME_DIRECTION"),
         choices=[direction.value for direction in HomeDirection],
-        help="Override the setup homing direction for this run",
+        help="Override the setup homing direction for this run (env: DIP_COATER_HOME_DIRECTION)",
     )
     args = parser.parse_args()
 
