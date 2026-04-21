@@ -1,5 +1,10 @@
-from trinamic_wrapper import connection, create_motor, MotorConfig, StepMode, Direction, Chip
+from pathlib import Path
+import sys
 import time
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from trinamic_wrapper import connection, create_motor, MotorConfig, StepMode, Direction, Chip
 
 with connection("/dev/tty.usbmodemTMCEVAL1") as conn:
     motor = create_motor(Chip.TMC5160, conn,
@@ -19,10 +24,13 @@ with connection("/dev/tty.usbmodemTMCEVAL1") as conn:
 
     speed_rps = 0.25
     motor.rotate(speed_rps=speed_rps, direction=Direction.CW)
-    time.sleep(5.0)                    # run for exactly 5 s
+    time.sleep(5.0)  # run for exactly 5 s
     motor.stop()
     time.sleep(0.5)
     pos = motor.get_actual_position_rot()
     motor.disable()
 
-print(f"expected {speed_rps*5.0:.3f}5 rev, got {pos:.3f} rev  ->  actual speed = {pos/5:.3f} rot/s")
+print(
+    f"expected {speed_rps * 5.0:.3f} rev, got {pos:.3f} rev"
+    f"  ->  actual speed = {pos / 5:.3f} rot/s"
+)

@@ -10,8 +10,12 @@ TMC2660 is the CHIP string at the top.
 
 from __future__ import annotations
 
+from pathlib import Path
+import sys
 import time
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from trinamic_wrapper import (
     Chip,
