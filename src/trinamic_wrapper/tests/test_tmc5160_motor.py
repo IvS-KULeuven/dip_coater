@@ -24,7 +24,7 @@ def setup():
     config = MotorConfig(
         full_steps_per_rev=200,
         sense_resistor_ohms=0.075,
-        clock_hz=12_000_000.0,
+        clock_hz=16_000_000.0,
         default_microsteps=StepMode.USTEP_256,
     )
     motor = TMC5160Motor(board, config)
@@ -126,9 +126,9 @@ class TestMotion:
     def test_set_speed_writes_vmax(self, setup):
         motor, conn, board = setup
         motor.set_speed_rps(1.0)
-        # VMAX for 1 rot/s with 200 fullsteps, 12 MHz = ~71583
+        # VMAX for 1 rot/s with 200 fullsteps, 16 MHz = ~53687
         value = conn.get_ap(board.motors[0].AP.MaxVelocity)
-        assert 71000 < value < 72000
+        assert 53000 < value < 54000
 
     def test_set_acceleration_writes_amax_dmax_d1(self, setup):
         motor, conn, board = setup
@@ -175,8 +175,8 @@ class TestMotion:
         motor.set_speed_rps(2.0)
         motor.rotate()  # no explicit speed
         (_a, v, _m) = [a for k, a in conn.calls if k == "rotate"][-1]
-        # 2 rot/s ~ 143000
-        assert 142000 < v < 144000
+        # 2 rot/s ~ 107374
+        assert 107000 < v < 108000
 
     def test_rotate_by_sends_move_by_with_correct_usteps(self, setup):
         motor, conn, _ = setup

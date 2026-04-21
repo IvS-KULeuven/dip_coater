@@ -104,7 +104,7 @@ class TestCurrentConversion:
 # --------------------------------------------------------------------- #
 
 class TestTmc5160Velocity:
-    PARAMS = dict(full_steps_per_rev=200, clock_hz=12_000_000.0)
+    PARAMS = dict(full_steps_per_rev=200, clock_hz=16_000_000.0)
 
     def test_roundtrip(self):
         for rps in [0.1, 1.0, 5.0, 25.0, 100.0]:
@@ -114,12 +114,12 @@ class TestTmc5160Velocity:
 
     def test_known_value(self):
         """
-        1 rot/s with 200 full-steps and 256 μsteps at 12 MHz:
+        1 rot/s with 200 full-steps and 256 μsteps at 16 MHz:
             ustep/s = 200 * 256 * 1 = 51200
-            VMAX = 51200 * 2^24 / 12e6 = 71582.78...
+            VMAX = 51200 * 2^24 / 16e6 = 53687.09...
         """
         vmax = rps_to_vmax_tmc5160(1.0, **self.PARAMS)
-        expected = round(51200 * (2**24) / 12_000_000)
+        expected = round(51200 * (2**24) / 16_000_000)
         assert vmax == expected
 
     def test_zero_velocity(self):
@@ -128,7 +128,7 @@ class TestTmc5160Velocity:
 
 
 class TestTmc5160Acceleration:
-    PARAMS = dict(full_steps_per_rev=200, clock_hz=12_000_000.0)
+    PARAMS = dict(full_steps_per_rev=200, clock_hz=16_000_000.0)
 
     def test_roundtrip(self):
         for rps2 in [0.5, 5.0, 50.0, 500.0]:
@@ -138,10 +138,10 @@ class TestTmc5160Acceleration:
 
     def test_known_value(self):
         """
-        1 rot/s^2: ustep/s^2 = 51200. AMAX = 51200 * 2^41 / (12e6)^2
+        1 rot/s^2: ustep/s^2 = 51200. AMAX = 51200 * 2^41 / (16e6)^2
         """
         amax = rps2_to_amax_tmc5160(1.0, **self.PARAMS)
-        expected = round(51200 * (2**41) / (12_000_000 ** 2))
+        expected = round(51200 * (2**41) / (16_000_000 ** 2))
         assert amax == expected
 
 

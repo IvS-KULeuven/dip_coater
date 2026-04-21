@@ -45,7 +45,7 @@ def main() -> None:
     config = MotorConfig(
         full_steps_per_rev=200,
         sense_resistor_ohms=SENSE_RESISTOR_OHMS,
-        clock_hz=12_000_000.0,
+        clock_hz=16_000_000.0,
         default_microsteps=StepMode.USTEP_256,
         max_current_mA_limit=1500.0,
     )
@@ -80,13 +80,14 @@ def main() -> None:
         motor.stop()
         time.sleep(0.5)
 
-        print("Rotating backward by 0.5 revolutions…")
+        '''print("Rotating backward by 0.5 revolutions…")
+        motor.reset_position()
         motor.rotate_by(0.5, direction=Direction.CCW)
 
         # Block until the relative move completes (or 10 s timeout)
         reached = motor.wait_until_reached(timeout_s=10.0)
         print(f"Reached target: {reached}")
-        print(f"Final position: {motor.get_actual_position_rot():.3f} rev")
+        print(f"Final position: {motor.get_actual_position_rot():.3f} rev")'''
 
         motor.disable()
 

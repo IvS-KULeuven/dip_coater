@@ -74,8 +74,9 @@ class MotorConfig:
         sense voltage is used (smaller V_fs, so same CS value yields less
         current but finer resolution). Defaults to False = standard range.
         Only affects mA <-> CS conversion.
-    :param clock_hz: TMC chip clock frequency. Landungsbrücke supplies
-        12 MHz by default. Only used by TMC5160 to convert VMAX/AMAX.
+    :param clock_hz: TMC chip clock frequency. The TMC5160-EVAL /
+        Landungsbruecke setup used by this wrapper runs at 16 MHz by
+        default. Only used by TMC5160 to convert VMAX/AMAX.
     :param default_microsteps: Step mode used if none is explicitly set.
     :param max_current_mA_limit: Soft cap on run/hold current to prevent
         accidental overcurrent. Set to ``None`` to disable.
@@ -83,7 +84,7 @@ class MotorConfig:
     full_steps_per_rev: int = 200
     sense_resistor_ohms: float = 0.075          # TMC5160-EVAL default
     vsense_high_sensitivity: bool = False
-    clock_hz: float = 12_000_000.0
+    clock_hz: float = 16_000_000.0
     default_microsteps: StepMode = StepMode.USTEP_256
     max_current_mA_limit: float | None = 2000.0
 

@@ -25,7 +25,7 @@ def setup():
     config = MotorConfig(
         full_steps_per_rev=200,
         sense_resistor_ohms=0.1,          # TMC2660-EVAL
-        clock_hz=12_000_000.0,
+        clock_hz=16_000_000.0,
         default_microsteps=StepMode.USTEP_256,
     )
     motor = TMC2660Motor(board, config)
