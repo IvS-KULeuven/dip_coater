@@ -13,7 +13,19 @@ MIN_CURRENT = 50
 MAX_CURRENT = 4000  # TMC5160 can go up to 4530, but the motor cannot
 
 # Motion settings
-DEFAULT_STEP_MODE = "I128"
+STEP_MODES = {
+    "I2": 2,
+    "I4": 4,
+    "I16": 16,
+    "I256": 256,
+}
+STEP_MODE_LABELS = {
+    "I2": "1/2",
+    "I4": "1/4",
+    "I16": "1/16",
+    "I256": "1/256",
+}
+DEFAULT_STEP_MODE = "I256"
 DEFAULT_ACCELERATION = 10
 
 # GLOBAL_SCALER (0 = full scale/256, or 32-256)
