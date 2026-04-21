@@ -1,11 +1,10 @@
 """TMC5160-specific stepper-motor wrapper.
 
 The TMC5160 has an internal motion controller (ramp generator), StealthChop,
-CoolStep, and StallGuard2. Current is set via the 5-bit IRUN/IHOLD fields
-in the IHOLD_IRUN register — the Landungsbrücke firmware's ``MaxCurrent``
-axis parameter is in range 0–255 and gets mapped to IRUN internally by
-right-shifting 3 bits. We bypass that and write IRUN/IHOLD directly via
-register access for precise control.
+CoolStep, and StallGuard2. Current is set via the 5-bit IRUN/IHOLD fields in
+the IHOLD_IRUN register. On the Landungsbruecke firmware used with this
+wrapper, the ``MaxCurrent`` and ``StandbyCurrent`` axis parameters take the
+5-bit CS value directly.
 """
 
 from __future__ import annotations
@@ -14,7 +13,7 @@ from typing import Any
 
 from pytrinamic.ic import TMC5160
 
-from ..config import MotorConfig
+from ..config import MotorConfig, StepMode
 from ..conversions import cs_to_mA_rms, mA_rms_to_cs
 from .base import BaseStepperMotor
 
@@ -55,10 +54,9 @@ class TMC5160Motor(BaseStepperMotor):
     # Current: mA <-> IRUN/IHOLD (via axis parameters MaxCurrent/StandbyCurrent)
     # ------------------------------------------------------------------ #
     #
-    # The Landungsbrücke firmware maps MaxCurrent (0..255) to IRUN by
-    # value >> 3. So to select CS value N, we write N << 3 = N*8. We use
-    # that indirection (instead of writing IHOLD_IRUN directly) so that
-    # TMCL-IDE sessions stay consistent with what the user might inspect.
+    # The Landungsbruecke firmware on this setup accepts the 5-bit CS value
+    # directly in MaxCurrent / StandbyCurrent, so the axis parameters and
+    # the IHOLD_IRUN register stay consistent.
 
     def _current_to_raw(self, current_mA: float) -> int:
         vfs = (
@@ -72,20 +70,16 @@ class TMC5160Motor(BaseStepperMotor):
             vfs,
             _TMC5160_RSENSE_OFFSET,
         )
-        # firmware value: CS is top 5 bits of the 8-bit AP value
-        return cs << 3
+        return cs
 
     def _raw_to_current(self, raw: int) -> float:
-        if raw == 0:
-            return 0.0
-        cs = raw >> 3
         vfs = (
             self._config.vfs_high_sens
             if self._config.vsense_high_sensitivity
             else self._config.vfs_standard
         )
         return cs_to_mA_rms(
-            cs,
+            raw,
             self._config.sense_resistor_ohms,
             vfs,
             _TMC5160_RSENSE_OFFSET,
@@ -100,6 +94,24 @@ class TMC5160Motor(BaseStepperMotor):
     # ------------------------------------------------------------------ #
     # Speed / accel
     # ------------------------------------------------------------------ #
+
+    _SUPPORTED_STEP_MODES = frozenset({
+        StepMode.USTEP_2,
+        StepMode.USTEP_4,
+        StepMode.USTEP_16,
+        StepMode.USTEP_256,
+    })
+
+    def set_step_mode(self, mode: StepMode) -> None:
+        if mode not in self._SUPPORTED_STEP_MODES:
+            supported = ", ".join(
+                m.name for m in sorted(self._SUPPORTED_STEP_MODES, key=int)
+            )
+            raise ValueError(
+                "TMC5160 eval firmware supports only these step modes on this "
+                f"setup: {supported}; got {mode.name}"
+            )
+        super().set_step_mode(mode)
 
     def _motion_units_per_fullstep(self) -> int:
         """Landungsbruecke firmware uses the MRES code (0..8), not 2**MRES."""

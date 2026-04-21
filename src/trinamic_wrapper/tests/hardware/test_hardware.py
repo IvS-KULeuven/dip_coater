@@ -228,7 +228,12 @@ class TestMotion:
 
 class TestStepMode:
     def test_set_step_mode_reads_back(self, hw_motor):
-        for mode in [StepMode.USTEP_16, StepMode.USTEP_64, StepMode.USTEP_256]:
+        if hw_motor.has_feature("ramp_generator"):
+            modes = [StepMode.USTEP_4, StepMode.USTEP_16, StepMode.USTEP_256]
+        else:
+            modes = [StepMode.USTEP_16, StepMode.USTEP_64, StepMode.USTEP_256]
+
+        for mode in modes:
             hw_motor.set_step_mode(mode)
             time.sleep(0.05)
             readback_raw = hw_motor._motor.get_axis_parameter(

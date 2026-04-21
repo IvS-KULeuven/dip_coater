@@ -56,15 +56,12 @@ class TestCurrent:
         motor, conn, board = setup
         motor.enable()
         motor.set_run_current_mA(1000)
-        # Should have set AP 6 (MaxCurrent), with CS<<3 encoding
+        # Should have set AP 6 (MaxCurrent) with the direct CS value.
         (ap_type, axis, value, _mod) = conn.last("set_ap")
         assert ap_type == board.motors[0].AP.MaxCurrent
         assert axis == 0
-        # value should be CS * 8. CS for 1 A on the 5160-EVAL is around 12-13.
-        cs = value >> 3
-        assert 10 <= cs <= 20
-        # and the stored byte-form should have bottom 3 bits clear
-        assert value & 0b111 == 0
+        # CS for 1 A on the 5160-EVAL is around 12-13.
+        assert 10 <= value <= 20
 
     def test_set_standstill_current_writes_standby_current_ap(self, setup):
         motor, conn, board = setup
@@ -199,6 +196,34 @@ class TestMotion:
         motor.stop()
         assert conn.last("stop") is not None
 
+    def test_stop_immediately_drops_to_standstill_current(self, setup):
+        motor, conn, board = setup
+        motor.set_run_current_mA(1000)
+        motor.set_standstill_current_mA(200)
+        motor.enable()
+
+        motor.stop()
+
+        assert conn.last("stop") is not None
+        assert conn.get_ap(board.motors[0].AP.MaxCurrent) == motor._cached_standstill_raw
+
+    def test_motion_restores_run_current_after_stop(self, setup):
+        motor, conn, board = setup
+        motor.set_run_current_mA(1000)
+        motor.set_standstill_current_mA(200)
+        motor.enable()
+        motor.stop()
+        conn.calls.clear()
+
+        motor.rotate(speed_rps=1.0, direction=Direction.CW)
+
+        max_current_writes = [
+            args for kind, args in conn.calls
+            if kind == "set_ap" and args[0] == board.motors[0].AP.MaxCurrent
+        ]
+        assert max_current_writes
+        assert max_current_writes[0][2] == motor._cached_run_current_raw
+
 
 class TestStepMode:
     def test_set_step_mode_writes_mres(self, setup):
@@ -209,8 +234,13 @@ class TestStepMode:
 
     def test_get_step_mode_returns_cached(self, setup):
         motor, *_ = setup
-        motor.set_step_mode(StepMode.USTEP_32)
-        assert motor.get_step_mode() == StepMode.USTEP_32
+        motor.set_step_mode(StepMode.USTEP_16)
+        assert motor.get_step_mode() == StepMode.USTEP_16
+
+    def test_unsupported_step_mode_rejected(self, setup):
+        motor, *_ = setup
+        with pytest.raises(ValueError, match="supports only these step modes"):
+            motor.set_step_mode(StepMode.USTEP_64)
 
     def test_step_mode_affects_rotate_by_usteps(self, setup):
         motor, conn, _ = setup

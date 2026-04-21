@@ -134,6 +134,17 @@ class TestMotion:
         motor.stop()
         assert conn.last("stop") is not None
 
+    def test_stop_immediately_drops_to_standstill_current(self, setup):
+        motor, conn, board = setup
+        motor.set_run_current_mA(1000)
+        motor.set_standstill_current_mA(200)
+        motor.enable()
+
+        motor.stop()
+
+        assert conn.last("stop") is not None
+        assert conn.get_ap(board.motors[0].AP.MaxCurrent) == motor._cached_standstill_raw
+
 
 class TestStepMode:
     def test_set_step_mode_writes_mres_ap(self, setup):

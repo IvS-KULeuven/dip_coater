@@ -92,11 +92,14 @@ class BaseStepperMotor(ABC):
 
     _cached_run_current_raw: int = 0
     _cached_standstill_raw: int = 0
+    _cached_run_current_mA: float = 0.0
+    _cached_standstill_current_mA: float = 0.0
 
     def set_run_current_mA(self, current_mA: float) -> None:
         self._check_current_limit(current_mA)
         raw = self._current_to_raw(current_mA)
         self._cached_run_current_raw = raw
+        self._cached_run_current_mA = 0.0 if current_mA == 0 else self._raw_to_current(raw)
         if self._enabled:
             self._set_run_current_raw(raw)
 
@@ -104,14 +107,17 @@ class BaseStepperMotor(ABC):
         self._check_current_limit(current_mA)
         raw = self._current_to_raw(current_mA)
         self._cached_standstill_raw = raw
+        self._cached_standstill_current_mA = (
+            0.0 if current_mA == 0 else self._raw_to_current(raw)
+        )
         if self._enabled:
             self._set_standstill_current_raw(raw)
 
     def get_run_current_mA(self) -> float:
-        return self._raw_to_current(self._cached_run_current_raw)
+        return self._cached_run_current_mA
 
     def get_standstill_current_mA(self) -> float:
-        return self._raw_to_current(self._cached_standstill_raw)
+        return self._cached_standstill_current_mA
 
     def _check_current_limit(self, current_mA: float) -> None:
         if current_mA < 0:
@@ -159,6 +165,7 @@ class BaseStepperMotor(ABC):
     ) -> None:
         if speed_rps is not None:
             self.set_speed_rps(speed_rps)
+        self._restore_run_current_for_motion()
         raw = self._rps_to_raw_speed(self._desired_speed_rps) * int(direction)
         self._eval.rotate(self._axis, raw)
 
@@ -167,6 +174,7 @@ class BaseStepperMotor(ABC):
         revolutions: float,
         direction: Direction = Direction.CW,
     ) -> None:
+        self._restore_run_current_for_motion()
         usteps = revolutions_to_usteps(
             revolutions,
             self._config.full_steps_per_rev,
@@ -182,6 +190,8 @@ class BaseStepperMotor(ABC):
 
     def stop(self) -> None:
         self._eval.stop(self._axis)
+        if self._enabled:
+            self._set_run_current_raw(self._cached_standstill_raw)
 
     def wait_until_reached(self, timeout_s: float | None = None) -> bool:
         deadline = None if timeout_s is None else time.monotonic() + timeout_s
@@ -220,6 +230,10 @@ class BaseStepperMotor(ABC):
     def _motion_units_per_fullstep(self) -> int:
         """Units-per-fullstep used by the firmware for motion commands/APs."""
         return self._step_mode.microsteps_per_fullstep
+
+    def _restore_run_current_for_motion(self) -> None:
+        if self._enabled:
+            self._set_run_current_raw(self._cached_run_current_raw)
 
     # ------------------------------------------------------------------ #
     # Default (no-op) advanced features — override in subclass
