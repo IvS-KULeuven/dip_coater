@@ -53,6 +53,7 @@ class FakeMotor:
         self.accel = None
         self.interpolation = None
         self.disabled = False
+        self.rotate_calls = []
 
     def set_run_current_mA(self, current_mA):
         self.run_current = current_mA
@@ -69,8 +70,23 @@ class FakeMotor:
     def set_interpolation(self, enabled):
         self.interpolation = enabled
 
+    def set_speed_rps(self, speed_rps):
+        self.speed_rps = speed_rps
+
     def disable(self):
         self.disabled = True
+
+    def set_acceleration_rps2(self, accel_rps2):
+        self.accel = accel_rps2
+
+    def rotate_by(self, revolutions, direction):
+        self.rotate_calls.append((revolutions, direction))
+
+    def wait_until_reached(self, timeout_s=None):
+        return True
+
+    def get_actual_position_rot(self):
+        return 0.0
 
 
 def _make_app_state():
@@ -156,11 +172,15 @@ def test_create_tmc5160_driver_uses_trinamic_wrapper_adapter(monkeypatch):
     assert captured["create_motor"]["config"].sense_resistor_ohms == 0.075
     assert captured["create_motor"]["config"].default_microsteps == StepMode.USTEP_16
     assert captured["create_motor"]["config"].max_current_mA_limit == 4000
+    assert app_state.setup_profile.invert_motor_direction is False
     assert fake_motor.run_current == 2500
     assert fake_motor.standstill_current == 70
     assert fake_motor.step_mode == StepMode.USTEP_16
     assert fake_motor.accel == 10 / 4.0 / 1.5
     assert fake_motor.interpolation is True
+
+    driver.move_up(4.0, 1.0)
+    assert fake_motor.rotate_calls[-1][1].name == "CW"
 
     driver.cleanup()
     assert fake_motor.disabled is True

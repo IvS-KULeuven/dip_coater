@@ -135,6 +135,13 @@ def _create_tmc5160_driver(
             log_formatter=log_formatter,
         )
 
+    # The legacy dip_coater TMC5160 path and the wrapper-backed path use
+    # opposite effective motion signs for the same machine profile. Keep the
+    # physical UP/DOWN behavior consistent by normalizing the session profile
+    # for the wrapper-backed TMC5160 integration only.
+    app_state.setup_profile = app_state.setup_profile.with_overrides(
+        invert_motor_direction=not app_state.setup_profile.invert_motor_direction
+    )
     microsteps = app_state.config.STEP_MODES[app_state.config.DEFAULT_STEP_MODE]
     step_mode = _MICROSTEPS_TO_STEP_MODE[microsteps]
     setup = app_state.setup_profile.mechanical_setup
