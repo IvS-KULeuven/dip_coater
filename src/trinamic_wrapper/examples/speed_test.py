@@ -7,17 +7,17 @@ with connection("/dev/tty.usbmodemTMCEVAL1") as conn:
     motor.set_step_mode(StepMode.USTEP_256)
     motor.set_run_current_mA(1500)
     motor.set_standstill_current_mA(100)
-    motor.set_acceleration_rps2(5.0)
+    motor.set_acceleration_rps2(1.0)
 
     if motor.has_feature("stealthchop"):
-        motor.set_stealthchop(True, threshold_rps=3.0)
+        motor.set_stealthchop(False, threshold_rps=3.0)
     if motor.has_feature("interpolation"):
         motor.set_interpolation(True)
 
     motor.enable()
     motor.reset_position()
 
-    speed_rps = 0.1
+    speed_rps = 0.25
     motor.rotate(speed_rps=speed_rps, direction=Direction.CW)
     time.sleep(5.0)                    # run for exactly 5 s
     motor.stop()
