@@ -64,6 +64,9 @@ class FakeMotor:
     def set_step_mode(self, mode):
         self.step_mode = mode
 
+    def get_step_mode(self):
+        return self.step_mode
+
     def set_acceleration_rps2(self, accel):
         self.accel = accel
 

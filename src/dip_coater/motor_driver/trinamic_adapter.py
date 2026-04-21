@@ -50,6 +50,7 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
         self._log_handlers: list[Any] = []
         self._configured_speed_rps: float | None = None
         self._configured_accel_rpss: float | None = None
+        self._target_position_rot: float | None = None
 
     def enable_motor(self):
         self._motor.enable()
@@ -65,6 +66,7 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
         direction = Direction.CW if signed_revs >= 0 else Direction.CCW
         self.set_speed_rps(rps)
         self.set_acceleration_rpss(rpss)
+        self._target_position_rot = None
         self._motor.rotate_by(abs(signed_revs), direction=direction)
 
     def move_up(
@@ -88,14 +90,19 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
         self._move_mm(-distance_mm, speed_mm_s, acceleration_mm_s2)
 
     def stop_motor(self):
+        self._target_position_rot = None
         self._motor.stop()
 
     def wait_for_motor_done(self):
-        self._motor.wait_until_reached()
+        self._wait_for_target_reached()
 
     async def wait_for_motor_done_async(self):
-        while not self._motor.wait_until_reached(timeout_s=0.0):
+        while True:
+            if self._is_target_reached():
+                if await self._finalize_completed_move_async():
+                    break
             await asyncio.sleep(0.05)
+        self._target_position_rot = None
 
     def get_current_position_mm(self, homes_up: bool | None = None):
         return self.mechanical_setup.revs_to_mm(self._motor.get_actual_position_rot())
@@ -195,6 +202,7 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
         try:
             self.disable_motor()
         finally:
+            self._target_position_rot = None
             if self._close is not None:
                 self._close()
 
@@ -232,7 +240,11 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
         acceleration_mm_s2: float | None,
     ) -> None:
         revs = self.mechanical_setup.mm_to_revs(distance_mm)
-        rps = self.mechanical_setup.mm_s_to_rps(speed_mm_s) if speed_mm_s is not None else None
+        rps = (
+            self.mechanical_setup.mm_s_to_rps(speed_mm_s)
+            if speed_mm_s is not None
+            else None
+        )
         rpss = (
             self.mechanical_setup.mm_s2_to_rpss(acceleration_mm_s2)
             if acceleration_mm_s2 is not None
@@ -243,8 +255,104 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
         if rpss is not None:
             self.set_acceleration_rpss(rpss)
         signed_revs = self._apply_direction_inversion(revs)
+        current_rot = self._motor.get_actual_position_rot()
+        self._target_position_rot = current_rot + signed_revs
+        if abs(signed_revs) <= self._position_tolerance_rot():
+            return
         direction = Direction.CW if signed_revs >= 0 else Direction.CCW
         self._motor.rotate_by(abs(signed_revs), direction=direction)
 
     def _apply_direction_inversion(self, value: float) -> float:
         return -value if self._invert_direction else value
+
+    def _wait_for_target_reached(self) -> None:
+        while True:
+            if self._is_target_reached():
+                if self._finalize_completed_move():
+                    break
+        self._target_position_rot = None
+
+    def _is_target_reached(self) -> bool:
+        if self._target_position_rot is None:
+            return (
+                self._motor.wait_until_reached(timeout_s=0.0)
+                or abs(self._motor.get_actual_speed_rps()) <= self._speed_tolerance_rps()
+            )
+        position_error = abs(
+            self._motor.get_actual_position_rot() - self._target_position_rot
+        )
+        actual_speed_rps = abs(self._motor.get_actual_speed_rps())
+        return (
+            position_error <= self._position_tolerance_rot()
+            and actual_speed_rps <= self._speed_tolerance_rps()
+        )
+
+    def _position_tolerance_rot(self) -> float:
+        motion_units = self._motion_units_per_fullstep()
+        full_steps = max(1, self.mechanical_setup.steps_per_revolution)
+        return 2.0 / (full_steps * motion_units)
+
+    @staticmethod
+    def _speed_tolerance_rps() -> float:
+        return 0.02
+
+    def _motion_units_per_fullstep(self) -> int:
+        getter = getattr(self._motor, "_motion_units_per_fullstep", None)
+        if callable(getter):
+            try:
+                return max(1, int(getter()))
+            except Exception:
+                pass
+        return max(1, self.get_microsteps())
+
+    def _sync_target_to_actual_position(self) -> None:
+        raw_motor = getattr(self._motor, "_motor", None)
+        if raw_motor is None or not hasattr(raw_motor, "set_axis_parameter"):
+            return
+        actual_position = getattr(raw_motor.AP, "ActualPosition", None)
+        target_position = getattr(raw_motor.AP, "TargetPosition", None)
+        if actual_position is None or target_position is None:
+            return
+        try:
+            actual = raw_motor.get_axis_parameter(actual_position, signed=True)
+            raw_motor.set_axis_parameter(target_position, actual)
+        except Exception:
+            pass
+
+    def _hold_completed_move_position(self) -> None:
+        if self._target_position_rot is None:
+            return
+        self._motor.stop()
+        self._sync_target_to_actual_position()
+
+    def _completed_move_is_stable(self) -> bool:
+        if self._target_position_rot is None:
+            return True
+        position_error = abs(
+            self._motor.get_actual_position_rot() - self._target_position_rot
+        )
+        actual_speed_rps = abs(self._motor.get_actual_speed_rps())
+        return (
+            position_error <= self._position_tolerance_rot()
+            and actual_speed_rps <= self._speed_tolerance_rps()
+        )
+
+    def _finalize_completed_move(self) -> bool:
+        if self._target_position_rot is None:
+            return True
+        self._hold_completed_move_position()
+        for _ in range(4):
+            time.sleep(0.05)
+            if not self._completed_move_is_stable():
+                return False
+        return True
+
+    async def _finalize_completed_move_async(self) -> bool:
+        if self._target_position_rot is None:
+            return True
+        self._hold_completed_move_position()
+        for _ in range(4):
+            await asyncio.sleep(0.05)
+            if not self._completed_move_is_stable():
+                return False
+        return True

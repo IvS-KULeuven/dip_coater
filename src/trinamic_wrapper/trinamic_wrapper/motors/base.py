@@ -181,11 +181,16 @@ class BaseStepperMotor(ABC):
             self._motion_units_per_fullstep(),
         )
         signed_usteps = usteps * int(direction)
-        # Use move_by (relative) via the underlying TMCL connection.
-        # TMC5160_eval / TMC2660_eval don't expose move_by directly, but
-        # the connection does.
-        self._eval._connection.move_by(
-            self._axis, signed_usteps, self._eval._module_id
+        current_usteps = self._motor.get_axis_parameter(
+            self._motor.AP.ActualPosition, signed=True
+        )
+        target_usteps = current_usteps + signed_usteps
+        # Use an absolute target rather than a relative move command.
+        # On the TMC5160 eval-board firmware used in this repo, relative
+        # move_by commands can behave unstably after reaching the target,
+        # while move_to keeps the board locked to a single absolute target.
+        self._eval._connection.move_to(
+            self._axis, target_usteps, self._eval._module_id
         )
 
     def stop(self) -> None:

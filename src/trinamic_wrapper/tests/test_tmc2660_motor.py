@@ -118,9 +118,9 @@ class TestMotion:
         motor, conn, _ = setup
         motor.set_step_mode(StepMode.USTEP_256)
         motor.rotate_by(3.0, direction=Direction.CW)
-        (axis, delta, _mid) = conn.last("move_by")
+        (axis, target, _mid) = conn.last("move_to")
         assert axis == 0
-        assert delta == 3 * 200 * 256  # 153600
+        assert target == 3 * 200 * 256  # 153600
 
     def test_rotate_negative_direction(self, setup):
         motor, conn, _ = setup

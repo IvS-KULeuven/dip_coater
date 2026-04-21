@@ -176,20 +176,20 @@ class TestMotion:
         # 2 rot/s ~ 3355 with the firmware's MRES-code scaling.
         assert 3300 < v < 3400
 
-    def test_rotate_by_sends_move_by_with_correct_usteps(self, setup):
+    def test_rotate_by_sends_move_to_with_correct_absolute_target(self, setup):
         motor, conn, _ = setup
         motor.set_step_mode(StepMode.USTEP_256)
         motor.rotate_by(2.0, direction=Direction.CW)
         # 2 rotations × 200 fullsteps × MRES-code 8 = 3200
-        (axis, delta, _mid) = conn.last("move_by")
+        (axis, target, _mid) = conn.last("move_to")
         assert axis == 0
-        assert delta == 3200
+        assert target == 3200
 
     def test_rotate_by_negative_direction(self, setup):
         motor, conn, _ = setup
         motor.rotate_by(1.0, direction=Direction.CCW)
-        (_axis, delta, _mid) = conn.last("move_by")
-        assert delta == -1600
+        (_axis, target, _mid) = conn.last("move_to")
+        assert target == -1600
 
     def test_stop_sends_stop_command(self, setup):
         motor, conn, _ = setup
@@ -246,9 +246,9 @@ class TestStepMode:
         motor, conn, _ = setup
         motor.set_step_mode(StepMode.USTEP_16)
         motor.rotate_by(1.0)
-        (_axis, delta, _mid) = conn.last("move_by")
+        (_axis, target, _mid) = conn.last("move_to")
         # 1 rev * 200 fullsteps * MRES-code 4 = 800
-        assert delta == 800
+        assert target == 800
 
 
 class TestStealthChop:

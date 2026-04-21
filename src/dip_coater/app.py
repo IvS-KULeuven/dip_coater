@@ -71,6 +71,17 @@ class DipCoaterApp(App):
         # on_mount() is called after compose(), so the RichLog is known
         log = self.query_one("#logger", RichLog)
         log.write("Motor has been initialised.")
+        log.write(
+            "[cyan]"
+            f"[startup] driver={self.app_state.driver_type.value} "
+            f"setup={self.app_state.setup_profile.label} "
+            f"default_distance={self.app_state.config.DEFAULT_DISTANCE}mm "
+            f"default_speed={self.app_state.config.DEFAULT_SPEED}mm/s "
+            f"default_accel={self.app_state.config.DEFAULT_ACCELERATION}mm/s² "
+            f"default_step_mode={self.app_state.config.DEFAULT_STEP_MODE} "
+            f"invert_direction={self.app_state.setup_profile.invert_motor_direction}"
+            "[/]"
+        )
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)

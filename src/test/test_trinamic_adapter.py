@@ -8,6 +8,25 @@ from trinamic_wrapper import Direction, StepMode
 
 
 class FakeStepperMotor:
+    class _AP:
+        ActualPosition = "ActualPosition"
+        TargetPosition = "TargetPosition"
+
+    class _RawMotor:
+        def __init__(self, outer):
+            self._outer = outer
+            self.AP = outer._AP
+            self.axis_parameters = {
+                self.AP.ActualPosition: 0,
+                self.AP.TargetPosition: 0,
+            }
+
+        def get_axis_parameter(self, ap_type, signed: bool = False):
+            return self.axis_parameters[ap_type]
+
+        def set_axis_parameter(self, ap_type, value):
+            self.axis_parameters[ap_type] = value
+
     def __init__(self):
         self.enabled = False
         self.step_mode = StepMode.USTEP_256
@@ -17,10 +36,15 @@ class FakeStepperMotor:
         self.configured_speed_rps = None
         self.configured_accel_rps2 = None
         self.wait_results = [True]
+        self.speed_rps = 0.0
+        self.position_sequence = []
+        self.speed_sequence = []
         self.rotate_calls = []
         self.stop_calls = 0
         self.interpolation = None
         self.stallguard_threshold = None
+        self.motion_units_per_fullstep = self.step_mode.microsteps_per_fullstep
+        self._motor = self._RawMotor(self)
 
     def enable(self) -> None:
         self.enabled = True
@@ -52,6 +76,7 @@ class FakeStepperMotor:
 
     def set_step_mode(self, mode: StepMode) -> None:
         self.step_mode = mode
+        self.motion_units_per_fullstep = mode.microsteps_per_fullstep
 
     def get_step_mode(self) -> StepMode:
         return self.step_mode
@@ -73,10 +98,17 @@ class FakeStepperMotor:
         self.stop_calls += 1
 
     def get_actual_position_rot(self) -> float:
+        if self.position_sequence:
+            self.position_rot = self.position_sequence.pop(0)
+        full_steps_per_rev = 200
+        actual = round(self.position_rot * full_steps_per_rev * self.motion_units_per_fullstep)
+        self._motor.axis_parameters[self._motor.AP.ActualPosition] = actual
         return self.position_rot
 
     def get_actual_speed_rps(self) -> float:
-        return 0.0
+        if self.speed_sequence:
+            self.speed_rps = self.speed_sequence.pop(0)
+        return self.speed_rps
 
     def reset_position(self) -> None:
         self.position_rot = 0.0
@@ -89,6 +121,9 @@ class FakeStepperMotor:
 
     def has_feature(self, name: str) -> bool:
         return True
+
+    def _motion_units_per_fullstep(self) -> int:
+        return self.motion_units_per_fullstep
 
 
 def make_adapter(
@@ -143,12 +178,78 @@ def test_adapter_invert_direction_flips_motion():
 @pytest.mark.asyncio
 async def test_adapter_wait_for_motor_done_async_polls_until_reached():
     motor = FakeStepperMotor()
-    motor.wait_results = [False, False, True]
+    motor.position_sequence = [0.0, 0.5, 0.98, 1.0]
+    motor.speed_sequence = [0.2, 0.1, 0.03, 0.0]
     adapter = make_adapter(motor)
+    adapter.move_up(4.0, 1.0)
 
     await adapter.wait_for_motor_done_async()
 
-    assert motor.wait_results == []
+    assert motor.position_sequence == []
+    assert motor.speed_sequence == []
+
+
+@pytest.mark.asyncio
+async def test_adapter_wait_uses_motion_units_for_tmc5160_style_tolerance():
+    motor = FakeStepperMotor()
+    motor.motion_units_per_fullstep = 8
+    motor.position_sequence = [0.0, 0.999792]
+    motor.speed_sequence = [0.2, 0.0]
+    adapter = make_adapter(motor)
+    adapter.move_up(4.0, 1.0)
+
+    await adapter.wait_for_motor_done_async()
+
+    assert motor.position_sequence == []
+    assert motor._motor.axis_parameters[motor._motor.AP.TargetPosition] == 1600
+
+
+@pytest.mark.asyncio
+async def test_adapter_wait_exits_after_stop_when_target_cleared():
+    motor = FakeStepperMotor()
+    motor.wait_results = [False, False, False]
+    motor.speed_sequence = [0.2, 0.0]
+    adapter = make_adapter(motor)
+
+    adapter.stop_motor()
+    await adapter.wait_for_motor_done_async()
+
+    assert motor.stop_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_adapter_wait_retries_if_motion_reappears_after_reaching_target():
+    motor = FakeStepperMotor()
+    motor.position_sequence = [
+        0.0,
+        1.0,
+        1.0,
+        0.95,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+    ]
+    motor.speed_sequence = [
+        0.0,
+        0.0,
+        0.2,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+    ]
+    adapter = make_adapter(motor)
+    adapter.move_up(4.0, 1.0)
+
+    await adapter.wait_for_motor_done_async()
+
+    assert motor.stop_calls == 2
+    assert motor._motor.axis_parameters[motor._motor.AP.TargetPosition] == 51200
 
 
 def test_adapter_cleanup_disables_motor_and_closes_connection():

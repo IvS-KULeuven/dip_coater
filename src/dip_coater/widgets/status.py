@@ -73,6 +73,8 @@ class Status(Static):
         self.motor_state = motor_state
 
     async def fetch_new_position(self):
+        if self.app_state.motor_state in ("moving", "homing"):
+            return
         position = self.app_state.motion_controller.get_current_position_mm()
         await self.update_position(position)
 
