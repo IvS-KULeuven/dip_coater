@@ -126,9 +126,10 @@ class TestMotion:
     def test_set_speed_writes_vmax(self, setup):
         motor, conn, board = setup
         motor.set_speed_rps(1.0)
-        # VMAX for 1 rot/s with 200 fullsteps, 16 MHz = ~53687
+        # Landungsbruecke motion scaling uses the MRES code (8 at USTEP_256),
+        # so 1 rot/s maps to ~1678 at the default step mode.
         value = conn.get_ap(board.motors[0].AP.MaxVelocity)
-        assert 53000 < value < 54000
+        assert 1600 < value < 1800
 
     def test_set_acceleration_writes_amax_dmax_d1(self, setup):
         motor, conn, board = setup
@@ -175,23 +176,23 @@ class TestMotion:
         motor.set_speed_rps(2.0)
         motor.rotate()  # no explicit speed
         (_a, v, _m) = [a for k, a in conn.calls if k == "rotate"][-1]
-        # 2 rot/s ~ 107374
-        assert 107000 < v < 108000
+        # 2 rot/s ~ 3355 with the firmware's MRES-code scaling.
+        assert 3300 < v < 3400
 
     def test_rotate_by_sends_move_by_with_correct_usteps(self, setup):
         motor, conn, _ = setup
         motor.set_step_mode(StepMode.USTEP_256)
         motor.rotate_by(2.0, direction=Direction.CW)
-        # 2 rotations × 200 fullsteps × 256 μsteps = 102400
+        # 2 rotations × 200 fullsteps × MRES-code 8 = 3200
         (axis, delta, _mid) = conn.last("move_by")
         assert axis == 0
-        assert delta == 102400
+        assert delta == 3200
 
     def test_rotate_by_negative_direction(self, setup):
         motor, conn, _ = setup
         motor.rotate_by(1.0, direction=Direction.CCW)
         (_axis, delta, _mid) = conn.last("move_by")
-        assert delta == -51200
+        assert delta == -1600
 
     def test_stop_sends_stop_command(self, setup):
         motor, conn, _ = setup
@@ -216,8 +217,8 @@ class TestStepMode:
         motor.set_step_mode(StepMode.USTEP_16)
         motor.rotate_by(1.0)
         (_axis, delta, _mid) = conn.last("move_by")
-        # 1 rev * 200 fullsteps * 16 = 3200
-        assert delta == 3200
+        # 1 rev * 200 fullsteps * MRES-code 4 = 800
+        assert delta == 800
 
 
 class TestStealthChop:
@@ -287,6 +288,6 @@ class TestPosition:
     def test_get_actual_position_converts_to_revolutions(self, setup):
         motor, conn, board = setup
         # inject a raw position value
-        conn.axis_parameters[(board.motors[0].AP.ActualPosition, 0)] = 51200
+        conn.axis_parameters[(board.motors[0].AP.ActualPosition, 0)] = 1600
         pos = motor.get_actual_position_rot()
         assert pos == pytest.approx(1.0)

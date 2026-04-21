@@ -170,7 +170,7 @@ class BaseStepperMotor(ABC):
         usteps = revolutions_to_usteps(
             revolutions,
             self._config.full_steps_per_rev,
-            self._step_mode.microsteps_per_fullstep,
+            self._motion_units_per_fullstep(),
         )
         signed_usteps = usteps * int(direction)
         # Use move_by (relative) via the underlying TMCL connection.
@@ -204,7 +204,7 @@ class BaseStepperMotor(ABC):
         return usteps_to_revolutions(
             usteps,
             self._config.full_steps_per_rev,
-            self._step_mode.microsteps_per_fullstep,
+            self._motion_units_per_fullstep(),
         )
 
     def get_actual_speed_rps(self) -> float:
@@ -216,6 +216,10 @@ class BaseStepperMotor(ABC):
     def reset_position(self) -> None:
         self._motor.set_axis_parameter(self._motor.AP.ActualPosition, 0)
         self._motor.set_axis_parameter(self._motor.AP.TargetPosition, 0)
+
+    def _motion_units_per_fullstep(self) -> int:
+        """Units-per-fullstep used by the firmware for motion commands/APs."""
+        return self._step_mode.microsteps_per_fullstep
 
     # ------------------------------------------------------------------ #
     # Default (no-op) advanced features — override in subclass

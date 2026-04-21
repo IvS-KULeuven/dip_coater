@@ -167,8 +167,10 @@ class TestMotion:
         assert reached, "motor did not reach target within 5 s"
 
         pos = hw_motor.get_actual_position_rot()
-        # Within one microstep of target
-        tol = 1.0 / (200 * 256)
+        # Within one firmware motion unit of target.
+        tol = 1.0 / (
+            hw_motor._config.full_steps_per_rev * hw_motor._motion_units_per_fullstep()
+        )
         assert abs(pos - 1.0) < tol, f"expected 1.0 rev, got {pos}"
 
     def test_reversed_direction_gives_negative_position(self, hw_motor, hw_currents):
