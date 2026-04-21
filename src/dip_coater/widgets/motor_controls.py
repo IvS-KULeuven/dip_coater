@@ -35,6 +35,12 @@ class MotorControls(Static):
     def update_status_widgets(self):
         self.app_state.status.update_homing_found(self.app_state.homing_found)
         self.app_state.status.update_motor_state(self.app_state.motor_state)
+        move_disabled = self.app_state.motor_state != "enabled"
+        for button_id in ("#move-up", "#move-down"):
+            try:
+                self.query_one(button_id, Button).disabled = move_disabled
+            except Exception:
+                pass
 
     def get_parameters(self) -> tuple:
         distance_mm = self.app_state.distance_controls.distance

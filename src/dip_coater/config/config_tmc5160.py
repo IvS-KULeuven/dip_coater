@@ -7,8 +7,8 @@ from dip_coater.logging.tmc5160_logger import TMC5160LogLevel
 DEFAULT_LOGGING_LEVEL = TMC5160LogLevel.INFO
 
 # Current settings (in mA)
-DEFAULT_CURRENT = 2500
-DEFAULT_CURRENT_STANDSTILL = 70
+DEFAULT_CURRENT = 1500
+DEFAULT_CURRENT_STANDSTILL = 100
 MIN_CURRENT = 50
 MAX_CURRENT = 4000  # TMC5160 can go up to 4530, but the motor cannot
 
@@ -26,13 +26,15 @@ STEP_MODE_LABELS = {
     "I256": "1/256",
 }
 DEFAULT_STEP_MODE = "I256"
-DEFAULT_ACCELERATION = 10
+DEFAULT_SPEED = 2
+DEFAULT_DISTANCE = 10
+DEFAULT_ACCELERATION = 10.0
 
 # GLOBAL_SCALER (0 = full scale/256, or 32-256)
 DEFAULT_GLOBAL_SCALER = 0
 
 # Sense resistor (mOhm) — depends on the evaluation board
-DEFAULT_RSENSE = 50
+DEFAULT_RSENSE = 75
 
 # Chopper settings
 DEFAULT_CHOPPER_MODE = "SpreadCycle"
