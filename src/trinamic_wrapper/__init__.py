@@ -10,8 +10,7 @@ without installing the package or setting ``PYTHONPATH``.
 
 from . import trinamic_wrapper as _impl
 from .trinamic_wrapper import *  # noqa: F401,F403
-from .trinamic_wrapper import __all__
+from .trinamic_wrapper import __all__ as __all__
 
 # Make ``trinamic_wrapper.<submodule>`` resolve against the real package.
 __path__ = _impl.__path__
-

@@ -3,17 +3,43 @@ from types import SimpleNamespace
 
 import pytest
 
+from dip_coater.logging.tmc5160_logger import TMC5160LogLevel
 from dip_coater.mechanical.mechanical_setup import MechanicalSetup
-from dip_coater.motor_driver.tmc5160 import MotorDriverTMC5160
+from dip_coater.motor_driver.driver_registry import get_driver_spec
+from dip_coater.motor_driver.motor_driver_interface import AvailableMotorDrivers
+from dip_coater.motor_driver.trinamic_adapter import TrinamicWrapperMotorAdapter
+from dip_coater.setup_profiles.machine_profile import (
+    AvailableMachineSetups,
+    MachineProfile,
+)
 
 
 class HardwareAppState:
-    def __init__(self):
-        self.mechanical_setup = MechanicalSetup(mm_per_revolution=4.0)
+    def __init__(
+        self,
+        *,
+        step_mode: int,
+        current_mA: int,
+        hold_current_mA: int,
+        rsense_mOhm: int,
+    ):
+        mechanical_setup = MechanicalSetup(mm_per_revolution=4.0)
+        self.setup_profile = MachineProfile(
+            key=AvailableMachineSetups.CUSTOM,
+            label="TMC5160 hardware test",
+            mechanical_setup=mechanical_setup,
+        )
+        self.mechanical_setup = mechanical_setup
         self.config = SimpleNamespace(
             USE_DUMMY_DRIVER=False,
-            DEFAULT_GLOBAL_SCALER=0,
-            DEFAULT_RSENSE=50,
+            DEFAULT_STEP_MODE=f"I{step_mode}",
+            STEP_MODES={"I2": 2, "I4": 4, "I16": 16, "I256": 256},
+            DEFAULT_CURRENT=current_mA,
+            DEFAULT_CURRENT_STANDSTILL=hold_current_mA,
+            DEFAULT_ACCELERATION=10.0,
+            USE_INTERPOLATION=True,
+            DEFAULT_RSENSE=rsense_mOhm,
+            MAX_CURRENT=4000,
         )
 
 
@@ -31,18 +57,22 @@ def hardware_driver():
     step_mode = int(os.getenv("DIP_COATER_TMC5160_STEP_MODE", "16"))
     current_mA = int(os.getenv("DIP_COATER_TMC5160_CURRENT_MA", "500"))
     current_standstill_mA = int(os.getenv("DIP_COATER_TMC5160_STANDSTILL_MA", "0"))
-    global_scaler = int(os.getenv("DIP_COATER_TMC5160_GLOBAL_SCALER", "0"))
-    rsense_mOhm = int(os.getenv("DIP_COATER_TMC5160_RSENSE_MOHM", "50"))
+    rsense_mOhm = int(os.getenv("DIP_COATER_TMC5160_RSENSE_MOHM", "75"))
 
-    driver = MotorDriverTMC5160(
-        HardwareAppState(),
-        interface_type=interface_type,
-        port=port,
+    app_state = HardwareAppState(
         step_mode=step_mode,
         current_mA=current_mA,
-        current_standstill_mA=current_standstill_mA,
-        global_scaler=global_scaler,
+        hold_current_mA=current_standstill_mA,
         rsense_mOhm=rsense_mOhm,
+    )
+    driver_spec = get_driver_spec(AvailableMotorDrivers.TMC5160)
+    driver = driver_spec.driver_factory(
+        app_state=app_state,
+        log_level=TMC5160LogLevel.INFO,
+        log_handlers=[],
+        log_formatter=None,
+        interface_type=interface_type,
+        port=port,
     )
     try:
         yield driver
@@ -51,24 +81,22 @@ def hardware_driver():
 
 
 @pytest.mark.hardware
-def test_tmc5160_hardware_basic_register_access(hardware_driver):
-    assert isinstance(hardware_driver.read_drv_status(), int)
-    assert isinstance(hardware_driver.read_ramp_status(), int)
+def test_tmc5160_hardware_uses_trinamic_wrapper_adapter(hardware_driver):
+    assert isinstance(hardware_driver, TrinamicWrapperMotorAdapter)
     assert hardware_driver.get_microsteps() > 0
 
 
 @pytest.mark.hardware
-def test_tmc5160_hardware_current_register_roundtrip(hardware_driver):
+def test_tmc5160_hardware_current_roundtrip(hardware_driver):
     run_current_mA = int(os.getenv("DIP_COATER_TMC5160_CURRENT_MA", "500"))
     hold_current_mA = int(os.getenv("DIP_COATER_TMC5160_STANDSTILL_NONZERO_MA", "140"))
 
     hardware_driver.set_current(run_current_mA)
-    assert hardware_driver.get_current() == hardware_driver._convert_current_to_cs(run_current_mA)
+    assert hardware_driver.get_current() == pytest.approx(run_current_mA, abs=120)
 
     hardware_driver.set_current_standstill(hold_current_mA)
-    assert (
-        hardware_driver.get_current_standstill()
-        == hardware_driver._convert_current_to_cs(hold_current_mA)
+    assert hardware_driver.get_current_standstill() == pytest.approx(
+        hold_current_mA, abs=120
     )
 
 
@@ -79,8 +107,8 @@ def test_tmc5160_hardware_microsteps_roundtrip(hardware_driver):
     hardware_driver.set_microsteps(16)
     assert hardware_driver.get_microsteps() == 16
 
-    hardware_driver.set_microsteps(32)
-    assert hardware_driver.get_microsteps() == 32
+    hardware_driver.set_microsteps(256)
+    assert hardware_driver.get_microsteps() == 256
 
     hardware_driver.set_microsteps(original)
 
@@ -91,8 +119,8 @@ def test_tmc5160_hardware_optional_motion(hardware_driver):
         pytest.skip("Set DIP_COATER_TMC5160_RUN_MOTION=1 to run the motion smoke test.")
 
     hardware_driver.enable_motor()
-    start = hardware_driver.get_actual_position()
-    hardware_driver.rotate(0.01, 0.1, 0.1)
+    start = hardware_driver.get_current_position_mm()
+    hardware_driver.move_up(0.04, 0.4, 0.4)
     hardware_driver.wait_for_motor_done()
-    end = hardware_driver.get_actual_position()
+    end = hardware_driver.get_current_position_mm()
     assert end != start

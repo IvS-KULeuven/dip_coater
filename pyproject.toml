@@ -8,7 +8,10 @@ authors = [
 ]
 license = "MIT"
 readme = "README.md"
-packages = [{include = "dip_coater", from = "src"}]
+packages = [
+    {include = "dip_coater", from = "src"},
+    {include = "trinamic_wrapper", from = "src/trinamic_wrapper"},
+]
 package-mode = true
 
 [tool.poetry.dependencies]

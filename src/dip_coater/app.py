@@ -194,14 +194,14 @@ def main():
             "uart_ic",
             "ixxat_tmcl",
         ],
-        help="Set the TMC2660 interface type (env: DIP_COATER_INTERFACE)",
+        help="Set the PyTrinamic interface type for supported drivers (env: DIP_COATER_INTERFACE)",
     )
     parser.add_argument(
         "-p",
         "--port",
         type=str,
         default=os.environ.get("DIP_COATER_PORT", "/dev/ttyACM0"),
-        help="Set the TMC2660 interface port. Use 'interactive' for interactive port selection (env: DIP_COATER_PORT)",
+        help="Set the PyTrinamic interface port. Use 'interactive' for interactive port selection (env: DIP_COATER_PORT)",
     )
     parser.add_argument(
         "--mm-per-revolution",

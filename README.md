@@ -74,10 +74,10 @@ The app supports three motor drivers: `TMC2209`, `TMC2660`, and `TMC5160`. By de
 ```bash
 $ dip-coater --driver TMC2209
 $ dip-coater --driver TMC2660
-$ dip-coater --driver TMC5160 --use-dummy-driver
+$ dip-coater --driver TMC5160 --interface usb_tmcl --port /dev/tty.usbmodemTMCEVAL1
 ```
 
-The `TMC5160` driver uses [PyTrinamic](https://github.com/analogdevicesinc/PyTrinamic) for hardware communication via a Landungsbrücke evaluation board.
+The `TMC5160` driver uses the local `trinamic_wrapper` package on top of [PyTrinamic](https://github.com/analogdevicesinc/PyTrinamic) for hardware communication via a Landungsbrücke evaluation board.
 
 ### Setup profile selection
 
@@ -144,21 +144,21 @@ This is useful for development and UI testing on machines without the real motor
 For `TMC2660`, this forces the app to use the dummy TMCL interface even if a real interface/port is configured.
 For `TMC5160`, this forces the app to use a dummy backend instead of communicating with the real evaluation board.
 
-When using `TMC2660`, you may also need to set the interface type and port (see `--interface` and `--port` options).
+When using a PyTrinamic-backed driver such as `TMC2660` or `TMC5160`, you may also need to set the interface type and port (see `--interface` and `--port` options).
 By default, the app starts with `--interface usb_tmcl --port /dev/ttyACM0`.
 
 If your USB controller is exposed on another serial device, set the port explicitly:
 
 ```bash
+$ dip-coater --driver TMC5160 --interface usb_tmcl --port /dev/tty.usbmodemTMCEVAL1
 $ dip-coater --driver TMC2660 --interface usb_tmcl --port /dev/ttyACM1
 $ dip-coater --driver TMC2660 --interface usb_tmcl --port /dev/ttyUSB0
-$ dip-coater --driver TMC2660 --interface usb_tmcl --port /dev/tty.usbmodemTMCEVAL1
 ```
 
 You can also let the app ask you to select a port:
 
 ```bash
-$ dip-coater --driver TMC2660 --interface usb_tmcl --port interactive
+$ dip-coater --driver TMC5160 --interface usb_tmcl --port interactive
 ```
 
 If you see:
@@ -195,8 +195,7 @@ Supported environment variables:
 - `DIP_COATER_TMC5160_CURRENT_MA` defaults to `500`
 - `DIP_COATER_TMC5160_STANDSTILL_MA` defaults to `0`
 - `DIP_COATER_TMC5160_STANDSTILL_NONZERO_MA` defaults to `140`
-- `DIP_COATER_TMC5160_GLOBAL_SCALER` defaults to `0`
-- `DIP_COATER_TMC5160_RSENSE_MOHM` defaults to `50`
+- `DIP_COATER_TMC5160_RSENSE_MOHM` defaults to `75`
 
 This will show the following App in your terminal:
 

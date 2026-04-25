@@ -119,18 +119,18 @@ I_rms = (CS + 1)/32 · V_fs / (R_sense + R_offset) / √2
 - TMC5160-EVAL: `R_sense=0.075 Ω`, `R_offset=0.02 Ω`, `V_fs=0.325 V` (standard)
 - TMC2660-EVAL: `R_sense=0.1 Ω`, `R_offset=0.03 Ω`, `V_fs=0.305 V` (standard)
 
-The firmware AP layouts differ: the TMC5160-EVAL firmware takes `MaxCurrent` as a 0–255 byte whose top 5 bits are CS; the TMC2660-EVAL firmware takes CS directly (0–31). The wrapper handles both.
+The Landungsbruecke firmware used here takes `MaxCurrent` / `StandbyCurrent` as the 5-bit CS value directly for both supported eval boards.
 
-**TMC5160 velocity (rev/s ↔ VMAX)** — datasheet §6.3:
+**TMC5160 velocity (rev/s ↔ VMAX)** — datasheet §6.3, with `motion_units_per_fullstep` matching the firmware's microstep-resolution code:
 
 ```
-VMAX = rev/s · 256 · steps_per_rev · 2²⁴ / f_clk
+VMAX = rev/s · motion_units_per_fullstep · steps_per_rev · 2²⁴ / f_clk
 ```
 
 **TMC5160 acceleration (rev/s² ↔ AMAX)** — datasheet §6.3.1:
 
 ```
-AMAX = rev/s² · 256 · steps_per_rev · 2⁴¹ / f_clk²
+AMAX = rev/s² · motion_units_per_fullstep · steps_per_rev · 2⁴¹ / f_clk²
 ```
 
 **TMC2660 velocity (rev/s ↔ μsteps/s)** — the chip has no ramp generator; the Landungsbrücke firmware emulates one and accepts μsteps/s at the currently configured microstep resolution:

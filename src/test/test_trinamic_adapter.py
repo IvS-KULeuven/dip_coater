@@ -204,6 +204,19 @@ async def test_adapter_wait_uses_motion_units_for_tmc5160_style_tolerance():
     assert motor._motor.axis_parameters[motor._motor.AP.TargetPosition] == 1600
 
 
+def test_adapter_sync_wait_polls_until_reached():
+    motor = FakeStepperMotor()
+    motor.position_sequence = [0.0, 0.5, 0.98, 1.0]
+    motor.speed_sequence = [0.2, 0.1, 0.03, 0.0]
+    adapter = make_adapter(motor)
+    adapter.move_up(4.0, 1.0)
+
+    adapter.wait_for_motor_done()
+
+    assert motor.position_sequence == []
+    assert motor.speed_sequence == []
+
+
 @pytest.mark.asyncio
 async def test_adapter_wait_exits_after_stop_when_target_cleared():
     motor = FakeStepperMotor()
