@@ -1,4 +1,4 @@
-from dip_coater.config.config_base import *
+from dip_coater.config.config_base import *  # noqa: F403
 from dip_coater.logging.tmc5160_logger import TMC5160LogLevel
 
 # TMC5160 settings
@@ -30,33 +30,7 @@ DEFAULT_SPEED = 2
 DEFAULT_DISTANCE = 10
 DEFAULT_ACCELERATION = 10.0
 
-# GLOBAL_SCALER (0 = full scale/256, or 32-256)
-DEFAULT_GLOBAL_SCALER = 0
-
 # Sense resistor (mOhm) — depends on the evaluation board
 DEFAULT_RSENSE = 75
 
-# Chopper settings
-DEFAULT_CHOPPER_MODE = "SpreadCycle"
 USE_INTERPOLATION = True
-
-# StallGuard / CoolStep defaults
-DEFAULT_STALLGUARD_ENABLED = False
-DEFAULT_STALLGUARD_FILTER_ENABLED = False
-DEFAULT_STALLGUARD_THRESHOLD = 0
-DEFAULT_COOLSTEP_ENABLED = False
-DEFAULT_COOLSTEP_THRESHOLD = 0
-
-# S-curve ramp defaults (TMC5160 internal units)
-# These match the PyTrinamic TMC5160 demo values.
-# Velocity: v_internal = v_Hz * 2^24 / fCLK  (fCLK = 12 MHz)
-# Acceleration: a_internal = a_Hz_per_s * 2^41 / fCLK^2
-DEFAULT_RAMP_VSTART = 0
-DEFAULT_RAMP_A1 = 1000
-DEFAULT_RAMP_V1 = 50000
-DEFAULT_RAMP_AMAX = 1000
-DEFAULT_RAMP_VMAX = 200000
-DEFAULT_RAMP_DMAX = 700
-DEFAULT_RAMP_D1 = 1400
-DEFAULT_RAMP_VSTOP = 10
-DEFAULT_RAMP_TZEROWAIT = 0

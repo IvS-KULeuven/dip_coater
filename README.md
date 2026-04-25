@@ -169,8 +169,9 @@ then the default port is not the correct one for your setup. Re-run with the cor
 
 ### Hardware testing for TMC5160
 
-The regular `src/test/test_tmc5160.py` test file uses the dummy backend. To run the TMC5160 tests against a real
-Landungsbruecke + TMC5160-EVAL board, use the hardware-only pytest module:
+The regular `src/test/test_tmc5160.py` test file covers the wrapper-backed
+dummy backend. To run the TMC5160 tests against a real Landungsbruecke +
+TMC5160-EVAL board, use the hardware-only pytest module:
 
 ```bash
 $ DIP_COATER_TMC5160_PORT=/dev/tty.usbmodemTMCEVAL1 \
