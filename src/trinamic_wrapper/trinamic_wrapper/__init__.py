@@ -34,6 +34,7 @@ from .exceptions import (
     UnsupportedFeatureError,
 )
 from .factory import create_motor
+from .motors.dummy_motor import DummyStepperMotor
 from .motors.tmc5160_motor import TMC5160Motor
 from .motors.tmc2660_motor import TMC2660Motor
 
@@ -50,6 +51,7 @@ __all__ = [
     "create_motor",
     "connection",
     "open_connection",
+    "DummyStepperMotor",
     "TMC5160Motor",
     "TMC2660Motor",
 ]

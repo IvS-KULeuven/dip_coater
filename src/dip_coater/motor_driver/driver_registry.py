@@ -2,7 +2,14 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from TMC_2209._TMC_2209_logger import Loglevel
-from trinamic_wrapper import Chip, MotorConfig, StepMode, create_motor, open_connection
+from trinamic_wrapper import (
+    Chip,
+    DummyStepperMotor,
+    MotorConfig,
+    StepMode,
+    create_motor,
+    open_connection,
+)
 
 from dip_coater.logging.tmc2660_logger import TMC2660LogLevel
 from dip_coater.logging.tmc5160_logger import TMC5160Logger
@@ -14,7 +21,6 @@ from dip_coater.motor_driver.tmc2660 import (
     MotorDriverTMC2660,
     TMC2660LogLevel as TMC2660DriverLogLevel,
 )
-from dip_coater.motor_driver.tmc5160 import MotorDriverTMC5160
 from dip_coater.setup_profiles.machine_profile import AvailableMachineSetups
 from dip_coater.widgets.advanced.advanced_settings_tmc2209 import (
     AdvancedSettingsTMC2209,
@@ -118,23 +124,6 @@ def _create_tmc5160_driver(
     interface_type="usb_tmcl",
     port="interactive",
 ) -> MotorDriver:
-    if app_state.config.USE_DUMMY_DRIVER:
-        return MotorDriverTMC5160(
-            app_state,
-            interface_type="dummy_tmcl",
-            port=None,
-            step_mode=app_state.config.STEP_MODES[app_state.config.DEFAULT_STEP_MODE],
-            current_mA=app_state.config.DEFAULT_CURRENT,
-            current_standstill_mA=app_state.config.DEFAULT_CURRENT_STANDSTILL,
-            invert_direction=app_state.setup_profile.invert_motor_direction,
-            interpolation=app_state.config.USE_INTERPOLATION,
-            global_scaler=app_state.config.DEFAULT_GLOBAL_SCALER,
-            rsense_mOhm=app_state.config.DEFAULT_RSENSE,
-            loglevel=log_level,
-            log_handlers=log_handlers,
-            log_formatter=log_formatter,
-        )
-
     # The legacy dip_coater TMC5160 path and the wrapper-backed path use
     # opposite effective motion signs for the same machine profile. Keep the
     # physical UP/DOWN behavior consistent by normalizing the session profile
@@ -157,8 +146,12 @@ def _create_tmc5160_driver(
         formatter=log_formatter,
     ).logger
 
-    connection = open_connection(port=port, interface=interface_type).connect()
-    motor = create_motor(Chip.TMC5160, connection, config=config)
+    connection = None
+    if app_state.config.USE_DUMMY_DRIVER:
+        motor = DummyStepperMotor(config)
+    else:
+        connection = open_connection(port=port, interface=interface_type).connect()
+        motor = create_motor(Chip.TMC5160, connection, config=config)
     motor.set_run_current_mA(app_state.config.DEFAULT_CURRENT)
     motor.set_standstill_current_mA(app_state.config.DEFAULT_CURRENT_STANDSTILL)
     motor.set_step_mode(step_mode)
@@ -170,7 +163,7 @@ def _create_tmc5160_driver(
         motor,
         setup,
         invert_direction=app_state.setup_profile.invert_motor_direction,
-        close=connection.close,
+        close=connection.close if connection is not None else None,
         logger=logger,
     )
 

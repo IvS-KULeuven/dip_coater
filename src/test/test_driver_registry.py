@@ -3,6 +3,8 @@ import sys
 import types
 from types import SimpleNamespace
 
+import pytest
+
 from dip_coater.logging.tmc5160_logger import TMC5160LogLevel
 from dip_coater.mechanical.mechanical_setup import MechanicalSetup
 from dip_coater.motor_driver.trinamic_adapter import TrinamicWrapperMotorAdapter
@@ -185,3 +187,36 @@ def test_create_tmc5160_driver_uses_trinamic_wrapper_adapter(monkeypatch):
     driver.cleanup()
     assert fake_motor.disabled is True
     assert fake_conn.closed is True
+
+
+def test_create_tmc5160_dummy_driver_uses_wrapper_adapter(monkeypatch):
+    app_state = _make_app_state()
+    app_state.config.USE_DUMMY_DRIVER = True
+
+    def fail_open_connection(*args, **kwargs):
+        raise AssertionError("dummy TMC5160 driver should not open hardware")
+
+    monkeypatch.setattr(
+        "dip_coater.motor_driver.driver_registry.open_connection",
+        fail_open_connection,
+    )
+
+    driver = _create_tmc5160_driver(
+        app_state,
+        log_level=TMC5160LogLevel.INFO,
+        log_handlers=[],
+        log_formatter=None,
+        interface_type="usb_tmcl",
+        port="/dev/tty.test",
+    )
+
+    assert isinstance(driver, TrinamicWrapperMotorAdapter)
+    assert app_state.setup_profile.invert_motor_direction is False
+
+    driver.enable_motor()
+    driver.move_up(4.0, 1.0, 2.0)
+    driver.wait_for_motor_done()
+
+    assert driver.get_current_position_mm() == pytest.approx(4.0)
+    assert driver.get_current() == pytest.approx(2500)
+    assert driver.get_current_standstill() == pytest.approx(70)
