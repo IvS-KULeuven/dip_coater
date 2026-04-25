@@ -128,7 +128,7 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
         self.watch(
             self.app_state.speed_controls,
             "speed",
-            self.update_control_mode_widgets_value,
+            self.update_motor_configuration,
         )
 
         self.reset_settings_to_default()
@@ -224,23 +224,26 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
         spread_cycle_checkbox.value = self._spread_cycle
 
     def update_motor_configuration(self):
+        if not self._threshold_speed_enabled:
+            return
+        if self.app_state.speed_controls.speed is None or self._threshold_speed is None:
+            return
         if (
-            self._threshold_speed_enabled
-            and self.app_state.speed_controls.speed >= self._threshold_speed
+            self.app_state.speed_controls.speed >= self._threshold_speed
         ):
             # High-speed configuration
             self.app_state.step_mode.update_microsteps(
                 self.app_state.config.HIGH_SPEED_STEP_MODE
             )
-            self.watch__interpolation(self.app_state.config.HIGH_SPEED_INTERPOLATION)
-            self.watch__spread_cycle(self.app_state.config.HIGH_SPEED_SPREAD_CYCLE)
+            self.update_interpolation(self.app_state.config.HIGH_SPEED_INTERPOLATION)
+            self.update_spread_cycle(self.app_state.config.HIGH_SPEED_SPREAD_CYCLE)
         else:
             # Low-speed configuration
             self.app_state.step_mode.update_microsteps(
                 self.app_state.config.LOW_SPEED_STEP_MODE
             )
-            self.watch__interpolation(self.app_state.config.LOW_SPEED_INTERPOLATION)
-            self.watch__spread_cycle(self.app_state.config.LOW_SPEED_SPREAD_CYCLE)
+            self.update_interpolation(self.app_state.config.LOW_SPEED_INTERPOLATION)
+            self.update_spread_cycle(self.app_state.config.LOW_SPEED_SPREAD_CYCLE)
         self.update_control_mode_widgets_value()
 
     def update_control_mode_widgets_state(self):

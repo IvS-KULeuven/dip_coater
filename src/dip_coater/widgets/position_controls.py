@@ -1,20 +1,22 @@
+import asyncio
+
 from textual.app import ComposeResult
 from textual import on, events
 from textual.reactive import reactive
 from textual.validation import Number
 from textual.containers import Horizontal
-from textual.widgets import Static, Label, Button, Input
+from textual.widgets import Static, Label, Button, Input, RichLog
 
 from dip_coater.widgets.speed_controls import SpeedControls
 from dip_coater.utils.helpers import clamp
 
 
 class PositionControls(Static):
+    position: reactive[float | None] = reactive(None)
+
     def __init__(self, app_state):
         super().__init__()
         self.app_state = app_state
-
-        self.position: reactive[float | None] = reactive(None)
 
     def compose(self) -> ComposeResult:
         with Horizontal():
@@ -109,9 +111,39 @@ class PositionControls(Static):
         acceleration_mm_s2: float = None,
         home_up: bool = None,
     ):
-        self.app_state.motion_controller.move_to_position(
-            position_mm, speed_mm_s, acceleration_mm_s2
+        log = self.app.query_one("#logger", RichLog)
+        if self.app_state.motor_state != "enabled":
+            log.write(
+                "[red]Cannot move to a position while the motor is "
+                f"{self.app_state.motor_state}.[/]"
+            )
+            return
+
+        if acceleration_mm_s2 is None:
+            acceleration_mm_s2 = self.app_state.advanced_settings.get_acceleration()
+
+        log.write(
+            f"[cyan]Moving to position ({position_mm=} mm, "
+            f"{speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s\u00b2).[/]"
         )
+        self.app_state.motor_controls.set_motor_state("moving")
+        await asyncio.sleep(0.1)
+        try:
+            self.app_state.motion_controller.move_to_position(
+                position_mm, speed_mm_s, acceleration_mm_s2
+            )
+            stop = await self.app_state.motion_controller.wait_for_motor_done_async()
+            if self.app_state.motor_state == "disabled":
+                return
+            if stop is None or getattr(stop, "name", None) == "NO":
+                log.write("[green]-> Finished moving to position.[/]")
+            else:
+                log.write(f"[red]-> Stopped moving to position {stop}.[/]")
+        except ValueError as e:
+            log.write(f"[red]{e}[/]")
+        finally:
+            if self.app_state.motor_state != "disabled":
+                self.app_state.motor_controls.set_motor_state("enabled")
 
     def set_position(self, position: float):
         validated_position = clamp(

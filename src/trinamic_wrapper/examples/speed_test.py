@@ -2,35 +2,51 @@ from pathlib import Path
 import sys
 import time
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from trinamic_wrapper import connection, create_motor, MotorConfig, StepMode, Direction, Chip
+def main() -> None:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-with connection("/dev/tty.usbmodemTMCEVAL1") as conn:
-    motor = create_motor(Chip.TMC5160, conn,
-        config=MotorConfig(full_steps_per_rev=200, sense_resistor_ohms=0.075))
-    motor.set_step_mode(StepMode.USTEP_256)
-    motor.set_run_current_mA(1500)
-    motor.set_standstill_current_mA(100)
-    motor.set_acceleration_rps2(1.0)
+    from trinamic_wrapper import (
+        Chip,
+        Direction,
+        MotorConfig,
+        StepMode,
+        connection,
+        create_motor,
+    )
 
-    if motor.has_feature("stealthchop"):
-        motor.set_stealthchop(False, threshold_rps=3.0)
-    if motor.has_feature("interpolation"):
-        motor.set_interpolation(True)
+    with connection("/dev/tty.usbmodemTMCEVAL1") as conn:
+        motor = create_motor(
+            Chip.TMC5160,
+            conn,
+            config=MotorConfig(full_steps_per_rev=200, sense_resistor_ohms=0.075),
+        )
+        motor.set_step_mode(StepMode.USTEP_256)
+        motor.set_run_current_mA(1500)
+        motor.set_standstill_current_mA(100)
+        motor.set_acceleration_rps2(1.0)
 
-    motor.enable()
-    motor.reset_position()
+        if motor.has_feature("stealthchop"):
+            motor.set_stealthchop(False, threshold_rps=3.0)
+        if motor.has_feature("interpolation"):
+            motor.set_interpolation(True)
 
-    speed_rps = 0.25
-    motor.rotate(speed_rps=speed_rps, direction=Direction.CW)
-    time.sleep(5.0)  # run for exactly 5 s
-    motor.stop()
-    time.sleep(0.5)
-    pos = motor.get_actual_position_rot()
-    motor.disable()
+        motor.enable()
+        motor.reset_position()
 
-print(
-    f"expected {speed_rps * 5.0:.3f} rev, got {pos:.3f} rev"
-    f"  ->  actual speed = {pos / 5:.3f} rot/s"
-)
+        speed_rps = 0.25
+        motor.rotate(speed_rps=speed_rps, direction=Direction.CW)
+        time.sleep(5.0)  # run for exactly 5 s
+        motor.stop()
+        time.sleep(0.5)
+        pos = motor.get_actual_position_rot()
+        motor.disable()
+
+    print(
+        f"expected {speed_rps * 5.0:.3f} rev, got {pos:.3f} rev"
+        f"  ->  actual speed = {pos / 5:.3f} rot/s"
+    )
+
+
+if __name__ == "__main__":
+    main()

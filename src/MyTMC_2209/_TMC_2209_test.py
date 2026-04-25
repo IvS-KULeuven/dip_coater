@@ -1,3 +1,6 @@
+__test__ = False
+
+
 def test_stallguard_threshold(self, steps):
     """test method for tuning stallguard threshold
 

@@ -100,8 +100,9 @@ class Status(Static):
     def watch_homing_found(self, homing_found: str):
         if homing_found is None:
             return
+        homing_status = "yes" if homing_found else "no"
         self.query_one("#status-homing-found", Label).update(
-            f"Homing found: {homing_found}"
+            f"Homed: {homing_status}"
         )
 
     def watch_limit_switch_up(self, limit_switch_up: str):

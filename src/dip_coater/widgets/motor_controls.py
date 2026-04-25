@@ -16,12 +16,12 @@ class MotorControls(Static):
         self.app_state.homing_found = False
 
     def compose(self) -> ComposeResult:
-        yield Button("Move UP ↑", id="move-up", variant="primary")
-        yield Button("Move DOWN ↓", id="move-down", variant="primary")
-        yield Button("ENABLE motor", id="enable-motor", variant="success")
-        yield Button("DISABLE motor", id="disable-motor", variant="error")
+        yield Button("Move up ↑", id="move-up", variant="primary")
+        yield Button("Move down ↓", id="move-down", variant="primary")
+        yield Button("Enable motor", id="enable-motor", variant="success")
+        yield Button("Stop and disable", id="disable-motor", variant="error")
         if self.app_state.motion_controller.supports_homing:
-            yield Button("Do HOMING", id="do-homing")
+            yield Button("Home", id="do-homing")
         # yield Button("STOP moving", id="stop-moving", variant="error")         Doesn't work currently...
 
     def _on_mount(self, event: events.Mount) -> None:
@@ -100,7 +100,7 @@ class MotorControls(Static):
                 if self.app_state.motor_state != "disabled":
                     self.set_motor_state("enabled")
         else:
-            log.write("[red]We cannot move up when the motor is disabled[/]")
+            log.write("[red]Cannot move up while the motor is disabled.[/]")
 
     @on(Button.Pressed, "#move-down")
     async def move_down_action(self):
@@ -140,7 +140,7 @@ class MotorControls(Static):
                 if self.app_state.motor_state != "disabled":
                     self.set_motor_state("enabled")
         else:
-            log.write("[red]We cannot move down when the motor is disabled[/]")
+            log.write("[red]Cannot move down while the motor is disabled.[/]")
 
     @on(Button.Pressed, "#enable-motor")
     async def enable_motor_action(self):
@@ -171,7 +171,7 @@ class MotorControls(Static):
             return
         else:
             log = self.app.query_one("#logger", RichLog)
-            log.write("[red]We cannot do homing when the motor is disabled[/]")
+            log.write("[red]Cannot home while the motor is disabled.[/]")
 
     @on(Button.Pressed, "#stop-moving")
     async def stop_moving_action(self):
