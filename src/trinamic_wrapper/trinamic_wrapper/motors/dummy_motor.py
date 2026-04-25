@@ -32,7 +32,17 @@ class DummyStepperMotor:
         self._stealthchop = False
         self._stealthchop_threshold_rps: float | None = None
         self._stallguard_threshold = 0
+        self._stallguard_enabled = True
+        self._stallguard_filter_enabled = False
+        self._chopper_mode = 0
+        self._coolstep_enabled = False
         self._coolstep_threshold_rps = 0.0
+        self._coolstep_threshold_raw = 0
+
+    def set_chopper_mode(self, mode: int) -> None:
+        if mode not in (0, 1):
+            raise ValueError("chopper mode must be 0 (SpreadCycle) or 1 (Constant TOff)")
+        self._chopper_mode = mode
 
     def enable(self) -> None:
         self._enabled = True
@@ -128,10 +138,43 @@ class DummyStepperMotor:
             raise ValueError("threshold must be in [-64, 63]")
         self._stallguard_threshold = threshold
 
+    def set_stallguard_enabled(self, enabled: bool) -> None:
+        self._stallguard_enabled = enabled
+
+    def set_stallguard_filter_enabled(self, enabled: bool) -> None:
+        self._stallguard_filter_enabled = enabled
+
+    def configure_coolstep(
+        self,
+        *,
+        min_current: int = 0,
+        current_down_step: int = 0,
+        current_up_step: int = 0,
+        hysteresis: int = 0,
+        threshold_speed: int = 0,
+    ) -> None:
+        self._check_int_range("min_current", min_current, 0, 1)
+        self._check_int_range("current_down_step", current_down_step, 0, 3)
+        self._check_int_range("current_up_step", current_up_step, 0, 3)
+        self._check_int_range("hysteresis", hysteresis, 0, 15)
+        self._check_int_range("threshold_speed", threshold_speed, 0, (1 << 31) - 1)
+        self._coolstep_threshold_raw = threshold_speed
+        self._coolstep_enabled = threshold_speed > 0
+
+    def set_coolstep_enabled(self, enabled: bool) -> None:
+        self._coolstep_enabled = enabled
+
+    def set_coolstep_threshold_raw(self, threshold: int) -> None:
+        self._check_int_range("threshold", threshold, 0, (1 << 31) - 1)
+        self._coolstep_threshold_raw = threshold
+        if threshold > 0:
+            self._coolstep_enabled = True
+
     def set_coolstep_threshold_rps(self, rps: float) -> None:
         if rps < 0:
             raise ValueError("rps must be non-negative")
         self._coolstep_threshold_rps = rps
+        self._coolstep_enabled = rps > 0
 
     def has_feature(self, name: str) -> bool:
         return name in self.SUPPORTED_FEATURES
@@ -148,3 +191,8 @@ class DummyStepperMotor:
                 f"Requested {current_mA:.0f} mA exceeds configured safety "
                 f"limit of {limit:.0f} mA."
             )
+
+    @staticmethod
+    def _check_int_range(name: str, value: int, minimum: int, maximum: int) -> None:
+        if not minimum <= value <= maximum:
+            raise ValueError(f"{name} must be in [{minimum}, {maximum}]")

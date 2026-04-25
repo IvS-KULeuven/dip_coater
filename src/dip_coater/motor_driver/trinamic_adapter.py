@@ -207,32 +207,23 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
             if self._close is not None:
                 self._close()
 
-    # ---- advanced settings not mapped yet ---------------------------------
-
     def set_chopper_mode(self, mode):
-        raise NotImplementedError(
-            "Chopper-mode mapping is not implemented in the dip_coater adapter yet."
-        )
+        self._motor.set_chopper_mode(self._coerce_chopper_mode(mode))
 
     def set_stallguard_enabled(self, enable: bool):
-        raise NotImplementedError(
-            "StallGuard enable/disable is not implemented in the dip_coater adapter yet."
-        )
+        self._motor.set_stallguard_enabled(enable)
 
     def set_stallguard_filter_enabled(self, enable: bool):
-        raise NotImplementedError(
-            "StallGuard filter enable/disable is not implemented in the dip_coater adapter yet."
-        )
+        self._motor.set_stallguard_filter_enabled(enable)
 
     def set_coolstep_enabled(self, enable: bool):
-        raise NotImplementedError(
-            "CoolStep enable/disable is not implemented in the dip_coater adapter yet."
-        )
+        self._motor.set_coolstep_enabled(enable)
 
     def set_coolstep_threshold(self, threshold: int):
-        raise NotImplementedError(
-            "CoolStep threshold in dip_coater units is not mapped to trinamic_wrapper yet."
-        )
+        setter = getattr(self._motor, "set_coolstep_threshold_raw", None)
+        if setter is None:
+            raise NotImplementedError("Underlying trinamic_wrapper motor has no CoolStep threshold API.")
+        setter(threshold)
 
     def _move_mm(
         self,
@@ -265,6 +256,26 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
 
     def _apply_direction_inversion(self, value: float) -> float:
         return -value if self._invert_direction else value
+
+    @staticmethod
+    def _coerce_chopper_mode(mode) -> int:
+        if isinstance(mode, int):
+            value = mode
+        elif hasattr(mode, "value") and isinstance(mode.value, int):
+            value = mode.value
+        elif hasattr(mode, "label"):
+            value = TrinamicWrapperMotorAdapter._coerce_chopper_mode(mode.label)
+        else:
+            normalized = str(mode).strip().lower().replace("_", " ")
+            if normalized in {"0", "spreadcycle", "spread cycle"}:
+                value = 0
+            elif normalized in {"1", "constant toff", "constant off", "classic constant toff"}:
+                value = 1
+            else:
+                raise ValueError(f"Unsupported chopper mode: {mode!r}")
+        if value not in (0, 1):
+            raise ValueError("chopper mode must be 0 (SpreadCycle) or 1 (Constant TOff)")
+        return value
 
     def _wait_for_target_reached(self) -> None:
         while True:

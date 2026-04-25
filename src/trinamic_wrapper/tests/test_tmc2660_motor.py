@@ -195,3 +195,29 @@ class TestStallGuard:
         motor, *_ = setup
         with pytest.raises(ValueError):
             motor.set_stallguard_threshold(200)
+
+    def test_stallguard_filter_writes_sg2_filter_ap(self, setup):
+        motor, conn, board = setup
+        motor.set_stallguard_filter_enabled(True)
+        assert conn.get_ap(board.motors[0].AP.SG2FilterEnable) == 1
+
+
+class TestChopperAndCoolStep:
+    def test_chopper_mode_writes_constant_toff_ap(self, setup):
+        motor, conn, board = setup
+        motor.set_chopper_mode(1)
+        assert conn.get_ap(board.motors[0].AP.ConstantTOffMode) == 1
+
+    def test_coolstep_threshold_raw_writes_smart_energy_threshold(self, setup):
+        motor, conn, board = setup
+        motor.set_coolstep_threshold_raw(99)
+        assert conn.get_ap(board.motors[0].AP.smartEnergyThresholdSpeed) == 99
+
+    def test_coolstep_enable_disable_uses_cached_threshold(self, setup):
+        motor, conn, board = setup
+        ap = board.motors[0].AP
+        motor.set_coolstep_threshold_raw(99)
+        motor.set_coolstep_enabled(False)
+        assert conn.get_ap(ap.smartEnergyThresholdSpeed) == 0
+        motor.set_coolstep_enabled(True)
+        assert conn.get_ap(ap.smartEnergyThresholdSpeed) == 99

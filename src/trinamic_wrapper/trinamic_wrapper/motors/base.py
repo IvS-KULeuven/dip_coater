@@ -49,6 +49,11 @@ class BaseStepperMotor(ABC):
         self._desired_speed_rps: float = 1.0
         self._step_mode: StepMode = config.default_microsteps
         self._enabled: bool = False
+        self._chopper_mode: int = 0
+        self._stallguard_enabled: bool = True
+        self._stallguard_threshold: int = 0
+        self._coolstep_enabled: bool = False
+        self._coolstep_threshold_raw: int = 0
 
     # ------------------------------------------------------------------ #
     # Feature discovery
@@ -248,6 +253,16 @@ class BaseStepperMotor(ABC):
         self._require_feature("interpolation")
         raise NotImplementedError  # pragma: no cover — overridden
 
+    def set_chopper_mode(self, mode: int) -> None:
+        """Set chopper mode through PyTrinamic's ConstantTOffMode AP.
+
+        0 selects SpreadCycle. 1 selects classic constant TOff.
+        """
+        if mode not in (0, 1):
+            raise ValueError("chopper mode must be 0 (SpreadCycle) or 1 (Constant TOff)")
+        self._chopper_mode = mode
+        self._motor.set_axis_parameter(self._motor.AP.ConstantTOffMode, mode)
+
     def set_stealthchop(
         self,
         enabled: bool,
@@ -255,6 +270,83 @@ class BaseStepperMotor(ABC):
     ) -> None:
         self._require_feature("stealthchop")
         raise NotImplementedError  # pragma: no cover — overridden
+
+    def set_stallguard_enabled(self, enabled: bool) -> None:
+        self._require_feature("stallguard")
+        self._stallguard_enabled = enabled
+        threshold = self._stallguard_threshold if enabled else 0
+        self._motor.set_axis_parameter(self._motor.AP.SG2Threshold, threshold)
+
+    def set_stallguard_filter_enabled(self, enabled: bool) -> None:
+        self._require_feature("stallguard")
+        self._motor.set_axis_parameter(
+            self._motor.AP.SG2FilterEnable, 1 if enabled else 0
+        )
+
+    def set_stallguard_threshold(self, threshold: int) -> None:
+        self._require_feature("stallguard")
+        if not -64 <= threshold <= 63:
+            raise ValueError("threshold must be in [-64, 63]")
+        self._stallguard_threshold = threshold
+        if self._stallguard_enabled:
+            self._motor.set_axis_parameter(self._motor.AP.SG2Threshold, threshold)
+
+    def configure_coolstep(
+        self,
+        *,
+        min_current: int = 0,
+        current_down_step: int = 0,
+        current_up_step: int = 0,
+        hysteresis: int = 0,
+        threshold_speed: int = 0,
+    ) -> None:
+        self._require_feature("coolstep")
+        self._check_range("min_current", min_current, 0, 1)
+        self._check_range("current_down_step", current_down_step, 0, 3)
+        self._check_range("current_up_step", current_up_step, 0, 3)
+        self._check_range("hysteresis", hysteresis, 0, 15)
+        self._check_range("threshold_speed", threshold_speed, 0, (1 << 31) - 1)
+        self._coolstep_threshold_raw = threshold_speed
+        self._coolstep_enabled = threshold_speed > 0
+        self._motor.set_axis_parameter(self._motor.AP.SEIMIN, min_current)
+        self._motor.set_axis_parameter(self._motor.AP.SECDS, current_down_step)
+        self._motor.set_axis_parameter(self._motor.AP.SECUS, current_up_step)
+        self._motor.set_axis_parameter(
+            self._motor.AP.smartEnergyHysteresis, hysteresis
+        )
+        self._motor.set_axis_parameter(
+            self._motor.AP.smartEnergyThresholdSpeed, threshold_speed
+        )
+
+    def set_coolstep_enabled(self, enabled: bool) -> None:
+        self._require_feature("coolstep")
+        self._coolstep_enabled = enabled
+        threshold = self._coolstep_threshold_raw if enabled else 0
+        self._motor.set_axis_parameter(
+            self._motor.AP.smartEnergyThresholdSpeed, threshold
+        )
+
+    def set_coolstep_threshold_raw(self, threshold: int) -> None:
+        self._require_feature("coolstep")
+        self._check_range("threshold", threshold, 0, (1 << 31) - 1)
+        self._coolstep_threshold_raw = threshold
+        if threshold > 0:
+            self._coolstep_enabled = True
+        self._motor.set_axis_parameter(
+            self._motor.AP.smartEnergyThresholdSpeed,
+            threshold if self._coolstep_enabled else 0,
+        )
+
+    def set_coolstep_threshold_rps(self, rps: float) -> None:
+        self._require_feature("coolstep")
+        if rps < 0:
+            raise ValueError("rps must be non-negative")
+        self.set_coolstep_threshold_raw(self._rps_to_raw_speed(rps) if rps > 0 else 0)
+
+    @staticmethod
+    def _check_range(name: str, value: int, minimum: int, maximum: int) -> None:
+        if not minimum <= value <= maximum:
+            raise ValueError(f"{name} must be in [{minimum}, {maximum}]")
 
     # ------------------------------------------------------------------ #
     # Abstract hooks — subclasses MUST provide

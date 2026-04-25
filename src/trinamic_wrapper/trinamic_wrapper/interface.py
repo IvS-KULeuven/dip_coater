@@ -108,6 +108,9 @@ class StepperMotor(Protocol):
     def set_interpolation(self, enabled: bool) -> None:
         """Enable 256-microstep interpolation from the current step mode."""
 
+    def set_chopper_mode(self, mode: int) -> None:
+        """Set chopper mode: 0 = SpreadCycle, 1 = classic constant TOff."""
+
     def set_stealthchop(
         self,
         enabled: bool,
@@ -118,6 +121,35 @@ class StepperMotor(Protocol):
         :param threshold_rps: If given, speed above which the chip falls
             back to SpreadCycle. Below this speed it stays in StealthChop.
         """
+
+    def set_stallguard_enabled(self, enabled: bool) -> None:
+        """Enable or disable StallGuard2 using the cached threshold."""
+
+    def set_stallguard_filter_enabled(self, enabled: bool) -> None:
+        """Enable or disable the hardware StallGuard2 filter."""
+
+    def set_stallguard_threshold(self, threshold: int) -> None:
+        """Set the StallGuard2 threshold."""
+
+    def configure_coolstep(
+        self,
+        *,
+        min_current: int = 0,
+        current_down_step: int = 0,
+        current_up_step: int = 0,
+        hysteresis: int = 0,
+        threshold_speed: int = 0,
+    ) -> None:
+        """Configure CoolStep axis parameters in PyTrinamic raw units."""
+
+    def set_coolstep_enabled(self, enabled: bool) -> None:
+        """Enable or disable CoolStep using the cached raw threshold."""
+
+    def set_coolstep_threshold_raw(self, threshold: int) -> None:
+        """Set the raw PyTrinamic smartEnergyThresholdSpeed axis parameter."""
+
+    def set_coolstep_threshold_rps(self, rps: float) -> None:
+        """Set the CoolStep threshold in revolutions per second."""
 
     def has_feature(self, name: str) -> bool:
         """Check whether the chip supports a named optional feature.

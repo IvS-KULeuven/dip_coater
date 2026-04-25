@@ -42,7 +42,12 @@ class FakeStepperMotor:
         self.rotate_calls = []
         self.stop_calls = 0
         self.interpolation = None
+        self.chopper_mode = None
+        self.stallguard_enabled = None
+        self.stallguard_filter_enabled = None
         self.stallguard_threshold = None
+        self.coolstep_enabled = None
+        self.coolstep_threshold_raw = None
         self.motion_units_per_fullstep = self.step_mode.microsteps_per_fullstep
         self._motor = self._RawMotor(self)
 
@@ -116,8 +121,23 @@ class FakeStepperMotor:
     def set_interpolation(self, enabled: bool) -> None:
         self.interpolation = enabled
 
+    def set_chopper_mode(self, mode: int) -> None:
+        self.chopper_mode = mode
+
+    def set_stallguard_enabled(self, enabled: bool) -> None:
+        self.stallguard_enabled = enabled
+
+    def set_stallguard_filter_enabled(self, enabled: bool) -> None:
+        self.stallguard_filter_enabled = enabled
+
     def set_stallguard_threshold(self, threshold: int) -> None:
         self.stallguard_threshold = threshold
+
+    def set_coolstep_enabled(self, enabled: bool) -> None:
+        self.coolstep_enabled = enabled
+
+    def set_coolstep_threshold_raw(self, threshold: int) -> None:
+        self.coolstep_threshold_raw = threshold
 
     def has_feature(self, name: str) -> bool:
         return True
@@ -315,16 +335,27 @@ def test_adapter_log_handler_methods_do_not_crash():
     adapter.remove_log_handler(handler)
 
 
-def test_unmapped_advanced_features_fail_loudly():
-    adapter = make_adapter()
+def test_adapter_supports_advanced_feature_passthroughs():
+    motor = FakeStepperMotor()
+    adapter = make_adapter(motor)
 
-    with pytest.raises(NotImplementedError):
-        adapter.set_chopper_mode("SpreadCycle")
-    with pytest.raises(NotImplementedError):
-        adapter.set_stallguard_enabled(True)
-    with pytest.raises(NotImplementedError):
-        adapter.set_stallguard_filter_enabled(True)
-    with pytest.raises(NotImplementedError):
-        adapter.set_coolstep_enabled(True)
-    with pytest.raises(NotImplementedError):
-        adapter.set_coolstep_threshold(3)
+    adapter.set_chopper_mode("SpreadCycle")
+    adapter.set_stallguard_enabled(True)
+    adapter.set_stallguard_filter_enabled(True)
+    adapter.set_coolstep_enabled(True)
+    adapter.set_coolstep_threshold(3)
+
+    assert motor.chopper_mode == 0
+    assert motor.stallguard_enabled is True
+    assert motor.stallguard_filter_enabled is True
+    assert motor.coolstep_enabled is True
+    assert motor.coolstep_threshold_raw == 3
+
+
+def test_adapter_chopper_mode_accepts_constant_toff_label():
+    motor = FakeStepperMotor()
+    adapter = make_adapter(motor)
+
+    adapter.set_chopper_mode("Constant TOff")
+
+    assert motor.chopper_mode == 1

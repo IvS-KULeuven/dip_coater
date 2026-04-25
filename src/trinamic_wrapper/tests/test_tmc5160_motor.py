@@ -306,6 +306,63 @@ class TestStallGuard:
         with pytest.raises(ValueError):
             motor.set_stallguard_threshold(-100)
 
+    def test_stallguard_enable_disable_uses_cached_threshold(self, setup):
+        motor, conn, board = setup
+        motor.set_stallguard_threshold(10)
+        motor.set_stallguard_enabled(False)
+        assert conn.get_ap(board.motors[0].AP.SG2Threshold) == 0
+
+        motor.set_stallguard_enabled(True)
+        assert conn.get_ap(board.motors[0].AP.SG2Threshold) == 10
+
+    def test_stallguard_filter_writes_sg2_filter_ap(self, setup):
+        motor, conn, board = setup
+        motor.set_stallguard_filter_enabled(True)
+        assert conn.get_ap(board.motors[0].AP.SG2FilterEnable) == 1
+        motor.set_stallguard_filter_enabled(False)
+        assert conn.get_ap(board.motors[0].AP.SG2FilterEnable) == 0
+
+
+class TestChopperAndCoolStep:
+    def test_chopper_mode_writes_constant_toff_ap(self, setup):
+        motor, conn, board = setup
+        motor.set_chopper_mode(1)
+        assert conn.get_ap(board.motors[0].AP.ConstantTOffMode) == 1
+        motor.set_chopper_mode(0)
+        assert conn.get_ap(board.motors[0].AP.ConstantTOffMode) == 0
+
+    def test_chopper_mode_rejects_invalid_value(self, setup):
+        motor, *_ = setup
+        with pytest.raises(ValueError):
+            motor.set_chopper_mode(2)
+
+    def test_configure_coolstep_writes_pytrinamic_axis_parameters(self, setup):
+        motor, conn, board = setup
+        ap = board.motors[0].AP
+        motor.configure_coolstep(
+            min_current=1,
+            current_down_step=2,
+            current_up_step=3,
+            hysteresis=4,
+            threshold_speed=123,
+        )
+
+        assert conn.get_ap(ap.SEIMIN) == 1
+        assert conn.get_ap(ap.SECDS) == 2
+        assert conn.get_ap(ap.SECUS) == 3
+        assert conn.get_ap(ap.smartEnergyHysteresis) == 4
+        assert conn.get_ap(ap.smartEnergyThresholdSpeed) == 123
+
+    def test_coolstep_enable_disable_uses_cached_threshold(self, setup):
+        motor, conn, board = setup
+        ap = board.motors[0].AP
+        motor.set_coolstep_threshold_raw(456)
+        assert conn.get_ap(ap.smartEnergyThresholdSpeed) == 456
+        motor.set_coolstep_enabled(False)
+        assert conn.get_ap(ap.smartEnergyThresholdSpeed) == 0
+        motor.set_coolstep_enabled(True)
+        assert conn.get_ap(ap.smartEnergyThresholdSpeed) == 456
+
 
 class TestPosition:
     def test_reset_position_zeros_both_position_aps(self, setup):

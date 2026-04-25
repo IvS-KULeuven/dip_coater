@@ -183,18 +183,11 @@ class TMC5160Motor(BaseStepperMotor):
         tpwmthrs = max(0, min(tpwmthrs, (1 << 20) - 1))  # 20-bit field
         self._eval.write_register(TMC5160.REG.TPWMTHRS, tpwmthrs)
 
-    def set_stallguard_threshold(self, sgt: int) -> None:
-        """Set the StallGuard2 detection threshold (SGT, signed 7-bit)."""
-        if not -64 <= sgt <= 63:
-            raise ValueError("sgt must be in [-64, 63]")
-        self._motor.set_axis_parameter(self._motor.AP.SG2Threshold, sgt)
-
     def set_coolstep_threshold_rps(self, rps: float) -> None:
         """Enable CoolStep above the given speed (0 disables)."""
-        raw = self._rps_to_raw_speed(rps) if rps > 0 else 0
-        self._motor.set_axis_parameter(
-            self._motor.AP.smartEnergyThresholdSpeed, raw
-        )
+        if rps < 0:
+            raise ValueError("rps must be non-negative")
+        self.set_coolstep_threshold_raw(self._rps_to_raw_speed(rps) if rps > 0 else 0)
 
     @property
     def raw_ic(self) -> TMC5160:
