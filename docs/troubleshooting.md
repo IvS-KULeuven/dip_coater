@@ -10,11 +10,10 @@ Run:
 dip-coater --help
 ```
 
-If the command is not found, the package is not installed in your current environment. Activate the Poetry shell or virtual environment and try again.
+If the command is not found, the package is not installed in your current environment. Run it through uv or activate the virtual environment and try again.
 
 ```bash
-poetry shell
-dip-coater --help
+uv run dip-coater --help
 ```
 
 ## I Do Not Know Which Port to Use

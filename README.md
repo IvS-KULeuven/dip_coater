@@ -42,8 +42,8 @@ The docs are written as Markdown and can be published with MkDocs.
 Preview locally:
 
 ```bash
-poetry install --with docs
-poetry run mkdocs serve
+uv sync --extra docs
+uv run --extra docs mkdocs serve
 ```
 
 Then open the local URL printed by MkDocs.
@@ -51,7 +51,7 @@ Then open the local URL printed by MkDocs.
 Build the static site:
 
 ```bash
-poetry run mkdocs build
+uv run --extra docs mkdocs build
 ```
 
 ## Development Checks
@@ -59,7 +59,7 @@ poetry run mkdocs build
 Run the non-hardware tests:
 
 ```bash
-python -m pytest -q -m "not hardware"
+uv run pytest -q -m "not hardware"
 ```
 
 Hardware tests are documented in [Developer Notes](docs/developer-notes.md).

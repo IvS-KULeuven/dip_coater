@@ -29,7 +29,7 @@ def get_version() -> str:
 
         with pyproject_path.open("rb") as pyproject_file:
             pyproject = tomllib.load(pyproject_file)
-        return pyproject["tool"]["poetry"]["version"]
+        return pyproject["project"]["version"]
 
 
 __version__ = get_version()

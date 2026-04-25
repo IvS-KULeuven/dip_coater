@@ -7,7 +7,7 @@ This page is for maintainers and developers.
 Run all non-hardware tests:
 
 ```bash
-python -m pytest -q -m "not hardware"
+uv run pytest -q -m "not hardware"
 ```
 
 Run hardware tests only when the correct hardware is connected.
@@ -18,7 +18,7 @@ Set the hardware port:
 
 ```bash
 DIP_COATER_TMC5160_PORT=/dev/tty.usbmodemTMCEVAL1 \
-python -m pytest -m hardware src/test/test_tmc5160_hardware.py
+uv run pytest -m hardware src/test/test_tmc5160_hardware.py
 ```
 
 Optional motion smoke test:
@@ -26,7 +26,7 @@ Optional motion smoke test:
 ```bash
 DIP_COATER_TMC5160_PORT=/dev/tty.usbmodemTMCEVAL1 \
 DIP_COATER_TMC5160_RUN_MOTION=1 \
-python -m pytest -m hardware src/test/test_tmc5160_hardware.py
+uv run pytest -m hardware src/test/test_tmc5160_hardware.py
 ```
 
 Supported hardware-test variables:
@@ -46,19 +46,19 @@ Supported hardware-test variables:
 Install docs dependencies:
 
 ```bash
-poetry install --with docs
+uv sync --extra docs
 ```
 
 Preview:
 
 ```bash
-poetry run mkdocs serve
+uv run --extra docs mkdocs serve
 ```
 
 Build:
 
 ```bash
-poetry run mkdocs build
+uv run --extra docs mkdocs build
 ```
 
 ## Publish With GitHub Pages
@@ -83,8 +83,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install mkdocs mkdocs-material
-      - run: mkdocs gh-deploy --force
+      - uses: astral-sh/setup-uv@v5
+      - run: uv run --extra docs mkdocs gh-deploy --force
 ```
 
 Then enable GitHub Pages for the `gh-pages` branch in the repository settings.

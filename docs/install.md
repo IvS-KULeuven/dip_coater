@@ -7,7 +7,7 @@ Use this page when setting up the project on a Raspberry Pi or on a normal compu
 - Python 3.10 or newer
 - this project folder
 - a terminal
-- Poetry, if you want the recommended installation method
+- uv
 
 The commands below assume you are inside the project folder.
 
@@ -15,30 +15,36 @@ The commands below assume you are inside the project folder.
 cd /path/to/dip_coater
 ```
 
-## Recommended: Poetry
+## Install uv
 
-Install Poetry first:
+Install uv first:
 
 ```bash
-python3 -m pip install poetry
+python3 -m pip install uv
 ```
 
 On a Raspberry Pi with GPIO hardware:
 
 ```bash
-poetry install --with rpi
+uv sync --extra rpi
 ```
 
 On macOS, Linux, or Windows for testing without Raspberry Pi GPIO:
 
 ```bash
-poetry install
+uv sync
 ```
 
-Start a shell inside the project environment:
+Run commands inside the project environment with `uv run`:
 
 ```bash
-poetry shell
+uv run dip-coater --help
+```
+
+If you prefer to activate the environment manually:
+
+```bash
+source .venv/bin/activate
 ```
 
 Then check that the app command exists:
@@ -47,18 +53,13 @@ Then check that the app command exists:
 dip-coater --help
 ```
 
-## Alternative: Python Virtual Environment
+## Alternative: Install With pip
 
-Create and activate a virtual environment:
+You can still install the package into an existing virtual environment:
 
 ```bash
 python3 -m venv venv --prompt=dip-coater
 source venv/bin/activate
-```
-
-Install the package in editable mode:
-
-```bash
 python3 -m pip install -e .
 ```
 
@@ -67,13 +68,13 @@ python3 -m pip install -e .
 The documentation website is optional. Install it only if you want to preview or publish the docs:
 
 ```bash
-poetry install --with docs
+uv sync --extra docs
 ```
 
 Preview the website:
 
 ```bash
-poetry run mkdocs serve
+uv run --extra docs mkdocs serve
 ```
 
 ## First Test Without Hardware
@@ -81,7 +82,7 @@ poetry run mkdocs serve
 Before connecting hardware, you can test that the app opens:
 
 ```bash
-dip-coater --driver TMC5160 --use-dummy-driver
+uv run dip-coater --driver TMC5160 --use-dummy-driver
 ```
 
 If the app opens, the software installation is working.

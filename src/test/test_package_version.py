@@ -1,6 +1,11 @@
 import importlib
 from pathlib import Path
 
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover
+    import tomli as tomllib
+
 
 def test_get_version_prefers_installed_package_metadata(monkeypatch):
     module = importlib.import_module("dip_coater")
@@ -10,9 +15,11 @@ def test_get_version_prefers_installed_package_metadata(monkeypatch):
     assert module.get_version() == "9.9.9"
 
 
-def test_pyproject_packages_include_dip_coater_and_trinamic_wrapper():
+def test_pyproject_packages_include_runtime_packages():
     pyproject_path = Path(__file__).parents[2] / "pyproject.toml"
-    pyproject = pyproject_path.read_text()
+    pyproject = tomllib.loads(pyproject_path.read_text())
 
-    assert '{include = "dip_coater", from = "src"}' in pyproject
-    assert '{include = "trinamic_wrapper", from = "src/trinamic_wrapper"}' in pyproject
+    package_finder = pyproject["tool"]["setuptools"]["packages"]["find"]
+    assert package_finder["where"] == ["src"]
+    assert "dip_coater*" in package_finder["include"]
+    assert "trinamic_wrapper*" in package_finder["include"]
