@@ -10,7 +10,14 @@ Run:
 dip-coater --help
 ```
 
-If the command is not found, the package is not installed in your current environment. Run it through uv or activate the virtual environment and try again.
+If the command is not found, the package is not installed in your current environment. Activate the virtual environment and try again.
+
+```bash
+source venv/bin/activate
+dip-coater --help
+```
+
+If you installed with uv, run:
 
 ```bash
 uv run dip-coater --help

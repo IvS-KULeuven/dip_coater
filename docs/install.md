@@ -7,7 +7,6 @@ Use this page when setting up the project on a Raspberry Pi or on a normal compu
 - Python 3.10 or newer
 - this project folder
 - a terminal
-- uv
 
 The commands below assume you are inside the project folder.
 
@@ -15,36 +14,25 @@ The commands below assume you are inside the project folder.
 cd /path/to/dip_coater
 ```
 
-## Install uv
+## Recommended: pip
 
-Install uv first:
+Create a virtual environment:
 
 ```bash
-python3 -m pip install uv
+python3 -m venv venv --prompt=dip-coater
+source venv/bin/activate
 ```
 
-On a Raspberry Pi with GPIO hardware:
+Upgrade pip:
 
 ```bash
-uv sync --extra rpi
+python3 -m pip install --upgrade pip
 ```
 
-On macOS, Linux, or Windows for testing without Raspberry Pi GPIO:
+Install the app:
 
 ```bash
-uv sync
-```
-
-Run commands inside the project environment with `uv run`:
-
-```bash
-uv run dip-coater --help
-```
-
-If you prefer to activate the environment manually:
-
-```bash
-source .venv/bin/activate
+python3 -m pip install -e .
 ```
 
 Then check that the app command exists:
@@ -53,25 +41,52 @@ Then check that the app command exists:
 dip-coater --help
 ```
 
-## Alternative: Install With pip
+## Raspberry Pi Install
 
-You can still install the package into an existing virtual environment:
+On a Raspberry Pi with GPIO hardware, install the Raspberry Pi extra:
 
 ```bash
-python3 -m venv venv --prompt=dip-coater
-source venv/bin/activate
-python3 -m pip install -e .
+python3 -m pip install -e ".[rpi]"
+```
+
+## Alternative: uv
+
+If you already use uv, you can install and run the project with:
+
+```bash
+uv sync
+uv run dip-coater --help
+```
+
+On a Raspberry Pi with GPIO hardware:
+
+```bash
+uv sync --extra rpi
 ```
 
 ## Install Documentation Tools
 
-The documentation website is optional. Install it only if you want to preview or publish the docs:
+The documentation website is optional. Install it only if you want to preview or publish the docs.
+
+With pip:
+
+```bash
+python3 -m pip install -e ".[docs]"
+```
+
+Preview the website:
+
+```bash
+mkdocs serve
+```
+
+With uv:
 
 ```bash
 uv sync --extra docs
 ```
 
-Preview the website:
+Preview with uv:
 
 ```bash
 uv run --extra docs mkdocs serve
@@ -82,7 +97,7 @@ uv run --extra docs mkdocs serve
 Before connecting hardware, you can test that the app opens:
 
 ```bash
-uv run dip-coater --driver TMC5160 --use-dummy-driver
+dip-coater --driver TMC5160 --use-dummy-driver
 ```
 
 If the app opens, the software installation is working.

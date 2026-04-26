@@ -42,8 +42,8 @@ The docs are written as Markdown and can be published with MkDocs.
 Preview locally:
 
 ```bash
-uv sync --extra docs
-uv run --extra docs mkdocs serve
+python3 -m pip install -e ".[docs]"
+mkdocs serve
 ```
 
 Then open the local URL printed by MkDocs.
@@ -51,7 +51,7 @@ Then open the local URL printed by MkDocs.
 Build the static site:
 
 ```bash
-uv run --extra docs mkdocs build
+mkdocs build
 ```
 
 ## Development Checks
