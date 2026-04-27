@@ -1,4 +1,7 @@
-from dip_coater.widgets.motor_controls import control_button_disabled_states
+from dip_coater.widgets.motor_controls import (
+    control_button_disabled_states,
+    is_normal_motor_stop,
+)
 from dip_coater.widgets.status import Status, motor_state_badge
 
 
@@ -7,6 +10,15 @@ def test_motor_state_badge_uses_compact_state_label():
     assert motor_state_badge("moving") == "[blue]MOVING[/]"
     assert motor_state_badge("fault") == "[red]FAULT[/]"
     assert motor_state_badge(None) == "[red]UNKNOWN[/]"
+
+
+def test_normal_motor_stop_does_not_depend_on_tmc2209_imports():
+    class StopModeLike:
+        name = "NO"
+
+    assert is_normal_motor_stop(None) is True
+    assert is_normal_motor_stop(StopModeLike()) is True
+    assert is_normal_motor_stop("up limit switch triggered") is False
 
 
 def test_control_buttons_disable_moves_toward_triggered_limit_switches():

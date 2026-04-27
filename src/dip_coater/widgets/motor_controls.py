@@ -6,7 +6,10 @@ from textual import on, events
 
 from dip_coater.widgets.position_controls import PositionControls
 from dip_coater.setup_profiles.machine_profile import HomeDirection
-from TMC_2209._TMC_2209_move import StopMode
+
+
+def is_normal_motor_stop(stop) -> bool:
+    return stop is None or getattr(stop, "name", None) == "NO"
 
 
 def control_button_disabled_states(
@@ -118,7 +121,7 @@ class MotorControls(Static):
                 )
                 if self.app_state.motor_state == "disabled":
                     return
-                if stop is None or stop == StopMode.NO:
+                if is_normal_motor_stop(stop):
                     log.write("[green]-> Finished moving up.[/]")
                 else:
                     log.write(f"[red]-> Stopped moving up: {stop}.[/]")
@@ -158,7 +161,7 @@ class MotorControls(Static):
                 )
                 if self.app_state.motor_state == "disabled":
                     return
-                if stop is None or stop == StopMode.NO:
+                if is_normal_motor_stop(stop):
                     log.write("[green]-> Finished moving down.[/]")
                 else:
                     log.write(f"[red]-> Stopped moving down: {stop}.[/]")
