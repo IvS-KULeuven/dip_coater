@@ -288,9 +288,7 @@ def main():
     app_state = AppState(
         args.driver,
         setup_profile,
-        gpio_required=(
-            driver_spec.requires_gpio or setup_profile.supports_limit_switches
-        ),
+        gpio_required=(driver_spec.requires_gpio or setup_profile.requires_gpio),
     )
     app_state.config.USE_DUMMY_DRIVER = args.use_dummy_driver
 

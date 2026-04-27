@@ -9,6 +9,9 @@ from dip_coater.setup_profiles.machine_profile import (
     AvailableMachineSetups,
     HomeDirection,
     LimitSwitchPair,
+    LimitSwitchPolarity,
+    LimitSwitchSetup,
+    LimitSwitchSource,
     MachineProfile,
 )
 
@@ -196,6 +199,7 @@ def test_motion_controller_falls_back_for_drivers_without_setup_reference_argume
         key=AvailableMachineSetups.CUSTOM,
         label="Custom",
         mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
     )
     driver = FakeDriverWithoutHomeFlag()
     controller = MotionController(driver, profile)
@@ -213,6 +217,7 @@ def test_motion_controller_prefers_driver_reference_switches():
         key=AvailableMachineSetups.CUSTOM,
         label="Custom",
         mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
     )
     driver = FakeReferenceSwitchDriver()
     driver.left_endstop = True
@@ -229,6 +234,7 @@ def test_motion_controller_refuses_move_toward_triggered_reference_switch():
         key=AvailableMachineSetups.CUSTOM,
         label="Custom",
         mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
     )
     driver = FakeReferenceSwitchDriver()
     driver.left_endstop = False
@@ -246,6 +252,7 @@ async def test_motion_controller_stops_when_active_reference_switch_triggers():
         key=AvailableMachineSetups.CUSTOM,
         label="Custom",
         mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
     )
     driver = FakeReferenceSwitchDriver()
     controller = MotionController(driver, profile, gpio=None)
@@ -264,3 +271,13 @@ async def test_motion_controller_stops_when_active_reference_switch_triggers():
 
     assert driver.stopped is True
     assert result == "up limit switch triggered"
+
+
+def test_large_profile_uses_landungsbruecke_reference_switches():
+    profile = get_machine_profile(AvailableMachineSetups.LARGE_COATER)
+
+    assert profile.requires_gpio is False
+    assert profile.limit_switches.up.source == LimitSwitchSource.DRIVER_REFERENCE
+    assert profile.limit_switches.down.source == LimitSwitchSource.DRIVER_REFERENCE
+    assert profile.limit_switches.up.polarity == LimitSwitchPolarity.ACTIVE_LOW
+    assert profile.limit_switches.down.polarity == LimitSwitchPolarity.ACTIVE_LOW
