@@ -198,6 +198,7 @@ def test_create_tmc5160_driver_uses_trinamic_wrapper_adapter(monkeypatch):
     )
 
     assert isinstance(driver, TrinamicWrapperMotorAdapter)
+    assert driver.is_dummy is False
     assert captured["open_connection"] == {
         "port": "/dev/tty.test",
         "interface": "usb_tmcl",
@@ -254,6 +255,7 @@ def test_create_tmc5160_dummy_driver_uses_wrapper_adapter(monkeypatch):
     )
 
     assert isinstance(driver, TrinamicWrapperMotorAdapter)
+    assert driver.is_dummy is True
     assert app_state.setup_profile.invert_motor_direction is False
 
     driver.enable_motor()

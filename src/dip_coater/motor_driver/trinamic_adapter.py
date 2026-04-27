@@ -38,12 +38,14 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
         mechanical_setup: MechanicalSetup,
         *,
         invert_direction: bool = False,
+        is_dummy: bool = False,
         close: Callable[[], None] | None = None,
         logger: logging.Logger | None = None,
     ) -> None:
         super().__init__(mechanical_setup)
         self._motor = motor
         self._close = close
+        self.is_dummy = is_dummy
         self._invert_direction = invert_direction
         self._logger = logger or logging.getLogger(
             f"{__name__}.{type(self).__name__}"

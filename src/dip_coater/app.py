@@ -84,7 +84,11 @@ class DipCoaterApp(App):
         )
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
+        yield Header(
+            show_clock=True,
+            id="app-header",
+            classes="dummy-mode" if self.app_state.config.USE_DUMMY_DRIVER else "",
+        )
         yield Footer()
         with TabbedContent(initial="main-tab", id="tabbed-content"):
             yield MainTab(self.app_state)
@@ -319,7 +323,8 @@ def main():
         f"setup: {app_state.setup_profile.label}, log level: {log_level}"
     )
     app = DipCoaterApp(app_state)
-    app.title = f"Dip Coater v{__version__}"
+    suffix = " (dummy)" if app_state.config.USE_DUMMY_DRIVER else ""
+    app.title = f"Dip Coater v{__version__}{suffix}"
     app.run()
 
 

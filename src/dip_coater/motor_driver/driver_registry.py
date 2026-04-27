@@ -163,6 +163,7 @@ def _create_tmc5160_driver(
         motor,
         setup,
         invert_direction=app_state.setup_profile.invert_motor_direction,
+        is_dummy=app_state.config.USE_DUMMY_DRIVER,
         close=connection.close if connection is not None else None,
         logger=logger,
     )

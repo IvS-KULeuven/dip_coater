@@ -4,6 +4,11 @@ Status {
     visibility: visible;
 }
 
+Header.dummy-mode {
+    background: purple;
+    color: white;
+}
+
 #right-side {
     width: 25%;
     height: 100%;
@@ -318,4 +323,3 @@ Coder {
     min-width: 0;
     padding: 0;
 }
-
