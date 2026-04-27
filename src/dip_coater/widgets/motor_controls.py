@@ -85,15 +85,15 @@ class MotorControls(Static):
                 self.app_state.motion_controller.move_up(
                     distance_mm, speed_mm_s, acceleration_mm_s2
                 )
-                stop = (
-                    await self.app_state.motion_controller.wait_for_motor_done_async()
+                stop = await self.app_state.motion_controller.wait_for_motor_done_async(
+                    active_limit_direction=HomeDirection.UP
                 )
                 if self.app_state.motor_state == "disabled":
                     return
                 if stop is None or stop == StopMode.NO:
                     log.write("[green]-> Finished moving up.[/]")
                 else:
-                    log.write(f"[red]-> Stopped moving up {stop}.[/]")
+                    log.write(f"[red]-> Stopped moving up: {stop}.[/]")
                 self.set_motor_state("enabled")
             except ValueError as e:
                 log.write(f"[red]{e}[/]")
@@ -125,15 +125,15 @@ class MotorControls(Static):
                 self.app_state.motion_controller.move_down(
                     distance_mm, speed_mm_s, acceleration_mm_s2
                 )
-                stop = (
-                    await self.app_state.motion_controller.wait_for_motor_done_async()
+                stop = await self.app_state.motion_controller.wait_for_motor_done_async(
+                    active_limit_direction=HomeDirection.DOWN
                 )
                 if self.app_state.motor_state == "disabled":
                     return
                 if stop is None or stop == StopMode.NO:
                     log.write("[green]-> Finished moving down.[/]")
                 else:
-                    log.write(f"[red]-> Stopped moving down {stop}.[/]")
+                    log.write(f"[red]-> Stopped moving down: {stop}.[/]")
                 self.set_motor_state("enabled")
             except ValueError as e:
                 log.write(f"[red]{e}[/]")

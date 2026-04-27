@@ -1,3 +1,7 @@
+import asyncio
+
+import pytest
+
 from dip_coater.mechanical.mechanical_setup import MechanicalSetup
 from dip_coater.services.motion_controller import MotionController
 from dip_coater.setup_profiles import create_custom_profile, get_machine_profile
@@ -38,6 +42,7 @@ class FakeDriver:
         self.last_run_to_position = None
         self.last_position_call = None
         self.cleaned = False
+        self.stopped = False
 
     def enable_motor(self):
         return None
@@ -46,6 +51,7 @@ class FakeDriver:
         return None
 
     def stop_motor(self):
+        self.stopped = True
         return None
 
     def wait_for_motor_done(self):
@@ -120,6 +126,10 @@ class FakeReferenceSwitchDriver(FakeDriver):
 
     def get_right_endstop(self):
         return self.right_endstop
+
+    async def wait_for_motor_done_async(self):
+        while True:
+            await asyncio.sleep(1)
 
 
 def test_custom_profile_can_override_setup_geometry_and_direction():
@@ -210,5 +220,47 @@ def test_motion_controller_prefers_driver_reference_switches():
     controller = MotionController(driver, profile, gpio=None)
 
     assert controller.supports_limit_switches is True
-    assert controller.read_limit_switch(HomeDirection.UP) is True
-    assert controller.read_limit_switch(HomeDirection.DOWN) is False
+    assert controller.read_limit_switch(HomeDirection.UP) is False
+    assert controller.read_limit_switch(HomeDirection.DOWN) is True
+
+
+def test_motion_controller_refuses_move_toward_triggered_reference_switch():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+    )
+    driver = FakeReferenceSwitchDriver()
+    driver.left_endstop = False
+    controller = MotionController(driver, profile, gpio=None)
+
+    with pytest.raises(ValueError, match="limit switch is triggered"):
+        controller.move_up(1.0, 0.5)
+
+    assert driver.moves == []
+
+
+@pytest.mark.asyncio
+async def test_motion_controller_stops_when_active_reference_switch_triggers():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+    )
+    driver = FakeReferenceSwitchDriver()
+    controller = MotionController(driver, profile, gpio=None)
+
+    async def trigger_limit_switch():
+        await asyncio.sleep(0.02)
+        driver.left_endstop = False
+
+    driver.left_endstop = True
+    trigger_task = asyncio.create_task(trigger_limit_switch())
+    result = await asyncio.wait_for(
+        controller.wait_for_motor_done_async(active_limit_direction=HomeDirection.UP),
+        timeout=1.0,
+    )
+    await trigger_task
+
+    assert driver.stopped is True
+    assert result == "up limit switch triggered"

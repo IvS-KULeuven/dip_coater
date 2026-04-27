@@ -138,7 +138,7 @@ class PositionControls(Static):
             if stop is None or getattr(stop, "name", None) == "NO":
                 log.write("[green]-> Finished moving to position.[/]")
             else:
-                log.write(f"[red]-> Stopped moving to position {stop}.[/]")
+                log.write(f"[red]-> Stopped moving to position: {stop}.[/]")
         except ValueError as e:
             log.write(f"[red]{e}[/]")
         finally:
