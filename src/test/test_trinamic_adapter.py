@@ -50,6 +50,9 @@ class FakeStepperMotor:
         self.stallguard_threshold = None
         self.coolstep_enabled = None
         self.coolstep_threshold_raw = None
+        self.reference_stops = None
+        self.left_endstop = False
+        self.right_endstop = False
         self.motion_units_per_fullstep = self.step_mode.microsteps_per_fullstep
         self._motor = self._RawMotor(self)
 
@@ -148,6 +151,20 @@ class FakeStepperMotor:
 
     def set_coolstep_threshold_raw(self, threshold: int) -> None:
         self.coolstep_threshold_raw = threshold
+
+    def enable_reference_stops(
+        self,
+        *,
+        left: bool = True,
+        right: bool = True,
+    ) -> None:
+        self.reference_stops = (left, right)
+
+    def get_left_endstop(self) -> bool:
+        return self.left_endstop
+
+    def get_right_endstop(self) -> bool:
+        return self.right_endstop
 
     def has_feature(self, name: str) -> bool:
         return True
@@ -384,3 +401,16 @@ def test_adapter_chopper_mode_accepts_constant_toff_label():
     adapter.set_chopper_mode("Constant TOff")
 
     assert motor.chopper_mode == 1
+
+
+def test_adapter_supports_reference_stop_passthroughs():
+    motor = FakeStepperMotor()
+    motor.left_endstop = True
+    motor.right_endstop = False
+    adapter = make_adapter(motor)
+
+    adapter.enable_reference_stops(left=True, right=False)
+
+    assert motor.reference_stops == (True, False)
+    assert adapter.get_left_endstop() is True
+    assert adapter.get_right_endstop() is False

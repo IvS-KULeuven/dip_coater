@@ -278,6 +278,23 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
         setter(threshold)
         self._logger.info(f"CoolStep threshold set to {threshold}")
 
+    def enable_reference_stops(
+        self,
+        *,
+        left: bool = True,
+        right: bool = True,
+    ):
+        self._motor.enable_reference_stops(left=left, right=right)
+        self._logger.info(
+            f"Reference stops configured: left={left}, right={right}"
+        )
+
+    def get_left_endstop(self) -> bool:
+        return self._motor.get_left_endstop()
+
+    def get_right_endstop(self) -> bool:
+        return self._motor.get_right_endstop()
+
     def _active_stealthchop_threshold(self) -> float | None:
         if self._stealthchop_threshold_rps is None:
             return None

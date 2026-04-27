@@ -46,6 +46,10 @@ class TestFeatureDiscovery:
         motor, *_ = setup
         assert motor.has_feature("ramp_generator")
 
+    def test_has_reference_switches(self, setup):
+        motor, *_ = setup
+        assert motor.has_feature("reference_switches")
+
     def test_does_not_have_nonsense_feature(self, setup):
         motor, *_ = setup
         assert not motor.has_feature("banana_mode")
@@ -362,6 +366,26 @@ class TestChopperAndCoolStep:
         assert conn.get_ap(ap.smartEnergyThresholdSpeed) == 0
         motor.set_coolstep_enabled(True)
         assert conn.get_ap(ap.smartEnergyThresholdSpeed) == 456
+
+
+class TestReferenceSwitches:
+    def test_enable_reference_stops_writes_left_and_right_aps(self, setup):
+        motor, conn, board = setup
+        ap = board.motors[0].AP
+
+        motor.enable_reference_stops(left=True, right=False)
+
+        assert conn.get_ap(ap.AutomaticLeftStop) == 1
+        assert conn.get_ap(ap.AutomaticRightStop) == 0
+
+    def test_get_endstops_reads_left_and_right_aps(self, setup):
+        motor, conn, board = setup
+        ap = board.motors[0].AP
+        conn.axis_parameters[(ap.LeftEndstop, 0)] = 1
+        conn.axis_parameters[(ap.RightEndstop, 0)] = 0
+
+        assert motor.get_left_endstop() is True
+        assert motor.get_right_endstop() is False
 
 
 class TestPosition:

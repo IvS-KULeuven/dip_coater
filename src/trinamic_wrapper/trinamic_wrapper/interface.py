@@ -151,9 +151,24 @@ class StepperMotor(Protocol):
     def set_coolstep_threshold_rps(self, rps: float) -> None:
         """Set the CoolStep threshold in revolutions per second."""
 
+    def enable_reference_stops(
+        self,
+        *,
+        left: bool = True,
+        right: bool = True,
+    ) -> None:
+        """Enable/disable automatic stop on reference switch events."""
+
+    def get_left_endstop(self) -> bool:
+        """Return whether the left reference switch input is active."""
+
+    def get_right_endstop(self) -> bool:
+        """Return whether the right reference switch input is active."""
+
     def has_feature(self, name: str) -> bool:
         """Check whether the chip supports a named optional feature.
 
         Valid names include: ``"stealthchop"``, ``"interpolation"``,
-        ``"coolstep"``, ``"stallguard"``, ``"ramp_generator"``.
+        ``"coolstep"``, ``"stallguard"``, ``"ramp_generator"``,
+        ``"reference_switches"``.
         """

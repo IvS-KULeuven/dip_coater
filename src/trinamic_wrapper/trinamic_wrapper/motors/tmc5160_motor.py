@@ -31,6 +31,7 @@ class TMC5160Motor(BaseStepperMotor):
         "coolstep",
         "stallguard",
         "ramp_generator",
+        "reference_switches",
     })
 
     def __init__(

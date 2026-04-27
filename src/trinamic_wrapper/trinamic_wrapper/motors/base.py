@@ -343,6 +343,31 @@ class BaseStepperMotor(ABC):
             raise ValueError("rps must be non-negative")
         self.set_coolstep_threshold_raw(self._rps_to_raw_speed(rps) if rps > 0 else 0)
 
+    def enable_reference_stops(
+        self,
+        *,
+        left: bool = True,
+        right: bool = True,
+    ) -> None:
+        """Enable/disable automatic stop on hardware reference switch events."""
+        self._require_feature("reference_switches")
+        self._motor.set_axis_parameter(
+            self._motor.AP.AutomaticLeftStop, 1 if left else 0
+        )
+        self._motor.set_axis_parameter(
+            self._motor.AP.AutomaticRightStop, 1 if right else 0
+        )
+
+    def get_left_endstop(self) -> bool:
+        """Return True when the left reference switch input is active."""
+        self._require_feature("reference_switches")
+        return bool(self._motor.get_axis_parameter(self._motor.AP.LeftEndstop))
+
+    def get_right_endstop(self) -> bool:
+        """Return True when the right reference switch input is active."""
+        self._require_feature("reference_switches")
+        return bool(self._motor.get_axis_parameter(self._motor.AP.RightEndstop))
+
     @staticmethod
     def _check_range(name: str, value: int, minimum: int, maximum: int) -> None:
         if not minimum <= value <= maximum:

@@ -15,6 +15,7 @@ class DummyStepperMotor:
         "coolstep",
         "stallguard",
         "ramp_generator",
+        "reference_switches",
     })
 
     def __init__(self, config: MotorConfig | None = None) -> None:
@@ -38,6 +39,10 @@ class DummyStepperMotor:
         self._coolstep_enabled = False
         self._coolstep_threshold_rps = 0.0
         self._coolstep_threshold_raw = 0
+        self._automatic_left_stop = False
+        self._automatic_right_stop = False
+        self._left_endstop = False
+        self._right_endstop = False
 
     def set_chopper_mode(self, mode: int) -> None:
         if mode not in (0, 1):
@@ -175,6 +180,21 @@ class DummyStepperMotor:
             raise ValueError("rps must be non-negative")
         self._coolstep_threshold_rps = rps
         self._coolstep_enabled = rps > 0
+
+    def enable_reference_stops(
+        self,
+        *,
+        left: bool = True,
+        right: bool = True,
+    ) -> None:
+        self._automatic_left_stop = left
+        self._automatic_right_stop = right
+
+    def get_left_endstop(self) -> bool:
+        return self._left_endstop
+
+    def get_right_endstop(self) -> bool:
+        return self._right_endstop
 
     def has_feature(self, name: str) -> bool:
         return name in self.SUPPORTED_FEATURES
