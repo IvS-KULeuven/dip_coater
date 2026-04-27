@@ -69,7 +69,7 @@ class DipCoaterApp(App):
 
     def on_mount(self):
         # on_mount() is called after compose(), so the RichLog is known
-        log = self.query_one("#logger", RichLog)
+        log = self.query_one("#motor-logger", RichLog)
         log.write("Motor has been initialised.")
         log.write(
             "[cyan]"

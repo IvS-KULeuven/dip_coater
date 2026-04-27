@@ -55,12 +55,15 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
 
     def enable_motor(self):
         self._motor.enable()
+        self._logger.info("Motor enabled")
 
     def disable_motor(self):
         self._motor.disable()
+        self._logger.info("Motor disabled")
 
     def invert_direction(self, invert_direction: bool = False):
         self._invert_direction = invert_direction
+        self._logger.info(f"Direction inverted: {invert_direction}")
 
     def rotate(self, revs: float, rps: float, rpss: float = None):
         signed_revs = self._apply_direction_inversion(revs)
@@ -68,6 +71,10 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
         self.set_speed_rps(rps)
         self.set_acceleration_rpss(rpss)
         self._target_position_rot = None
+        self._logger.debug(
+            f"Rotating {signed_revs:.4f} revolutions at {rps:.2f} rps "
+            f"({direction.name})"
+        )
         self._motor.rotate_by(abs(signed_revs), direction=direction)
 
     def move_up(
@@ -93,9 +100,11 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
     def stop_motor(self):
         self._target_position_rot = None
         self._motor.stop()
+        self._logger.info("Motor stopped")
 
     def wait_for_motor_done(self):
         self._wait_for_target_reached()
+        self._logger.info("Motor done")
 
     async def wait_for_motor_done_async(self):
         while True:
@@ -104,6 +113,7 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
                     break
             await asyncio.sleep(0.05)
         self._target_position_rot = None
+        self._logger.info("Motor done")
 
     def get_current_position_mm(self, homes_up: bool | None = None):
         return self.mechanical_setup.revs_to_mm(self._motor.get_actual_position_rot())
@@ -126,6 +136,7 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
             return
         self._configured_speed_rps = rps
         self._motor.set_speed_rps(rps)
+        self._logger.info(f"Max velocity set to {rps:.2f} rps")
 
     def get_speed_rps(self) -> float | None:
         return self._configured_speed_rps
@@ -135,6 +146,7 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
             return
         self._configured_accel_rpss = rpss
         self._motor.set_acceleration_rps2(rpss)
+        self._logger.info(f"Max acceleration set to {rpss:.2f} rpss")
 
     def get_acceleration_rpss(self) -> float | None:
         return self._configured_accel_rpss
@@ -143,48 +155,59 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
         try:
             mode = _MICROSTEPS_TO_STEP_MODE[microsteps]
         except KeyError as exc:
-            raise ValueError(
+            msg = (
                 f"Unsupported microsteps {microsteps}; expected one of "
                 f"{sorted(_MICROSTEPS_TO_STEP_MODE)}"
-            ) from exc
+            )
+            self._logger.error(msg)
+            raise ValueError(msg) from exc
         self._motor.set_step_mode(mode)
         self.microsteps = mode.microsteps_per_fullstep
+        self._logger.info(f"Microsteps set to {self.microsteps}")
 
     def get_microsteps(self) -> int:
         return self._motor.get_step_mode().microsteps_per_fullstep
 
     def set_current(self, current_mA: float):
         self._motor.set_run_current_mA(current_mA)
+        self._logger.info(f"Max current set to {current_mA:.1f} mA")
 
     def get_current(self) -> float:
         return self._motor.get_run_current_mA()
 
     def set_current_standstill(self, current_mA: float):
         self._motor.set_standstill_current_mA(current_mA)
+        self._logger.info(f"Standstill current set to {current_mA:.1f} mA")
 
     def get_current_standstill(self) -> float:
         return self._motor.get_standstill_current_mA()
 
     def set_interpolation(self, interpolation: bool = True):
         self._motor.set_interpolation(interpolation)
+        self._logger.info(
+            f"Interpolation {'enabled' if interpolation else 'disabled'}"
+        )
 
     def set_stallguard_threshold(self, threshold: int):
         setter = getattr(self._motor, "set_stallguard_threshold", None)
         if setter is None:
-            raise NotImplementedError("Underlying trinamic_wrapper motor has no StallGuard threshold API.")
+            msg = "Underlying trinamic_wrapper motor has no StallGuard threshold API."
+            self._logger.error(msg)
+            raise NotImplementedError(msg)
         setter(threshold)
+        self._logger.info(f"StallGuard threshold set to {threshold}")
 
     def set_loglevel(self, loglevel):
         if isinstance(loglevel, int):
             self._logger.setLevel(loglevel)
-            return
-        if hasattr(loglevel, "value") and isinstance(loglevel.value, int):
+        elif hasattr(loglevel, "value") and isinstance(loglevel.value, int):
             self._logger.setLevel(loglevel.value)
-            return
-        if hasattr(loglevel, "name"):
+        elif hasattr(loglevel, "name"):
             self._logger.setLevel(str(loglevel.name))
-            return
-        self._logger.setLevel(loglevel)
+        else:
+            self._logger.setLevel(loglevel)
+        level_name = getattr(loglevel, "name", str(loglevel))
+        self._logger.info(f"Log level set to {level_name}")
 
     def add_log_handler(self, handler):
         self._log_handlers.append(handler)
@@ -206,24 +229,35 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
             self._target_position_rot = None
             if self._close is not None:
                 self._close()
+            self._logger.info("Motor driver cleaned up")
 
     def set_chopper_mode(self, mode):
-        self._motor.set_chopper_mode(self._coerce_chopper_mode(mode))
+        coerced = self._coerce_chopper_mode(mode)
+        self._motor.set_chopper_mode(coerced)
+        self._logger.info(f"Chopper mode set to {coerced}")
 
     def set_stallguard_enabled(self, enable: bool):
         self._motor.set_stallguard_enabled(enable)
+        self._logger.info(f"StallGuard {'enabled' if enable else 'disabled'}")
 
     def set_stallguard_filter_enabled(self, enable: bool):
         self._motor.set_stallguard_filter_enabled(enable)
+        self._logger.info(
+            f"StallGuard filter {'enabled' if enable else 'disabled'}"
+        )
 
     def set_coolstep_enabled(self, enable: bool):
         self._motor.set_coolstep_enabled(enable)
+        self._logger.info(f"CoolStep {'enabled' if enable else 'disabled'}")
 
     def set_coolstep_threshold(self, threshold: int):
         setter = getattr(self._motor, "set_coolstep_threshold_raw", None)
         if setter is None:
-            raise NotImplementedError("Underlying trinamic_wrapper motor has no CoolStep threshold API.")
+            msg = "Underlying trinamic_wrapper motor has no CoolStep threshold API."
+            self._logger.error(msg)
+            raise NotImplementedError(msg)
         setter(threshold)
+        self._logger.info(f"CoolStep threshold set to {threshold}")
 
     def _move_mm(
         self,
@@ -250,8 +284,15 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
         current_rot = self._motor.get_actual_position_rot()
         self._target_position_rot = current_rot + signed_revs
         if abs(signed_revs) <= self._position_tolerance_rot():
+            self._logger.debug(
+                f"Move {distance_mm:.4f} mm skipped (below tolerance)"
+            )
             return
         direction = Direction.CW if signed_revs >= 0 else Direction.CCW
+        self._logger.debug(
+            f"Moving {distance_mm:.4f} mm "
+            f"({signed_revs:.4f} revs, {direction.name})"
+        )
         self._motor.rotate_by(abs(signed_revs), direction=direction)
 
     def _apply_direction_inversion(self, value: float) -> float:
