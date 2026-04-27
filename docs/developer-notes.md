@@ -2,6 +2,9 @@
 
 This page is for maintainers and developers.
 
+For machine setup profiles, geometry, and limit-switch configuration, see
+[Developer Setup Profiles](developer-setups.md).
+
 ## Run Tests
 
 Run all non-hardware tests:

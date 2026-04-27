@@ -40,8 +40,8 @@ dip-coater --driver TMC5160 --interface usb_tmcl --port /dev/ttyACM0
 
 Machine setup is selected separately from the motor driver. The bundled setup profiles are:
 
-- `small`
-- `large`
+- `small`: Raspberry Pi GPIO limit switches, usually used with `TMC2209`
+- `large`: Landungsbruecke/TMC5160 reference switches, usually used with `TMC2660` or `TMC5160`
 
 Examples:
 

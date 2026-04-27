@@ -33,6 +33,7 @@ nav:
   - Coder API: coder-api.md
   - Troubleshooting: troubleshooting.md
   - Developer Notes: developer-notes.md
+  - Developer Setup Profiles: developer-setups.md
   - Reference:
       - TMC2660 EVAL Parameters: TMC2660_EVALParameters.md
       - TMC5160 EVAL Parameters: TMC5160_EVALParameters.md
