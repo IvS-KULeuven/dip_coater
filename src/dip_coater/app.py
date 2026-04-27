@@ -26,6 +26,7 @@ from dip_coater.widgets.tabs.main_tab import MainTab
 from dip_coater.widgets.tabs.logs_tab import LogsTab
 from dip_coater.widgets.tabs.advanced_settings_tab import AdvancedSettingsTab
 from dip_coater.widgets.tabs.coder_tab import CoderTab
+from dip_coater.widgets.tabs.diagnostics_tab import DiagnosticsTab
 from dip_coater import __version__
 
 from dip_coater.motor_driver.motor_driver_interface import AvailableMotorDrivers
@@ -94,6 +95,7 @@ class DipCoaterApp(App):
             yield MainTab(self.app_state)
             yield LogsTab(self.app_state)
             yield AdvancedSettingsTab(self.app_state)
+            yield DiagnosticsTab(self.app_state)
             yield CoderTab(self.app_state)
 
     @on(Button.Pressed, "#reset-to-defaults-btn")
