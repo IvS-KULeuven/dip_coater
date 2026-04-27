@@ -109,6 +109,13 @@ For the current Landungsbruecke wiring:
 
 That is why the large setup uses `ACTIVE_LOW` for both directions.
 
+Typical hardware wiring uses normally-closed switches at the extreme ends of travel:
+
+- switch `COM` to `GND`
+- switch `NC` to the TMC5160 EVAL `L` or `R` reference input
+
+See [Hardware Setup](hardware-setup.md#tmc5160-reference-limit-switches) for the operator-facing wiring note.
+
 The app reads these states through the motor driver methods:
 
 ```python

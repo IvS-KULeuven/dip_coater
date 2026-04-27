@@ -96,6 +96,24 @@ dip-coater --driver TMC5160 --setup large --interface usb_tmcl --port /dev/tty.u
 
 The big dip coater may not use the same wiring, limit switches, motor current, travel range, or direction as the small dip coater. Use the machine-specific setup profile and hardware notes for the exact machine.
 
+### TMC5160 Reference Limit Switches
+
+For a TMC5160 EVAL board through the Landungsbruecke, the typical limit-switch setup uses normally-closed switches at the extreme ends of travel.
+
+Wire each switch as:
+
+| Limit switch terminal | Connect to |
+|---|---|
+| `COM` | `GND` on the TMC EVAL / Landungsbruecke setup |
+| `NC` | `L` or `R` reference switch input on the TMC5160 EVAL board |
+
+With this wiring:
+
+- switch closed, `L`/`R` tied to `GND`: safe / open in the UI
+- switch triggered, `L`/`R` open or floating: triggered in the UI and motion stops
+
+Put the switches at the physical extremes of the motion axis so triggering one protects the machine from moving farther in that direction.
+
 ## Before Powering On
 
 Check:
