@@ -3,11 +3,19 @@ from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
 from textual import on
 from textual.validation import Number
-from textual.widgets import Checkbox, Input, Label, Select, Switch
+from textual.widgets import Checkbox, Collapsible, Input, Label, Select, Switch
 
 from dip_coater.motor_driver.tmc2660 import ChopperMode
 from dip_coater.utils.SettingChanged import SettingChanged
 from dip_coater.widgets.advanced.advanced_settings_base import AdvancedSettingsBase
+
+
+TMC5160_ADVANCED_GROUP_TITLES = (
+    "Driver mode",
+    "StealthChop",
+    "StallGuard",
+    "CoolStep",
+)
 
 
 class AdvancedSettingsTrinamicTMC5160(AdvancedSettingsBase):
@@ -44,71 +52,80 @@ class AdvancedSettingsTrinamicTMC5160(AdvancedSettingsBase):
         self.update_coolstep_threshold(self.app_state.config.DEFAULT_COOLSTEP_THRESHOLD)
 
     def additional_widgets(self) -> ComposeResult:
-        with Horizontal(id="interpolation-container"):
-            yield Checkbox(
-                "Invert motor direction",
-                value=self.app_state.setup_profile.invert_motor_direction,
-                id="invert-direction-checkbox",
-                classes="checkbox",
-            )
-            yield Checkbox(
-                "Interpolation",
-                value=self._interpolation,
-                id="interpolation-checkbox",
-                classes="checkbox",
-            )
-            yield Select(
-                [(mode.label, mode.label) for mode in ChopperMode],
-                id="chopper-mode-select",
-                value=self.app_state.config.DEFAULT_CHOPPER_MODE.label,
-                allow_blank=False,
-                classes="select",
-            )
-
-        with Horizontal(id="stealthchop-container"):
-            with Vertical():
-                yield Label("Enable StealthChop")
-                yield Switch(id="stealthchop-switch", value=self._stealthchop_enabled)
-            yield Label("StealthChop Threshold")
-            yield Input(
-                id="stealthchop-threshold",
-                type="number",
-                value=str(self._stealthchop_threshold),
-                classes="input-fields",
-                validators=[Number(minimum=0)],
-            )
-            yield Label("rev/s")
-
-        with Horizontal(id="stallguard-container"):
-            with Vertical():
-                yield Label("Enable StallGuard")
-                yield Switch(id="stallguard-switch", value=self._stallguard_enabled)
-            with Vertical():
-                yield Label("Enable StallGuard Filter")
-                yield Switch(
-                    id="stallguard-filter-switch", value=self._stallguard_filter_enabled
+        with Collapsible(title="Driver mode", collapsed=False, id="driver-mode-group"):
+            with Horizontal(id="interpolation-container"):
+                yield Checkbox(
+                    "Invert motor direction",
+                    value=self.app_state.setup_profile.invert_motor_direction,
+                    id="invert-direction-checkbox",
+                    classes="checkbox",
                 )
-            yield Label("StallGuard Threshold")
-            yield Input(
-                id="stallguard-threshold",
-                type="number",
-                value=str(self._stallguard_threshold),
-                classes="input-fields",
-                validators=[Number(minimum=-64, maximum=63)],
-            )
+                yield Checkbox(
+                    "Interpolation",
+                    value=self._interpolation,
+                    id="interpolation-checkbox",
+                    classes="checkbox",
+                )
+                yield Select(
+                    [(mode.label, mode.label) for mode in ChopperMode],
+                    id="chopper-mode-select",
+                    value=self.app_state.config.DEFAULT_CHOPPER_MODE.label,
+                    allow_blank=False,
+                    classes="select",
+                )
 
-        with Horizontal(id="coolstep-container"):
-            with Vertical():
-                yield Label("Enable CoolStep")
-                yield Switch(id="coolstep-switch", value=self._coolstep_enabled)
-            yield Label("CoolStep Threshold")
-            yield Input(
-                id="coolstep-threshold",
-                type="number",
-                value=str(self._coolstep_threshold),
-                classes="input-fields",
-                validators=[Number(minimum=0, maximum=(1 << 31) - 1)],
-            )
+        with Collapsible(title="StealthChop", collapsed=False, id="stealthchop-group"):
+            with Horizontal(id="stealthchop-container"):
+                with Vertical():
+                    yield Label("Enable StealthChop")
+                    yield Switch(
+                        id="stealthchop-switch", value=self._stealthchop_enabled
+                    )
+                yield Label("StealthChop Threshold")
+                yield Input(
+                    id="stealthchop-threshold",
+                    type="number",
+                    value=str(self._stealthchop_threshold),
+                    classes="input-fields",
+                    validators=[Number(minimum=0)],
+                )
+                yield Label("rev/s")
+
+        with Collapsible(title="StallGuard", collapsed=False, id="stallguard-group"):
+            with Horizontal(id="stallguard-container"):
+                with Vertical():
+                    yield Label("Enable StallGuard")
+                    yield Switch(
+                        id="stallguard-switch", value=self._stallguard_enabled
+                    )
+                with Vertical():
+                    yield Label("Enable StallGuard Filter")
+                    yield Switch(
+                        id="stallguard-filter-switch",
+                        value=self._stallguard_filter_enabled,
+                    )
+                yield Label("StallGuard Threshold")
+                yield Input(
+                    id="stallguard-threshold",
+                    type="number",
+                    value=str(self._stallguard_threshold),
+                    classes="input-fields",
+                    validators=[Number(minimum=-64, maximum=63)],
+                )
+
+        with Collapsible(title="CoolStep", collapsed=False, id="coolstep-group"):
+            with Horizontal(id="coolstep-container"):
+                with Vertical():
+                    yield Label("Enable CoolStep")
+                    yield Switch(id="coolstep-switch", value=self._coolstep_enabled)
+                yield Label("CoolStep Threshold")
+                yield Input(
+                    id="coolstep-threshold",
+                    type="number",
+                    value=str(self._coolstep_threshold),
+                    classes="input-fields",
+                    validators=[Number(minimum=0, maximum=(1 << 31) - 1)],
+                )
 
     def reset_settings_to_default(self):
         super().reset_settings_to_default()
