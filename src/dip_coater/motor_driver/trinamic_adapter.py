@@ -52,6 +52,8 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
         self._configured_speed_rps: float | None = None
         self._configured_accel_rpss: float | None = None
         self._target_position_rot: float | None = None
+        self._stealthchop_enabled: bool = False
+        self._stealthchop_threshold_rps: float | None = None
 
     def enable_motor(self):
         self._motor.enable()
@@ -188,6 +190,23 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
             f"Interpolation {'enabled' if interpolation else 'disabled'}"
         )
 
+    def set_stealthchop_enabled(self, enable: bool):
+        self._stealthchop_enabled = enable
+        threshold = self._active_stealthchop_threshold()
+        self._motor.set_stealthchop(enable, threshold if enable else None)
+        self._logger.info(f"StealthChop {'enabled' if enable else 'disabled'}")
+
+    def set_stealthchop_threshold(self, threshold_rps: float):
+        if threshold_rps < 0:
+            raise ValueError("StealthChop threshold must be non-negative")
+        self._stealthchop_threshold_rps = threshold_rps
+        if self._stealthchop_enabled:
+            self._motor.set_stealthchop(
+                True,
+                self._active_stealthchop_threshold(),
+            )
+        self._logger.info(f"StealthChop threshold set to {threshold_rps:.2f} rps")
+
     def set_stallguard_threshold(self, threshold: int):
         setter = getattr(self._motor, "set_stallguard_threshold", None)
         if setter is None:
@@ -258,6 +277,13 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
             raise NotImplementedError(msg)
         setter(threshold)
         self._logger.info(f"CoolStep threshold set to {threshold}")
+
+    def _active_stealthchop_threshold(self) -> float | None:
+        if self._stealthchop_threshold_rps is None:
+            return None
+        if self._stealthchop_threshold_rps <= 0:
+            return None
+        return self._stealthchop_threshold_rps
 
     def _move_mm(
         self,

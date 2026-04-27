@@ -42,6 +42,8 @@ class FakeStepperMotor:
         self.rotate_calls = []
         self.stop_calls = 0
         self.interpolation = None
+        self.stealthchop = None
+        self.stealthchop_threshold_rps = None
         self.chopper_mode = None
         self.stallguard_enabled = None
         self.stallguard_filter_enabled = None
@@ -120,6 +122,14 @@ class FakeStepperMotor:
 
     def set_interpolation(self, enabled: bool) -> None:
         self.interpolation = enabled
+
+    def set_stealthchop(
+        self,
+        enabled: bool,
+        threshold_rps: float | None = None,
+    ) -> None:
+        self.stealthchop = enabled
+        self.stealthchop_threshold_rps = threshold_rps
 
     def set_chopper_mode(self, mode: int) -> None:
         self.chopper_mode = mode
@@ -340,16 +350,31 @@ def test_adapter_supports_advanced_feature_passthroughs():
     adapter = make_adapter(motor)
 
     adapter.set_chopper_mode("SpreadCycle")
+    adapter.set_stealthchop_threshold(2.5)
+    adapter.set_stealthchop_enabled(True)
     adapter.set_stallguard_enabled(True)
     adapter.set_stallguard_filter_enabled(True)
     adapter.set_coolstep_enabled(True)
     adapter.set_coolstep_threshold(3)
 
     assert motor.chopper_mode == 0
+    assert motor.stealthchop is True
+    assert motor.stealthchop_threshold_rps == pytest.approx(2.5)
     assert motor.stallguard_enabled is True
     assert motor.stallguard_filter_enabled is True
     assert motor.coolstep_enabled is True
     assert motor.coolstep_threshold_raw == 3
+
+
+def test_adapter_disables_stealthchop_without_threshold():
+    motor = FakeStepperMotor()
+    adapter = make_adapter(motor)
+
+    adapter.set_stealthchop_threshold(2.5)
+    adapter.set_stealthchop_enabled(False)
+
+    assert motor.stealthchop is False
+    assert motor.stealthchop_threshold_rps is None
 
 
 def test_adapter_chopper_mode_accepts_constant_toff_label():

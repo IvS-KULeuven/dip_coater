@@ -1,5 +1,6 @@
 from dip_coater.config.config_base import *  # noqa: F403
 from dip_coater.logging.tmc5160_logger import TMC5160LogLevel
+from dip_coater.motor_driver.tmc2660 import ChopperMode
 
 # TMC5160 settings
 
@@ -34,3 +35,13 @@ DEFAULT_ACCELERATION = 10.0
 DEFAULT_RSENSE = 75
 
 USE_INTERPOLATION = True
+DEFAULT_CHOPPER_MODE = ChopperMode.SPREAD_CYCLE
+
+# StealthChop, StallGuard & CoolStep settings
+DEFAULT_STEALTHCHOP_ENABLED = False
+DEFAULT_STEALTHCHOP_THRESHOLD_RPS = 0.0
+DEFAULT_STALLGUARD_ENABLED = True
+DEFAULT_STALLGUARD_FILTER_ENABLED = True
+DEFAULT_STALLGUARD_THRESHOLD = 0
+DEFAULT_COOLSTEP_ENABLED = False
+DEFAULT_COOLSTEP_THRESHOLD = 0

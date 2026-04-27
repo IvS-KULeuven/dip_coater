@@ -54,6 +54,14 @@ class FakeMotor:
         self.step_mode = None
         self.accel = None
         self.interpolation = None
+        self.chopper_mode = None
+        self.stealthchop = None
+        self.stealthchop_threshold = None
+        self.stallguard_threshold = None
+        self.stallguard_enabled = None
+        self.stallguard_filter_enabled = None
+        self.coolstep_threshold = None
+        self.coolstep_enabled = None
         self.disabled = False
         self.rotate_calls = []
 
@@ -71,6 +79,28 @@ class FakeMotor:
 
     def set_interpolation(self, enabled):
         self.interpolation = enabled
+
+    def set_chopper_mode(self, mode):
+        self.chopper_mode = mode
+
+    def set_stealthchop(self, enabled, threshold_rps=None):
+        self.stealthchop = enabled
+        self.stealthchop_threshold = threshold_rps
+
+    def set_stallguard_threshold(self, threshold):
+        self.stallguard_threshold = threshold
+
+    def set_stallguard_enabled(self, enabled):
+        self.stallguard_enabled = enabled
+
+    def set_stallguard_filter_enabled(self, enabled):
+        self.stallguard_filter_enabled = enabled
+
+    def set_coolstep_threshold_raw(self, threshold):
+        self.coolstep_threshold = threshold
+
+    def set_coolstep_enabled(self, enabled):
+        self.coolstep_enabled = enabled
 
     def set_speed_rps(self, speed_rps):
         self.speed_rps = speed_rps
@@ -180,6 +210,14 @@ def test_create_tmc5160_driver_uses_trinamic_wrapper_adapter(monkeypatch):
     assert fake_motor.step_mode == StepMode.USTEP_16
     assert fake_motor.accel == 10 / 4.0 / 1.5
     assert fake_motor.interpolation is True
+    assert fake_motor.chopper_mode == 0
+    assert fake_motor.stealthchop is False
+    assert fake_motor.stealthchop_threshold is None
+    assert fake_motor.stallguard_threshold == 0
+    assert fake_motor.stallguard_enabled is True
+    assert fake_motor.stallguard_filter_enabled is True
+    assert fake_motor.coolstep_threshold == 0
+    assert fake_motor.coolstep_enabled is False
 
     driver.move_up(4.0, 1.0)
     assert fake_motor.rotate_calls[-1][1].name == "CW"

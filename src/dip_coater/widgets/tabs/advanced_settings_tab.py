@@ -51,6 +51,14 @@ class AdvancedSettingsTab(TabPane):
             case "chopper_mode":
                 self.app_state.motor_driver.set_chopper_mode(event.value)
                 self.app_state.status_advanced.update_chopper_mode(event.value)
+            case "stealthchop_enabled":
+                self.app_state.motor_driver.set_stealthchop_enabled(event.value)
+                self.app_state.status_advanced.update_stealthchop_enabled(event.value)
+            case "stealthchop_threshold":
+                self.app_state.motor_driver.set_stealthchop_threshold(event.value)
+                self.app_state.status_advanced.update_stealthchop_threshold(
+                    event.value
+                )
             case "spread_cycle":
                 self.app_state.motor_driver.set_spread_cycle(event.value)
                 self.app_state.status_advanced.update_spread_cycle(event.value)

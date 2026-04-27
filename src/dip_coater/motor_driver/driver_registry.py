@@ -159,13 +159,38 @@ def _create_tmc5160_driver(
         setup.mm_s2_to_rpss(app_state.config.DEFAULT_ACCELERATION)
     )
     motor.set_interpolation(app_state.config.USE_INTERPOLATION)
-    return TrinamicWrapperMotorAdapter(
+    adapter = TrinamicWrapperMotorAdapter(
         motor,
         setup,
         invert_direction=app_state.setup_profile.invert_motor_direction,
         close=connection.close if connection is not None else None,
         logger=logger,
     )
+    adapter.set_chopper_mode(
+        getattr(app_state.config, "DEFAULT_CHOPPER_MODE", "SpreadCycle")
+    )
+    adapter.set_stealthchop_threshold(
+        getattr(app_state.config, "DEFAULT_STEALTHCHOP_THRESHOLD_RPS", 0.0)
+    )
+    adapter.set_stealthchop_enabled(
+        getattr(app_state.config, "DEFAULT_STEALTHCHOP_ENABLED", False)
+    )
+    adapter.set_stallguard_threshold(
+        getattr(app_state.config, "DEFAULT_STALLGUARD_THRESHOLD", 0)
+    )
+    adapter.set_stallguard_enabled(
+        getattr(app_state.config, "DEFAULT_STALLGUARD_ENABLED", True)
+    )
+    adapter.set_stallguard_filter_enabled(
+        getattr(app_state.config, "DEFAULT_STALLGUARD_FILTER_ENABLED", True)
+    )
+    adapter.set_coolstep_threshold(
+        getattr(app_state.config, "DEFAULT_COOLSTEP_THRESHOLD", 0)
+    )
+    adapter.set_coolstep_enabled(
+        getattr(app_state.config, "DEFAULT_COOLSTEP_ENABLED", False)
+    )
+    return adapter
 
 
 _SPECS = {
