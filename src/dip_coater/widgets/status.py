@@ -8,6 +8,20 @@ from textual.widgets import Rule
 from dip_coater.utils.threading_util import AsyncioStoppableTimer
 
 
+MOTOR_STATE_COLORS = {
+    "enabled": "green",
+    "disabled": "dark_orange",
+    "homing": "cyan",
+    "moving": "blue",
+}
+
+
+def motor_state_badge(motor_state: str | None) -> str:
+    state = motor_state or "unknown"
+    color = MOTOR_STATE_COLORS.get(state, "red")
+    return f"[{color}]{state.upper()}[/]"
+
+
 class Status(Static):
     speed: reactive[float | None] = reactive(None)
     distance: reactive[float | None] = reactive(None)
@@ -33,6 +47,7 @@ class Status(Static):
         with Vertical():
             yield Label(f"Driver type: [blue]{self._driver_label()}[/]")
             yield Label(f"Setup: [blue]{self.app_state.setup_profile.label}[/]")
+            yield Label(id="status-state-strip", classes="state-strip")
             yield Rule()
             yield Label(id="status-speed")
             yield Label(id="status-distance")
@@ -87,6 +102,9 @@ class Status(Static):
 
         self.update_limit_switch_up(controller.read_limit_switch(HomeDirection.UP))
         self.update_limit_switch_down(controller.read_limit_switch(HomeDirection.DOWN))
+        motor_controls = getattr(self.app_state, "motor_controls", None)
+        if motor_controls is not None:
+            motor_controls.update_status_widgets()
 
     async def update_position(self, position_mm: float):
         self.position = position_mm
@@ -132,20 +150,10 @@ class Status(Static):
         self.query_one("#status-limit-switch-down", Label).update(msg)
 
     def watch_motor_state(self, motor_state: str):
-        if motor_state is None:
-            motor_state = "UNKNOWN"
-        if motor_state == "enabled":
-            color = "green"
-        elif motor_state == "disabled":
-            color = "dark_orange"
-        elif motor_state == "homing":
-            color = "cyan"
-        elif motor_state == "moving":
-            color = "blue"
-        else:
-            color = "red"
+        badge = motor_state_badge(motor_state)
+        self.query_one("#status-state-strip", Label).update(f"State: {badge}")
         self.query_one("#status-motor-state", Label).update(
-            f"Motor state: [{color}]{motor_state.upper()}[/]"
+            f"Motor state: {badge}"
         )
 
     def watch_position(self, position: str):

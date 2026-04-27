@@ -9,6 +9,11 @@ Header.dummy-mode {
     color: white;
 }
 
+.state-strip {
+    text-style: bold;
+    padding: 0 1;
+}
+
 #right-side {
     width: 25%;
     height: 100%;

@@ -9,6 +9,26 @@ from dip_coater.setup_profiles.machine_profile import HomeDirection
 from TMC_2209._TMC_2209_move import StopMode
 
 
+def control_button_disabled_states(
+    *,
+    motor_state: str,
+    limit_switch_up: bool | None,
+    limit_switch_down: bool | None,
+    supports_limit_switches: bool,
+    supports_homing: bool,
+) -> dict[str, bool]:
+    motor_enabled = motor_state == "enabled"
+    up_switch_open = not supports_limit_switches or limit_switch_up is False
+    down_switch_open = not supports_limit_switches or limit_switch_down is False
+    return {
+        "move-up": not (motor_enabled and up_switch_open),
+        "move-down": not (motor_enabled and down_switch_open),
+        "enable-motor": motor_state != "disabled",
+        "disable-motor": motor_state not in ("enabled", "moving", "homing"),
+        "do-homing": not (supports_homing and motor_enabled),
+    }
+
+
 class MotorControls(Static):
     def __init__(self, app_state):
         super().__init__()
@@ -35,10 +55,18 @@ class MotorControls(Static):
     def update_status_widgets(self):
         self.app_state.status.update_homing_found(self.app_state.homing_found)
         self.app_state.status.update_motor_state(self.app_state.motor_state)
-        move_disabled = self.app_state.motor_state != "enabled"
-        for button_id in ("#move-up", "#move-down"):
+        button_states = control_button_disabled_states(
+            motor_state=self.app_state.motor_state,
+            limit_switch_up=self.app_state.status.limit_switch_up,
+            limit_switch_down=self.app_state.status.limit_switch_down,
+            supports_limit_switches=(
+                self.app_state.motion_controller.supports_limit_switches
+            ),
+            supports_homing=self.app_state.motion_controller.supports_homing,
+        )
+        for button_id, disabled in button_states.items():
             try:
-                self.query_one(button_id, Button).disabled = move_disabled
+                self.query_one(f"#{button_id}", Button).disabled = disabled
             except Exception:
                 pass
 
@@ -220,12 +248,14 @@ class MotorControls(Static):
     def update_limit_switch_up_status(self, pin):
         triggered = self.app_state.motion_controller.read_limit_switch(HomeDirection.UP)
         self.app_state.status.update_limit_switch_up(triggered)
+        self.update_status_widgets()
 
     def update_limit_switch_down_status(self, pin):
         triggered = self.app_state.motion_controller.read_limit_switch(
             HomeDirection.DOWN
         )
         self.app_state.status.update_limit_switch_down(triggered)
+        self.update_status_widgets()
 
     def bind_limit_switches_to_motor(self):
         """Bind the limit switches to stop the motor driver."""
