@@ -62,6 +62,7 @@ class FakeMotor:
         self.stallguard_filter_enabled = None
         self.coolstep_threshold = None
         self.coolstep_enabled = None
+        self.reference_stops = None
         self.disabled = False
         self.rotate_calls = []
 
@@ -101,6 +102,9 @@ class FakeMotor:
 
     def set_coolstep_enabled(self, enabled):
         self.coolstep_enabled = enabled
+
+    def enable_reference_stops(self, *, left=True, right=True):
+        self.reference_stops = (left, right)
 
     def set_speed_rps(self, speed_rps):
         self.speed_rps = speed_rps
@@ -218,6 +222,7 @@ def test_create_tmc5160_driver_uses_trinamic_wrapper_adapter(monkeypatch):
     assert fake_motor.stallguard_filter_enabled is True
     assert fake_motor.coolstep_threshold == 0
     assert fake_motor.coolstep_enabled is False
+    assert fake_motor.reference_stops == (True, True)
 
     driver.move_up(4.0, 1.0)
     assert fake_motor.rotate_calls[-1][1].name == "CW"

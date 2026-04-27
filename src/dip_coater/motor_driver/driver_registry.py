@@ -190,6 +190,10 @@ def _create_tmc5160_driver(
     adapter.set_coolstep_enabled(
         getattr(app_state.config, "DEFAULT_COOLSTEP_ENABLED", False)
     )
+    adapter.enable_reference_stops(
+        left=getattr(app_state.config, "DEFAULT_REFERENCE_LEFT_STOP_ENABLED", True),
+        right=getattr(app_state.config, "DEFAULT_REFERENCE_RIGHT_STOP_ENABLED", True),
+    )
     return adapter
 
 
