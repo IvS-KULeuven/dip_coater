@@ -24,7 +24,7 @@ def control_button_disabled_states(
         "move-up": not (motor_enabled and up_switch_open),
         "move-down": not (motor_enabled and down_switch_open),
         "enable-motor": motor_state != "disabled",
-        "disable-motor": motor_state not in ("enabled", "moving", "homing"),
+        "disable-motor": motor_state not in ("enabled", "moving", "homing", "fault"),
         "do-homing": not (supports_homing and motor_enabled),
     }
 
@@ -185,7 +185,7 @@ class MotorControls(Static):
             self.app_state.motion_controller.disable_motor()
             self.set_motor_state("disabled")
             log.write("[dark_orange]Emergency stop: motor stopped and disabled.[/]")
-        elif self.app_state.motor_state == "enabled":
+        elif self.app_state.motor_state in ("enabled", "fault"):
             self.app_state.motion_controller.disable_motor()
             self.set_motor_state("disabled")
             log.write("[dark_orange]Motor is now disabled.[/]")

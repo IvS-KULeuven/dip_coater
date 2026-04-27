@@ -3,7 +3,7 @@ from textual.reactive import reactive
 from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.widgets import Label
-from textual.widgets import Rule
+from textual.widgets import RichLog, Rule
 
 from dip_coater.utils.threading_util import AsyncioStoppableTimer
 
@@ -30,12 +30,14 @@ class Status(Static):
     limit_switch_down: reactive[bool | None] = reactive(None)
     motor_state: reactive[str | None] = reactive(None)
     position: reactive[float | None] = reactive(None)
+    status_error: reactive[str | None] = reactive(None)
 
     position_thread = None
 
     def __init__(self, app_state, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.app_state = app_state
+        self._last_polling_error: str | None = None
 
     def _driver_label(self) -> str:
         driver_label = self.app_state.driver_type.name
@@ -57,6 +59,7 @@ class Status(Static):
             yield Rule()
             yield Label(id="status-motor-state")
             yield Label(id="status-position")
+            yield Label(id="status-error")
 
     def _on_mount(self) -> None:
         self.speed = self.app_state.config.DEFAULT_SPEED
@@ -88,10 +91,20 @@ class Status(Static):
         self.motor_state = motor_state
 
     async def fetch_new_position(self):
-        self.fetch_limit_switches()
-        if self.app_state.motor_state in ("moving", "homing"):
+        try:
+            self.fetch_limit_switches()
+        except Exception as error:
+            self.record_polling_error(error)
             return
-        position = self.app_state.motion_controller.get_current_position_mm()
+        if self.app_state.motor_state in ("moving", "homing"):
+            self.clear_polling_error()
+            return
+        try:
+            position = self.app_state.motion_controller.get_current_position_mm()
+        except Exception as error:
+            self.record_polling_error(error)
+            return
+        self.clear_polling_error()
         await self.update_position(position)
 
     def fetch_limit_switches(self):
@@ -108,6 +121,29 @@ class Status(Static):
 
     async def update_position(self, position_mm: float):
         self.position = position_mm
+
+    def record_polling_error(self, error: Exception):
+        message = f"Status polling failed: {error}"
+        self.status_error = message
+        self.app_state.motor_state = "fault"
+        if self.is_mounted:
+            self.update_motor_state("fault")
+        motor_controls = getattr(self.app_state, "motor_controls", None)
+        if motor_controls is not None:
+            motor_controls.update_status_widgets()
+        if message == self._last_polling_error:
+            return
+        self._last_polling_error = message
+        try:
+            self.app.query_one("#logger", RichLog).write(f"[red]{message}[/]")
+        except Exception:
+            pass
+
+    def clear_polling_error(self):
+        if self.status_error is None:
+            return
+        self.status_error = None
+        self._last_polling_error = None
 
     def on_unmount(self):
         if self.position_thread is not None:
@@ -162,3 +198,12 @@ class Status(Static):
         else:
             msg = f"Position: {position:.1f} mm"
         self.query_one("#status-position", Label).update(msg)
+
+    def watch_status_error(self, status_error: str | None):
+        if not self.is_mounted:
+            return
+        if status_error is None:
+            msg = ""
+        else:
+            msg = f"[red]{status_error}[/]"
+        self.query_one("#status-error", Label).update(msg)

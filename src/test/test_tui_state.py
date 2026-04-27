@@ -1,5 +1,5 @@
 from dip_coater.widgets.motor_controls import control_button_disabled_states
-from dip_coater.widgets.status import motor_state_badge
+from dip_coater.widgets.status import Status, motor_state_badge
 
 
 def test_motor_state_badge_uses_compact_state_label():
@@ -37,3 +37,44 @@ def test_control_buttons_disable_motion_when_limit_switch_state_is_unknown():
     assert states["move-up"] is True
     assert states["move-down"] is False
     assert states["do-homing"] is True
+
+
+def test_control_buttons_allow_stop_and_disable_in_fault_state():
+    states = control_button_disabled_states(
+        motor_state="fault",
+        limit_switch_up=None,
+        limit_switch_down=None,
+        supports_limit_switches=True,
+        supports_homing=True,
+    )
+
+    assert states["move-up"] is True
+    assert states["move-down"] is True
+    assert states["enable-motor"] is True
+    assert states["disable-motor"] is False
+    assert states["do-homing"] is True
+
+
+class FakeMotorControls:
+    def __init__(self):
+        self.updated = False
+
+    def update_status_widgets(self):
+        self.updated = True
+
+
+class FakeAppState:
+    def __init__(self):
+        self.motor_state = "enabled"
+        self.motor_controls = FakeMotorControls()
+
+
+def test_status_polling_fault_sets_fault_state_and_message_once():
+    app_state = FakeAppState()
+    status = Status(app_state)
+
+    status.record_polling_error(RuntimeError("driver not responding"))
+
+    assert app_state.motor_state == "fault"
+    assert status.status_error == "Status polling failed: driver not responding"
+    assert app_state.motor_controls.updated is True
