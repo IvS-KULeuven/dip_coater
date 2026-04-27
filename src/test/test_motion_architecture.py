@@ -109,6 +109,19 @@ class FakeDriverWithoutHomeFlag(FakeDriver):
         return 7.5
 
 
+class FakeReferenceSwitchDriver(FakeDriver):
+    def __init__(self):
+        super().__init__()
+        self.left_endstop = False
+        self.right_endstop = False
+
+    def get_left_endstop(self):
+        return self.left_endstop
+
+    def get_right_endstop(self):
+        return self.right_endstop
+
+
 def test_custom_profile_can_override_setup_geometry_and_direction():
     base_profile = get_machine_profile(AvailableMachineSetups.SMALL_COATER)
 
@@ -183,3 +196,19 @@ def test_motion_controller_falls_back_for_drivers_without_setup_reference_argume
     assert driver.last_run_to_position == (3.0, 0.5, 1.5)
     assert driver.last_position_call == "no-flag"
     assert position == 7.5
+
+
+def test_motion_controller_prefers_driver_reference_switches():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+    )
+    driver = FakeReferenceSwitchDriver()
+    driver.left_endstop = True
+    driver.right_endstop = False
+    controller = MotionController(driver, profile, gpio=None)
+
+    assert controller.supports_limit_switches is True
+    assert controller.read_limit_switch(HomeDirection.UP) is True
+    assert controller.read_limit_switch(HomeDirection.DOWN) is False

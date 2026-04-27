@@ -12,7 +12,15 @@ class MotionController:
 
     @property
     def supports_limit_switches(self) -> bool:
-        return self.machine_profile.supports_limit_switches and self.gpio is not None
+        return self.supports_driver_reference_switches or (
+            self.machine_profile.supports_limit_switches and self.gpio is not None
+        )
+
+    @property
+    def supports_driver_reference_switches(self) -> bool:
+        return hasattr(self.motor_driver, "get_left_endstop") and hasattr(
+            self.motor_driver, "get_right_endstop"
+        )
 
     @property
     def supports_homing(self) -> bool:
@@ -124,7 +132,7 @@ class MotionController:
             self.gpio.cleanup()
 
     def setup_limit_switches_io(self):
-        if not self.supports_limit_switches:
+        if not self.supports_limit_switches or self.supports_driver_reference_switches:
             return
         switches = self.machine_profile.limit_switches
         self._setup_limit_switch_io(switches.up_pin)
@@ -149,7 +157,7 @@ class MotionController:
         callback: Callable,
         bouncetime=None,
     ):
-        if not self.supports_limit_switches:
+        if not self.supports_limit_switches or self.supports_driver_reference_switches:
             return
         pin = self._pin_for_direction(direction)
         self.gpio.remove_event_detect(pin)
@@ -160,6 +168,10 @@ class MotionController:
     def read_limit_switch(self, direction: HomeDirection) -> bool:
         if not self.supports_limit_switches:
             return False
+        if self.supports_driver_reference_switches:
+            if direction == HomeDirection.UP:
+                return self.motor_driver.get_left_endstop()
+            return self.motor_driver.get_right_endstop()
         pin = self._pin_for_direction(direction)
         normally_closed = self._is_normally_closed(direction)
         value = self.gpio.input(pin)

@@ -73,10 +73,20 @@ class Status(Static):
         self.motor_state = motor_state
 
     async def fetch_new_position(self):
+        self.fetch_limit_switches()
         if self.app_state.motor_state in ("moving", "homing"):
             return
         position = self.app_state.motion_controller.get_current_position_mm()
         await self.update_position(position)
+
+    def fetch_limit_switches(self):
+        controller = self.app_state.motion_controller
+        if not controller.supports_limit_switches:
+            return
+        from dip_coater.setup_profiles.machine_profile import HomeDirection
+
+        self.update_limit_switch_up(controller.read_limit_switch(HomeDirection.UP))
+        self.update_limit_switch_down(controller.read_limit_switch(HomeDirection.DOWN))
 
     async def update_position(self, position_mm: float):
         self.position = position_mm
