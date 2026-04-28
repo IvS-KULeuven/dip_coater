@@ -64,6 +64,41 @@ On a Raspberry Pi with GPIO hardware:
 uv sync --extra rpi
 ```
 
+## Update the Software
+
+Stop the app before updating it. From inside the project folder, fetch the latest code:
+
+```bash
+git pull
+```
+
+If you installed with pip in editable mode, reinstall the package so command metadata and dependencies are refreshed:
+
+```bash
+source venv/bin/activate
+python3 -m pip install --upgrade -e .
+```
+
+On a Raspberry Pi with GPIO hardware, include the Raspberry Pi extra:
+
+```bash
+python3 -m pip install --upgrade -e ".[rpi]"
+```
+
+If you installed with uv, refresh the environment instead:
+
+```bash
+uv sync
+```
+
+On a Raspberry Pi with GPIO hardware:
+
+```bash
+uv sync --extra rpi
+```
+
+Start the app again after updating. Check the version shown at the top of the UI and confirm that it matches the version you expected to install.
+
 ## Install Documentation Tools
 
 The documentation website is optional. Install it only if you want to preview or publish the docs.
