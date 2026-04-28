@@ -135,7 +135,7 @@ def _format_diagnostics_value(label: str, value: str) -> str:
 def _colorize_motor_state(value: str) -> str:
     colors = {
         "enabled": "green",
-        "disabled": "dark_orange",
+        "disabled": "red",
         "homing": "cyan",
         "moving": "blue",
     }

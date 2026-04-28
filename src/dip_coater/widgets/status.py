@@ -10,7 +10,7 @@ from dip_coater.utils.threading_util import AsyncioStoppableTimer
 
 MOTOR_STATE_COLORS = {
     "enabled": "green",
-    "disabled": "dark_orange",
+    "disabled": "red",
     "homing": "cyan",
     "moving": "blue",
 }

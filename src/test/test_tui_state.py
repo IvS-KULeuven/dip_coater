@@ -9,7 +9,7 @@ from dip_coater.widgets.status import limit_switch_state_badge
 def test_motor_state_badge_uses_compact_state_label():
     assert motor_state_badge("enabled") == "[green]ENABLED[/]"
     assert motor_state_badge("moving") == "[blue]MOVING[/]"
-    assert motor_state_badge("disabled") == "[dark_orange]DISABLED[/]"
+    assert motor_state_badge("disabled") == "[red]DISABLED[/]"
     assert motor_state_badge("fault") == "[red]FAULT[/]"
     assert motor_state_badge(None) == "[red]UNKNOWN[/]"
 

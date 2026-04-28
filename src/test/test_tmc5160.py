@@ -92,6 +92,13 @@ def test_tmc5160_dummy_driver_supports_basic_motion():
     assert driver.get_current_position_mm() == pytest.approx(3.0)
 
 
+def test_tmc5160_dummy_driver_defaults_reference_switches_to_open():
+    driver = _make_driver()
+
+    assert driver.get_left_endstop() is True
+    assert driver.get_right_endstop() is True
+
+
 def test_tmc5160_dummy_driver_supports_direction_inversion():
     driver = _make_driver()
 

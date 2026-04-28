@@ -71,6 +71,6 @@ def test_diagnostics_format_colorizes_state_values():
         ]
     )
 
-    assert "[dark_orange]disabled[/]" in output
+    assert "[red]disabled[/]" in output
     assert "[red]triggered[/]" in output
     assert "[green]open[/]" in output

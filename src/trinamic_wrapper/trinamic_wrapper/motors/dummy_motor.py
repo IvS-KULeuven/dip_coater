@@ -41,8 +41,8 @@ class DummyStepperMotor:
         self._coolstep_threshold_raw = 0
         self._automatic_left_stop = False
         self._automatic_right_stop = False
-        self._left_endstop = False
-        self._right_endstop = False
+        self._left_endstop = True
+        self._right_endstop = True
 
     def set_chopper_mode(self, mode: int) -> None:
         if mode not in (0, 1):
