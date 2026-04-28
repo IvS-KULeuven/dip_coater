@@ -5,14 +5,7 @@ Use this page when setting up the project on a Raspberry Pi or on a normal compu
 ## What You Need
 
 - Python 3.10 or newer
-- this project folder
 - a terminal
-
-The commands below assume you are inside the project folder.
-
-```bash
-cd /path/to/dip_coater
-```
 
 ## Recommended: pip
 
@@ -32,7 +25,7 @@ python3 -m pip install --upgrade pip
 Install the app:
 
 ```bash
-python3 -m pip install -e .
+python3 -m pip install dip-coater
 ```
 
 Then check that the app command exists:
@@ -46,12 +39,31 @@ dip-coater --help
 On a Raspberry Pi with GPIO hardware, install the Raspberry Pi extra:
 
 ```bash
+python3 -m pip install "dip-coater[rpi]"
+```
+
+## Source Checkout Install
+
+Use this path only if you are running from a cloned source checkout, for example while developing the app or testing local changes.
+
+```bash
+git clone https://github.com/IvS-KULeuven/dip_coater.git
+cd dip_coater
+python3 -m venv venv --prompt=dip-coater
+source venv/bin/activate
+python3 -m pip install --upgrade pip
+python3 -m pip install -e .
+```
+
+On a Raspberry Pi with GPIO hardware:
+
+```bash
 python3 -m pip install -e ".[rpi]"
 ```
 
 ## Alternative: uv
 
-If you already use uv, you can install and run the project with:
+If you already use uv from a source checkout, you can install and run the project with:
 
 ```bash
 uv sync
@@ -66,16 +78,30 @@ uv sync --extra rpi
 
 ## Update the Software
 
-Stop the app before updating it. From inside the project folder, fetch the latest code:
+Stop the app before updating it.
+
+If you installed the normal package with pip, update it from the package index:
+
+```bash
+source venv/bin/activate
+python3 -m pip install --upgrade dip-coater
+```
+
+On a Raspberry Pi with GPIO hardware:
+
+```bash
+python3 -m pip install --upgrade "dip-coater[rpi]"
+```
+
+If you installed from a source checkout, update the local checkout first:
 
 ```bash
 git pull
 ```
 
-If you installed with pip in editable mode, reinstall the package so command metadata and dependencies are refreshed:
+Then reinstall the editable package so command metadata and dependencies are refreshed:
 
 ```bash
-source venv/bin/activate
 python3 -m pip install --upgrade -e .
 ```
 
@@ -85,7 +111,7 @@ On a Raspberry Pi with GPIO hardware, include the Raspberry Pi extra:
 python3 -m pip install --upgrade -e ".[rpi]"
 ```
 
-If you installed with uv, refresh the environment instead:
+If you installed from a source checkout with uv, refresh the environment instead:
 
 ```bash
 uv sync
@@ -106,7 +132,7 @@ The documentation website is optional. Install it only if you want to preview or
 With pip:
 
 ```bash
-python3 -m pip install -e ".[docs]"
+python3 -m pip install "dip-coater[docs]"
 ```
 
 Preview the website:

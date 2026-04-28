@@ -4,7 +4,11 @@ from pathlib import Path
 def test_install_docs_explain_software_updates_and_version_check():
     install_docs = (Path(__file__).parents[2] / "docs" / "install.md").read_text()
 
+    assert "python3 -m pip install dip-coater" in install_docs
+    assert "python3 -m pip install --upgrade dip-coater" in install_docs
+    assert "## Source Checkout Install" in install_docs
     assert "## Update the Software" in install_docs
+    assert "If you installed from a source checkout" in install_docs
     assert "git pull" in install_docs
     assert "python3 -m pip install --upgrade -e ." in install_docs
     assert "uv sync" in install_docs
