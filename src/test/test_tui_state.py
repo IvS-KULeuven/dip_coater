@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from dip_coater.widgets.motor_controls import (
     control_button_disabled_states,
     is_normal_motor_stop,
@@ -17,6 +19,14 @@ def test_motor_state_badge_uses_compact_state_label():
 def test_limit_switch_state_badge_colorizes_open_and_triggered():
     assert limit_switch_state_badge(False) == "[green]Open[/]"
     assert limit_switch_state_badge(True) == "[red]Triggered[/]"
+
+
+def test_status_widget_only_has_compact_motor_state_line():
+    status_source = Path(__file__).parents[1] / "dip_coater" / "widgets" / "status.py"
+    source = status_source.read_text()
+
+    assert "status-state-strip" in source
+    assert "status-motor-state" not in source
 
 
 def test_normal_motor_stop_does_not_depend_on_tmc2209_imports():

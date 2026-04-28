@@ -63,7 +63,6 @@ class Status(Static):
             yield Label(id="status-limit-switch-up")
             yield Label(id="status-limit-switch-down")
             yield Rule()
-            yield Label(id="status-motor-state")
             yield Label(id="status-position")
             yield Label(id="status-error")
 
@@ -192,9 +191,6 @@ class Status(Static):
     def watch_motor_state(self, motor_state: str):
         badge = motor_state_badge(motor_state)
         self.query_one("#status-state-strip", Label).update(f"State: {badge}")
-        self.query_one("#status-motor-state", Label).update(
-            f"Motor state: {badge}"
-        )
 
     def watch_position(self, position: str):
         if position is None:
