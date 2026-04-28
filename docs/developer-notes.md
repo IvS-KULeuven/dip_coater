@@ -64,6 +64,74 @@ Build:
 uv run --extra docs mkdocs build
 ```
 
+## Publish to PyPI
+
+Use this when releasing a new package version for `pip install dip-coater`.
+PyPI package versions are immutable, so bump `project.version` in
+`pyproject.toml` before building if that version has already been uploaded.
+
+1. Update the version in `pyproject.toml`.
+
+2. Refresh the lock file after changing package metadata:
+
+   ```bash
+   uv lock
+   ```
+
+3. Run the non-hardware tests:
+
+   ```bash
+   uv run pytest -q -m "not hardware"
+   ```
+
+4. Build fresh distributions:
+
+   ```bash
+   uv build --clear
+   ```
+
+5. Inspect the wheel metadata before uploading:
+
+   ```bash
+   unzip -p dist/dip_coater-<version>-py3-none-any.whl \
+     dip_coater-<version>.dist-info/METADATA
+   ```
+
+   For Windows compatibility, confirm the metadata includes these environment
+   markers:
+
+   ```text
+   Requires-Dist: uvloop>=0.19.0; sys_platform != "win32"
+   Requires-Dist: winloop; sys_platform == "win32"
+   ```
+
+6. Dry-run the upload:
+
+   ```bash
+   uv publish --dry-run
+   ```
+
+7. Upload to PyPI with a project API token:
+
+   ```bash
+   export UV_PUBLISH_TOKEN="pypi-..."
+   uv publish
+   ```
+
+8. Verify the published package from a clean environment:
+
+   ```bash
+   python -m pip install --upgrade --no-cache-dir dip-coater==<version>
+   dip-coater --version
+   ```
+
+For a Windows install check, use PowerShell:
+
+```powershell
+py -m pip install --upgrade --no-cache-dir dip-coater==<version>
+dip-coater --version
+```
+
 ## Publish With GitHub Pages
 
 One simple option is to use GitHub Actions:

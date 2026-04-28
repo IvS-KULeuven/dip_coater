@@ -14,6 +14,7 @@ The user documentation lives in [`docs/`](docs/index.md).
 - [Use the interface](docs/using-the-ui.md)
 - [Write coating scripts](docs/coder-api.md)
 - [Troubleshoot problems](docs/troubleshooting.md)
+- [Developer and release notes](docs/developer-notes.md)
 
 ## Quick Run
 
