@@ -2,7 +2,7 @@ name: Deploy MkDocs
 
 on:
   push:
-    branches: [main]
+    branches: [develop]
     paths:
       - ".github/workflows/docs.yml"
       - "docs/**"
