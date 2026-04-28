@@ -3,11 +3,18 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.validation import Number
 from textual import on, events
-from textual.widgets import Label, Button, Checkbox, Rule, Input, RichLog, Switch
+from textual.widgets import Label, Button, Checkbox, Collapsible, Input, RichLog, Switch
 
 from dip_coater.widgets.advanced.advanced_settings_base import AdvancedSettingsBase
 from dip_coater.utils.helpers import clamp
 from dip_coater.utils.SettingChanged import SettingChanged
+
+
+TMC2209_ADVANCED_GROUP_TITLES = (
+    "Driver mode",
+    "Threshold speed",
+    "Homing",
+)
 
 
 class AdvancedSettingsTMC2209(AdvancedSettingsBase):
@@ -26,100 +33,107 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
     # --------------- UI INIT ---------------
 
     def additional_widgets(self) -> ComposeResult:
-        with Horizontal(id="interpolation-container"):
-            yield Checkbox(
-                "Invert motor direction",
-                value=self.app_state.setup_profile.invert_motor_direction,
-                id="invert-direction-checkbox",
-                classes="checkbox",
-            )
-            yield Checkbox(
-                "Interpolation",
-                value=self._interpolation,
-                id="interpolation-checkbox",
-                classes="checkbox",
-            )
-            yield Checkbox(
-                "Spread Cycle (T)/Stealth Chop (F)",
-                value=self._spread_cycle,
-                id="spread-cycle-checkbox",
-                classes="checkbox",
-            )
-        with Horizontal(id="threshold-speed-container"):
-            yield Label("Enable Threshold Speed: ", id="threshold-speed-switch-label")
-            yield Switch(
-                value=self._threshold_speed_enabled, id="threshold-speed-switch"
-            )
-            yield Label("Threshold Speed: ", id="threshold-speed-label")
-            yield Input(
-                value=f"{self._threshold_speed}",
-                type="number",
-                placeholder="Threshold Speed (mm/s)",
-                id="threshold-speed-input",
-                validate_on=["submitted"],
-                validators=[
-                    Number(
-                        minimum=self.app_state.config.MIN_THRESHOLD_SPEED,
-                        maximum=self.app_state.config.MAX_THRESHOLD_SPEED,
+        with Collapsible(title="Driver mode", collapsed=True, id="driver-mode-group"):
+            with Horizontal(id="interpolation-container"):
+                yield Checkbox(
+                    "Invert motor direction",
+                    value=self.app_state.setup_profile.invert_motor_direction,
+                    id="invert-direction-checkbox",
+                    classes="checkbox",
+                )
+                yield Checkbox(
+                    "Interpolation",
+                    value=self._interpolation,
+                    id="interpolation-checkbox",
+                    classes="checkbox",
+                )
+                yield Checkbox(
+                    "Spread Cycle (T)/Stealth Chop (F)",
+                    value=self._spread_cycle,
+                    id="spread-cycle-checkbox",
+                    classes="checkbox",
+                )
+        with Collapsible(
+            title="Threshold speed", collapsed=True, id="threshold-speed-group"
+        ):
+            with Horizontal(id="threshold-speed-container"):
+                yield Label(
+                    "Enable Threshold Speed: ", id="threshold-speed-switch-label"
+                )
+                yield Switch(
+                    value=self._threshold_speed_enabled, id="threshold-speed-switch"
+                )
+                yield Label("Threshold Speed: ", id="threshold-speed-label")
+                yield Input(
+                    value=f"{self._threshold_speed}",
+                    type="number",
+                    placeholder="Threshold Speed (mm/s)",
+                    id="threshold-speed-input",
+                    validate_on=["submitted"],
+                    validators=[
+                        Number(
+                            minimum=self.app_state.config.MIN_THRESHOLD_SPEED,
+                            maximum=self.app_state.config.MAX_THRESHOLD_SPEED,
+                        )
+                    ],
+                    classes="input-fields",
+                )
+                yield Label("mm/s", id="threshold-speed-unit")
+
+        with Collapsible(title="Homing", collapsed=True, id="homing-group"):
+            with Horizontal(id="homing-container"):
+                with Horizontal():
+                    yield Label("Homing revolutions: ", id="homing-revolutions-label")
+                    yield Input(
+                        value=f"{self._homing_revs}",
+                        type="number",
+                        placeholder="Homing revolutions",
+                        id="homing-revolutions-input",
+                        validate_on=["submitted"],
+                        validators=[
+                            Number(
+                                minimum=self.app_state.config.HOMING_MIN_REVOLUTIONS,
+                                maximum=self.app_state.config.HOMING_MAX_REVOLUTIONS,
+                            )
+                        ],
+                        classes="input-fields",
                     )
-                ],
-                classes="input-fields",
+                with Horizontal():
+                    yield Label("Homing threshold: ", id="homing-threshold-label")
+                    yield Input(
+                        value=f"{self._homing_threshold}",
+                        type="number",
+                        placeholder="Homing threshold",
+                        id="homing-threshold-input",
+                        validate_on=["submitted"],
+                        validators=[
+                            Number(
+                                minimum=self.app_state.config.HOMING_MIN_THRESHOLD,
+                                maximum=self.app_state.config.HOMING_MAX_THRESHOLD,
+                            )
+                        ],
+                        classes="input-fields",
+                    )
+                with Horizontal():
+                    yield Label("Homing speed: ", id="homing-speed-label")
+                    yield Input(
+                        value=f"{self._homing_speed}",
+                        type="number",
+                        placeholder="Homing speed (RPM)",
+                        id="homing-speed-input",
+                        validate_on=["submitted"],
+                        validators=[
+                            Number(
+                                minimum=self.app_state.config.HOMING_MIN_SPEED,
+                                maximum=self.app_state.config.HOMING_MAX_SPEED,
+                            )
+                        ],
+                        classes="input-fields",
+                    )
+                    yield Label("RPM", id="homing-speed-unit")
+            yield Button(
+                "Test StallGuard Threshold", id="test-stallguard-threshold-btn"
             )
-            yield Label("mm/s", id="threshold-speed-unit")
-
-        yield Rule(classes="rule")
-
-        with Horizontal(id="homing-container"):
-            with Horizontal():
-                yield Label("Homing revolutions: ", id="homing-revolutions-label")
-                yield Input(
-                    value=f"{self._homing_revs}",
-                    type="number",
-                    placeholder="Homing revolutions",
-                    id="homing-revolutions-input",
-                    validate_on=["submitted"],
-                    validators=[
-                        Number(
-                            minimum=self.app_state.config.HOMING_MIN_REVOLUTIONS,
-                            maximum=self.app_state.config.HOMING_MAX_REVOLUTIONS,
-                        )
-                    ],
-                    classes="input-fields",
-                )
-            with Horizontal():
-                yield Label("Homing threshold: ", id="homing-threshold-label")
-                yield Input(
-                    value=f"{self._homing_threshold}",
-                    type="number",
-                    placeholder="Homing threshold",
-                    id="homing-threshold-input",
-                    validate_on=["submitted"],
-                    validators=[
-                        Number(
-                            minimum=self.app_state.config.HOMING_MIN_THRESHOLD,
-                            maximum=self.app_state.config.HOMING_MAX_THRESHOLD,
-                        )
-                    ],
-                    classes="input-fields",
-                )
-            with Horizontal():
-                yield Label("Homing speed: ", id="homing-speed-label")
-                yield Input(
-                    value=f"{self._homing_speed}",
-                    type="number",
-                    placeholder="Homing speed (RPM)",
-                    id="homing-speed-input",
-                    validate_on=["submitted"],
-                    validators=[
-                        Number(
-                            minimum=self.app_state.config.HOMING_MIN_SPEED,
-                            maximum=self.app_state.config.HOMING_MAX_SPEED,
-                        )
-                    ],
-                    classes="input-fields",
-                )
-                yield Label("RPM", id="homing-speed-unit")
-        yield Button("Test StallGuard Threshold", id="test-stallguard-threshold-btn")
 
     def _on_mount(self, event: events.Mount) -> None:
         super()._on_mount(event)
@@ -128,7 +142,7 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
         self.watch(
             self.app_state.speed_controls,
             "speed",
-            self.update_control_mode_widgets_value,
+            self.update_motor_configuration,
         )
 
         self.reset_settings_to_default()
@@ -224,23 +238,26 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
         spread_cycle_checkbox.value = self._spread_cycle
 
     def update_motor_configuration(self):
+        if not self._threshold_speed_enabled:
+            return
+        if self.app_state.speed_controls.speed is None or self._threshold_speed is None:
+            return
         if (
-            self._threshold_speed_enabled
-            and self.app_state.speed_controls.speed >= self._threshold_speed
+            self.app_state.speed_controls.speed >= self._threshold_speed
         ):
             # High-speed configuration
             self.app_state.step_mode.update_microsteps(
                 self.app_state.config.HIGH_SPEED_STEP_MODE
             )
-            self.watch__interpolation(self.app_state.config.HIGH_SPEED_INTERPOLATION)
-            self.watch__spread_cycle(self.app_state.config.HIGH_SPEED_SPREAD_CYCLE)
+            self.update_interpolation(self.app_state.config.HIGH_SPEED_INTERPOLATION)
+            self.update_spread_cycle(self.app_state.config.HIGH_SPEED_SPREAD_CYCLE)
         else:
             # Low-speed configuration
             self.app_state.step_mode.update_microsteps(
                 self.app_state.config.LOW_SPEED_STEP_MODE
             )
-            self.watch__interpolation(self.app_state.config.LOW_SPEED_INTERPOLATION)
-            self.watch__spread_cycle(self.app_state.config.LOW_SPEED_SPREAD_CYCLE)
+            self.update_interpolation(self.app_state.config.LOW_SPEED_INTERPOLATION)
+            self.update_spread_cycle(self.app_state.config.LOW_SPEED_SPREAD_CYCLE)
         self.update_control_mode_widgets_value()
 
     def update_control_mode_widgets_state(self):

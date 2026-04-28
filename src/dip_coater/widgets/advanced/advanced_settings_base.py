@@ -3,11 +3,14 @@ from textual.reactive import reactive
 from textual import on, events
 from textual.containers import Vertical, Horizontal
 from textual.validation import Number
-from textual.widgets import Static, Checkbox, Input, RadioButton, Label
+from textual.widgets import Static, Checkbox, Collapsible, Input, RadioButton, Label
 
 from dip_coater.widgets.step_mode import StepMode
 from dip_coater.utils.helpers import clamp
 from dip_coater.utils.SettingChanged import SettingChanged
+
+
+COMMON_ADVANCED_GROUP_TITLE = "Motion and current"
 
 
 class AdvancedSettingsBase(Static):
@@ -26,61 +29,67 @@ class AdvancedSettingsBase(Static):
 
     def compose(self) -> ComposeResult:
         with Vertical():
-            yield self.app_state.step_mode
-            with Horizontal():
+            with Collapsible(
+                title=COMMON_ADVANCED_GROUP_TITLE,
+                collapsed=True,
+                id="motion-current-group",
+            ):
+                yield self.app_state.step_mode
                 with Horizontal():
-                    yield Label("Acceleration: ", id="acceleration-label")
-                    yield Input(
-                        value=f"{self._acceleration}",
-                        type="number",
-                        placeholder="Acceleration (mm/s\u00b2)",
-                        id="acceleration-input",
-                        validate_on=["submitted"],
-                        validators=[
-                            Number(
-                                minimum=self.app_state.config.MIN_ACCELERATION,
-                                maximum=self.app_state.config.MAX_ACCELERATION,
-                            )
-                        ],
-                        classes="input-fields",
-                    )
-                    yield Label("mm/s\u00b2", id="acceleration-unit")
-                with Horizontal():
-                    yield Label("Motor current: ", id="current-label")
-                    yield Input(
-                        value=f"{self._current}",
-                        type="number",
-                        placeholder="Motor current (mA)",
-                        id="current-input",
-                        validate_on=["submitted"],
-                        validators=[
-                            Number(
-                                minimum=self.app_state.config.MIN_CURRENT,
-                                maximum=self.app_state.config.MAX_CURRENT,
-                            )
-                        ],
-                        classes="input-fields",
-                    )
-                    yield Label("mA", id="current-unit")
-                with Horizontal():
-                    yield Label(
-                        "Motor standstill current: ", id="current-standstill-label"
-                    )
-                    yield Input(
-                        value=f"{self._current_standstill}",
-                        type="number",
-                        placeholder="Standstill current (mA)",
-                        id="current-standstill-input",
-                        validate_on=["submitted"],
-                        validators=[
-                            Number(
-                                minimum=self.app_state.config.MIN_CURRENT,
-                                maximum=self.app_state.config.MAX_CURRENT,
-                            )
-                        ],
-                        classes="input-fields",
-                    )
-                    yield Label("mA", id="current-standstill-unit")
+                    with Horizontal():
+                        yield Label("Acceleration: ", id="acceleration-label")
+                        yield Input(
+                            value=f"{self._acceleration}",
+                            type="number",
+                            placeholder="Acceleration (mm/s\u00b2)",
+                            id="acceleration-input",
+                            validate_on=["submitted"],
+                            validators=[
+                                Number(
+                                    minimum=self.app_state.config.MIN_ACCELERATION,
+                                    maximum=self.app_state.config.MAX_ACCELERATION,
+                                )
+                            ],
+                            classes="input-fields",
+                        )
+                        yield Label("mm/s\u00b2", id="acceleration-unit")
+                    with Horizontal():
+                        yield Label("Motor current: ", id="current-label")
+                        yield Input(
+                            value=f"{self._current}",
+                            type="number",
+                            placeholder="Motor current (mA)",
+                            id="current-input",
+                            validate_on=["submitted"],
+                            validators=[
+                                Number(
+                                    minimum=self.app_state.config.MIN_CURRENT,
+                                    maximum=self.app_state.config.MAX_CURRENT,
+                                )
+                            ],
+                            classes="input-fields",
+                        )
+                        yield Label("mA", id="current-unit")
+                    with Horizontal():
+                        yield Label(
+                            "Motor standstill current: ",
+                            id="current-standstill-label",
+                        )
+                        yield Input(
+                            value=f"{self._current_standstill}",
+                            type="number",
+                            placeholder="Standstill current (mA)",
+                            id="current-standstill-input",
+                            validate_on=["submitted"],
+                            validators=[
+                                Number(
+                                    minimum=self.app_state.config.MIN_CURRENT,
+                                    maximum=self.app_state.config.MAX_CURRENT,
+                                )
+                            ],
+                            classes="input-fields",
+                        )
+                        yield Label("mA", id="current-standstill-unit")
             yield from self.additional_widgets()
 
     def additional_widgets(self) -> ComposeResult:

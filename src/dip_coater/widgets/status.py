@@ -3,9 +3,29 @@ from textual.reactive import reactive
 from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.widgets import Label
-from textual.widgets import Rule
+from textual.widgets import RichLog, Rule
 
 from dip_coater.utils.threading_util import AsyncioStoppableTimer
+
+
+MOTOR_STATE_COLORS = {
+    "enabled": "green",
+    "disabled": "red",
+    "homing": "cyan",
+    "moving": "blue",
+}
+
+
+def motor_state_badge(motor_state: str | None) -> str:
+    state = motor_state or "unknown"
+    color = MOTOR_STATE_COLORS.get(state, "red")
+    return f"[{color}]{state.upper()}[/]"
+
+
+def limit_switch_state_badge(triggered: bool) -> str:
+    if triggered:
+        return "[red]Triggered[/]"
+    return "[green]Open[/]"
 
 
 class Status(Static):
@@ -16,12 +36,14 @@ class Status(Static):
     limit_switch_down: reactive[bool | None] = reactive(None)
     motor_state: reactive[str | None] = reactive(None)
     position: reactive[float | None] = reactive(None)
+    status_error: reactive[str | None] = reactive(None)
 
     position_thread = None
 
     def __init__(self, app_state, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.app_state = app_state
+        self._last_polling_error: str | None = None
 
     def _driver_label(self) -> str:
         driver_label = self.app_state.driver_type.name
@@ -33,6 +55,7 @@ class Status(Static):
         with Vertical():
             yield Label(f"Driver type: [blue]{self._driver_label()}[/]")
             yield Label(f"Setup: [blue]{self.app_state.setup_profile.label}[/]")
+            yield Label(id="status-state-strip", classes="state-strip")
             yield Rule()
             yield Label(id="status-speed")
             yield Label(id="status-distance")
@@ -40,8 +63,8 @@ class Status(Static):
             yield Label(id="status-limit-switch-up")
             yield Label(id="status-limit-switch-down")
             yield Rule()
-            yield Label(id="status-motor-state")
             yield Label(id="status-position")
+            yield Label(id="status-error")
 
     def _on_mount(self) -> None:
         self.speed = self.app_state.config.DEFAULT_SPEED
@@ -73,11 +96,59 @@ class Status(Static):
         self.motor_state = motor_state
 
     async def fetch_new_position(self):
-        position = self.app_state.motion_controller.get_current_position_mm()
+        try:
+            self.fetch_limit_switches()
+        except Exception as error:
+            self.record_polling_error(error)
+            return
+        if self.app_state.motor_state in ("moving", "homing"):
+            self.clear_polling_error()
+            return
+        try:
+            position = self.app_state.motion_controller.get_current_position_mm()
+        except Exception as error:
+            self.record_polling_error(error)
+            return
+        self.clear_polling_error()
         await self.update_position(position)
+
+    def fetch_limit_switches(self):
+        controller = self.app_state.motion_controller
+        if not controller.supports_limit_switches:
+            return
+        from dip_coater.setup_profiles.machine_profile import HomeDirection
+
+        self.update_limit_switch_up(controller.read_limit_switch(HomeDirection.UP))
+        self.update_limit_switch_down(controller.read_limit_switch(HomeDirection.DOWN))
+        motor_controls = getattr(self.app_state, "motor_controls", None)
+        if motor_controls is not None:
+            motor_controls.update_status_widgets()
 
     async def update_position(self, position_mm: float):
         self.position = position_mm
+
+    def record_polling_error(self, error: Exception):
+        message = f"Status polling failed: {error}"
+        self.status_error = message
+        self.app_state.motor_state = "fault"
+        if self.is_mounted:
+            self.update_motor_state("fault")
+        motor_controls = getattr(self.app_state, "motor_controls", None)
+        if motor_controls is not None:
+            motor_controls.update_status_widgets()
+        if message == self._last_polling_error:
+            return
+        self._last_polling_error = message
+        try:
+            self.app.query_one("#logger", RichLog).write(f"[red]{message}[/]")
+        except Exception:
+            pass
+
+    def clear_polling_error(self):
+        if self.status_error is None:
+            return
+        self.status_error = None
+        self._last_polling_error = None
 
     def on_unmount(self):
         if self.position_thread is not None:
@@ -98,42 +169,28 @@ class Status(Static):
     def watch_homing_found(self, homing_found: str):
         if homing_found is None:
             return
+        homing_status = "yes" if homing_found else "no"
         self.query_one("#status-homing-found", Label).update(
-            f"Homing found: {homing_found}"
+            f"Homed: {homing_status}"
         )
 
     def watch_limit_switch_up(self, limit_switch_up: str):
         if limit_switch_up is None:
             return
-        str_limit_switch_up = "[dark_orange]Triggered[/]" if limit_switch_up else "Open"
+        str_limit_switch_up = limit_switch_state_badge(limit_switch_up)
         msg = f"Limit switch up: {str_limit_switch_up}"
         self.query_one("#status-limit-switch-up", Label).update(msg)
 
     def watch_limit_switch_down(self, limit_switch_down: str):
         if limit_switch_down is None:
             return
-        str_limit_switch_down = (
-            "[dark_orange]Triggered[/]" if limit_switch_down else "Open"
-        )
+        str_limit_switch_down = limit_switch_state_badge(limit_switch_down)
         msg = f"Limit switch down: {str_limit_switch_down}"
         self.query_one("#status-limit-switch-down", Label).update(msg)
 
     def watch_motor_state(self, motor_state: str):
-        if motor_state is None:
-            motor_state = "UNKNOWN"
-        if motor_state == "enabled":
-            color = "green"
-        elif motor_state == "disabled":
-            color = "dark_orange"
-        elif motor_state == "homing":
-            color = "cyan"
-        elif motor_state == "moving":
-            color = "blue"
-        else:
-            color = "red"
-        self.query_one("#status-motor-state", Label).update(
-            f"Motor state: [{color}]{motor_state.upper()}[/]"
-        )
+        badge = motor_state_badge(motor_state)
+        self.query_one("#status-state-strip", Label).update(f"State: {badge}")
 
     def watch_position(self, position: str):
         if position is None:
@@ -141,3 +198,12 @@ class Status(Static):
         else:
             msg = f"Position: {position:.1f} mm"
         self.query_one("#status-position", Label).update(msg)
+
+    def watch_status_error(self, status_error: str | None):
+        if not self.is_mounted:
+            return
+        if status_error is None:
+            msg = ""
+        else:
+            msg = f"[red]{status_error}[/]"
+        self.query_one("#status-error", Label).update(msg)

@@ -1,0 +1,48 @@
+site_name: Dip Coater
+site_description: User documentation for the Dip Coater motor control app
+repo_url: https://github.com/IvS-KULeuven/dip_coater
+repo_name: IvS-KULeuven/dip_coater
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+  palette:
+    - scheme: default
+      primary: blue grey
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue grey
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+nav:
+  - Start: index.md
+  - Install: install.md
+  - Hardware Setup: hardware-setup.md
+  - Run the App: run-the-app.md
+  - Use the Interface: using-the-ui.md
+  - Coder API: coder-api.md
+  - Troubleshooting: troubleshooting.md
+  - Developer Notes: developer-notes.md
+  - Developer Setup Profiles: developer-setups.md
+  - Reference:
+      - TMC2660 EVAL Parameters: TMC2660_EVALParameters.md
+      - TMC5160 EVAL Parameters: TMC5160_EVALParameters.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true

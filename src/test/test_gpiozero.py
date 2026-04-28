@@ -1,3 +1,7 @@
+import pytest
+
+pytest.importorskip("gpiozero")
+
 from gpiozero import Button
 from gpiozero.pins.lgpio import LGPIOFactory
 from gpiozero import Device

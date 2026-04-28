@@ -9,7 +9,7 @@ class StatusAdvancedBase(Static):
         self.app_state = app_state
 
     def compose(self) -> ComposeResult:
-        with Vertical() as v:
+        with Vertical():
             yield Label(id="status-step-mode")
             yield Label(id="status-acceleration")
             yield Label(id="status-current")

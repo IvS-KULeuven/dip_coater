@@ -1,7 +1,12 @@
+import asyncio
 from collections.abc import Callable
 
 from dip_coater.gpio import GpioEdge, GpioMode, GpioPUD, GpioState
-from dip_coater.setup_profiles.machine_profile import HomeDirection, MachineProfile
+from dip_coater.setup_profiles.machine_profile import (
+    HomeDirection,
+    LimitSwitchSource,
+    MachineProfile,
+)
 
 
 class MotionController:
@@ -12,11 +17,26 @@ class MotionController:
 
     @property
     def supports_limit_switches(self) -> bool:
-        return self.machine_profile.supports_limit_switches and self.gpio is not None
+        return self.supports_gpio_limit_switches or self.supports_driver_reference_switches
+
+    @property
+    def supports_gpio_limit_switches(self) -> bool:
+        switches = self.machine_profile.limit_switches
+        return switches is not None and switches.uses_gpio and self.gpio is not None
+
+    @property
+    def supports_driver_reference_switches(self) -> bool:
+        switches = self.machine_profile.limit_switches
+        return (
+            switches is not None
+            and switches.uses_driver_reference
+            and hasattr(self.motor_driver, "get_left_endstop")
+            and hasattr(self.motor_driver, "get_right_endstop")
+        )
 
     @property
     def supports_homing(self) -> bool:
-        return self.supports_limit_switches and hasattr(
+        return self.supports_gpio_limit_switches and hasattr(
             self.motor_driver, "do_limit_switch_homing"
         )
 
@@ -32,8 +52,29 @@ class MotionController:
     def wait_for_motor_done(self):
         return self.motor_driver.wait_for_motor_done()
 
-    async def wait_for_motor_done_async(self):
-        return await self.motor_driver.wait_for_motor_done_async()
+    async def wait_for_motor_done_async(
+        self,
+        active_limit_direction: HomeDirection | None = None,
+    ):
+        if active_limit_direction is None or not self.supports_limit_switches:
+            return await self.motor_driver.wait_for_motor_done_async()
+
+        wait_task = asyncio.create_task(self.motor_driver.wait_for_motor_done_async())
+        try:
+            while not wait_task.done():
+                if self.read_limit_switch(active_limit_direction):
+                    self.stop_motor()
+                    wait_task.cancel()
+                    try:
+                        await wait_task
+                    except asyncio.CancelledError:
+                        pass
+                    return f"{active_limit_direction.value} limit switch triggered"
+                await asyncio.sleep(0.05)
+            return await wait_task
+        finally:
+            if not wait_task.done():
+                wait_task.cancel()
 
     def move_up(
         self,
@@ -41,9 +82,11 @@ class MotionController:
         speed_mm_s: float,
         acceleration_mm_s2: float | None = None,
     ):
+        self._raise_if_limit_switch_triggered(HomeDirection.UP)
         kwargs = {}
-        if self.supports_limit_switches:
-            kwargs["limit_switch_pins"] = [self.machine_profile.limit_switches.up_pin]
+        switch = self._switch_for_direction(HomeDirection.UP)
+        if switch is not None and switch.source == LimitSwitchSource.GPIO:
+            kwargs["limit_switch_pins"] = [switch.pin]
         self.motor_driver.move_up(distance_mm, speed_mm_s, acceleration_mm_s2, **kwargs)
 
     def move_down(
@@ -52,9 +95,11 @@ class MotionController:
         speed_mm_s: float,
         acceleration_mm_s2: float | None = None,
     ):
+        self._raise_if_limit_switch_triggered(HomeDirection.DOWN)
         kwargs = {}
-        if self.supports_limit_switches:
-            kwargs["limit_switch_pins"] = [self.machine_profile.limit_switches.down_pin]
+        switch = self._switch_for_direction(HomeDirection.DOWN)
+        if switch is not None and switch.source == LimitSwitchSource.GPIO:
+            kwargs["limit_switch_pins"] = [switch.pin]
         self.motor_driver.move_down(
             distance_mm, speed_mm_s, acceleration_mm_s2, **kwargs
         )
@@ -124,23 +169,28 @@ class MotionController:
             self.gpio.cleanup()
 
     def setup_limit_switches_io(self):
-        if not self.supports_limit_switches:
+        if not self.supports_gpio_limit_switches:
             return
         switches = self.machine_profile.limit_switches
-        self._setup_limit_switch_io(switches.up_pin)
-        self._setup_limit_switch_io(switches.down_pin)
+        for switch in (switches.up, switches.down):
+            if switch.source == LimitSwitchSource.GPIO:
+                self._setup_limit_switch_io(switch.pin)
 
     def _setup_limit_switch_io(self, pin: int):
         self.gpio.setup(pin, GpioMode.IN, pull_up_down=GpioPUD.PUD_UP)
 
     def bind_limit_switches_to_motor(self):
-        if not self.supports_limit_switches or not hasattr(
+        if not self.supports_gpio_limit_switches or not hasattr(
             self.motor_driver, "bind_limit_switch"
         ):
             return
         switches = self.machine_profile.limit_switches
-        self.motor_driver.bind_limit_switch(switches.up_pin, NC=switches.up_nc)
-        self.motor_driver.bind_limit_switch(switches.down_pin, NC=switches.down_nc)
+        if switches.up.source == LimitSwitchSource.GPIO:
+            self.motor_driver.bind_limit_switch(switches.up_pin, NC=switches.up_nc)
+        if switches.down.source == LimitSwitchSource.GPIO:
+            self.motor_driver.bind_limit_switch(
+                switches.down_pin, NC=switches.down_nc
+            )
 
     def bind_limit_switch_callback(
         self,
@@ -149,26 +199,50 @@ class MotionController:
         callback: Callable,
         bouncetime=None,
     ):
-        if not self.supports_limit_switches:
+        switch = self._switch_for_direction(direction)
+        if (
+            not self.supports_gpio_limit_switches
+            or switch is None
+            or switch.source != LimitSwitchSource.GPIO
+        ):
             return
-        pin = self._pin_for_direction(direction)
+        pin = switch.pin
         self.gpio.remove_event_detect(pin)
         self.gpio.add_event_detect(
             pin, GpioEdge.BOTH, callback=callback, bouncetime=bouncetime
         )
 
     def read_limit_switch(self, direction: HomeDirection) -> bool:
-        if not self.supports_limit_switches:
+        switch = self._switch_for_direction(direction)
+        if switch is None:
             return False
-        pin = self._pin_for_direction(direction)
-        normally_closed = self._is_normally_closed(direction)
-        value = self.gpio.input(pin)
-        return value == GpioState.HIGH if normally_closed else value == GpioState.LOW
+        if switch.source == LimitSwitchSource.DRIVER_REFERENCE:
+            if not self.supports_driver_reference_switches:
+                return False
+            raw_state = (
+                self.motor_driver.get_left_endstop()
+                if direction == HomeDirection.UP
+                else self.motor_driver.get_right_endstop()
+            )
+            return switch.is_triggered(raw_state)
+        if switch.source == LimitSwitchSource.GPIO:
+            if not self.supports_gpio_limit_switches:
+                return False
+            return switch.is_triggered(self.gpio.input(switch.pin) == GpioState.HIGH)
+        return False
 
-    def _pin_for_direction(self, direction: HomeDirection) -> int:
+    def _switch_for_direction(self, direction: HomeDirection):
         switches = self.machine_profile.limit_switches
-        return switches.up_pin if direction == HomeDirection.UP else switches.down_pin
+        if switches is None:
+            return None
+        return switches.switch_for(direction)
 
-    def _is_normally_closed(self, direction: HomeDirection) -> bool:
-        switches = self.machine_profile.limit_switches
-        return switches.up_nc if direction == HomeDirection.UP else switches.down_nc
+    def _raise_if_limit_switch_triggered(self, direction: HomeDirection) -> None:
+        if not self.supports_limit_switches:
+            return
+        if not self.read_limit_switch(direction):
+            return
+        raise ValueError(
+            f"Cannot move {direction.value}: "
+            f"{direction.value} limit switch is triggered."
+        )

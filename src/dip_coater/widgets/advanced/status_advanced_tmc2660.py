@@ -2,7 +2,7 @@ from textual.app import ComposeResult
 from textual.widgets import Label, Rule
 
 from dip_coater.widgets.advanced.status_advanced_base import StatusAdvancedBase
-from dip_coater.motor.tmc2660 import ChopperMode
+from dip_coater.motor_driver.tmc2660 import ChopperMode
 
 
 class StatusAdvancedTMC2660(StatusAdvancedBase):

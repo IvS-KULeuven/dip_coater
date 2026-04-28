@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import logging
+import os
 import sys
 
 from textual import on
@@ -25,10 +26,11 @@ from dip_coater.widgets.tabs.main_tab import MainTab
 from dip_coater.widgets.tabs.logs_tab import LogsTab
 from dip_coater.widgets.tabs.advanced_settings_tab import AdvancedSettingsTab
 from dip_coater.widgets.tabs.coder_tab import CoderTab
+from dip_coater.widgets.tabs.diagnostics_tab import DiagnosticsTab
 from dip_coater import __version__
 
-from dip_coater.motor.motor_driver_interface import AvailableMotorDrivers
-from dip_coater.motor.driver_registry import get_driver_spec
+from dip_coater.motor_driver.motor_driver_interface import AvailableMotorDrivers
+from dip_coater.motor_driver.driver_registry import get_driver_spec
 from dip_coater.services import MotionController
 from dip_coater.setup_profiles import (
     create_custom_profile,
@@ -50,7 +52,7 @@ class DipCoaterApp(App):
         Binding("w", "move_up", "Move up", show=False),
         Binding("s", "move_down", "Move down", show=False),
         Binding("a", "enable_motor", "Enable the motor", show=False),
-        Binding("d", "disable_motor", "Disable the motor", show=False),
+        Binding("d", "disable_motor", "Emergency STOP motor", priority=True),
     ]
     COMMANDS = App.COMMANDS | {HelpCommand}
 
@@ -68,16 +70,32 @@ class DipCoaterApp(App):
 
     def on_mount(self):
         # on_mount() is called after compose(), so the RichLog is known
-        log = self.query_one("#logger", RichLog)
+        log = self.query_one("#motor-logger", RichLog)
         log.write("Motor has been initialised.")
+        log.write(
+            "[cyan]"
+            f"[startup] driver={self.app_state.driver_type.value} "
+            f"setup={self.app_state.setup_profile.label} "
+            f"default_distance={self.app_state.config.DEFAULT_DISTANCE}mm "
+            f"default_speed={self.app_state.config.DEFAULT_SPEED}mm/s "
+            f"default_accel={self.app_state.config.DEFAULT_ACCELERATION}mm/s² "
+            f"default_step_mode={self.app_state.config.DEFAULT_STEP_MODE} "
+            f"invert_direction={self.app_state.setup_profile.invert_motor_direction}"
+            "[/]"
+        )
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
+        yield Header(
+            show_clock=True,
+            id="app-header",
+            classes="dummy-mode" if self.app_state.config.USE_DUMMY_DRIVER else "",
+        )
         yield Footer()
         with TabbedContent(initial="main-tab", id="tabbed-content"):
             yield MainTab(self.app_state)
             yield LogsTab(self.app_state)
             yield AdvancedSettingsTab(self.app_state)
+            yield DiagnosticsTab(self.app_state)
             yield CoderTab(self.app_state)
 
     @on(Button.Pressed, "#reset-to-defaults-btn")
@@ -104,6 +122,7 @@ class DipCoaterApp(App):
     async def action_enable_motor(self) -> None:
         await self.app_state.motor_controls.enable_motor_action()
 
+    @on(Button.Pressed, "#disable-motor")
     async def action_disable_motor(self) -> None:
         await self.app_state.motor_controls.disable_motor_action()
 
@@ -139,30 +158,37 @@ def main():
         "-l",
         "--log-level",
         type=str,
-        default="INFO",
+        default=os.environ.get("DIP_COATER_LOG_LEVEL", "INFO"),
         choices=["NONE", "ERROR", "INFO", "DEBUG", "MOVEMENT", "ALL"],
-        help="Set the logging level",
+        help="Set the logging level (env: DIP_COATER_LOG_LEVEL)",
     )
     parser.add_argument(
         "-d",
         "--driver",
         type=AvailableMotorDrivers,
-        default=AvailableMotorDrivers.TMC2209,
-        choices=[AvailableMotorDrivers.TMC2209, AvailableMotorDrivers.TMC2660],
-        help="Set the motor driver type",
+        default=AvailableMotorDrivers(os.environ["DIP_COATER_DRIVER"])
+        if "DIP_COATER_DRIVER" in os.environ
+        else AvailableMotorDrivers.TMC2209,
+        choices=[
+            AvailableMotorDrivers.TMC2209,
+            AvailableMotorDrivers.TMC2660,
+            AvailableMotorDrivers.TMC5160,
+        ],
+        help="Set the motor driver type (env: DIP_COATER_DRIVER)",
     )
     parser.add_argument(
         "-s",
         "--setup",
         type=str,
+        default=os.environ.get("DIP_COATER_SETUP"),
         choices=[setup.value for setup in list_machine_setups()],
-        help="Set the machine setup profile independently from the motor driver",
+        help="Set the machine setup profile independently from the motor driver (env: DIP_COATER_SETUP)",
     )
     parser.add_argument(
         "-i",
         "--interface",
         type=str,
-        default="usb_tmcl",
+        default=os.environ.get("DIP_COATER_INTERFACE", "usb_tmcl"),
         choices=[
             "usb_tmcl",
             "dummy_tmcl",
@@ -174,39 +200,59 @@ def main():
             "uart_ic",
             "ixxat_tmcl",
         ],
-        help="Set the TMC2660 interface type",
+        help="Set the PyTrinamic interface type for supported drivers (env: DIP_COATER_INTERFACE)",
     )
     parser.add_argument(
         "-p",
         "--port",
         type=str,
-        default="/dev/ttyACM0",
-        help="Set the TMC2660 interface port. User 'interactive' for interactive port selection",
+        default=os.environ.get("DIP_COATER_PORT", "/dev/ttyACM0"),
+        help="Set the PyTrinamic interface port. Use 'interactive' for interactive port selection (env: DIP_COATER_PORT)",
     )
     parser.add_argument(
         "--mm-per-revolution",
         type=float,
-        help="Distance in mm the platform moves for one full revolution",
+        default=float(os.environ["DIP_COATER_MM_PER_REVOLUTION"])
+        if "DIP_COATER_MM_PER_REVOLUTION" in os.environ
+        else None,
+        help="Distance in mm the platform moves for one full revolution (env: DIP_COATER_MM_PER_REVOLUTION)",
     )
-    parser.add_argument("--gearbox-ratio", type=float, help="Gearbox ratio, if any")
     parser.add_argument(
-        "--steps-per-rev", type=int, help="Number of full steps per revolution"
+        "--gearbox-ratio",
+        type=float,
+        default=float(os.environ["DIP_COATER_GEARBOX_RATIO"])
+        if "DIP_COATER_GEARBOX_RATIO" in os.environ
+        else None,
+        help="Gearbox ratio, if any (env: DIP_COATER_GEARBOX_RATIO)",
+    )
+    parser.add_argument(
+        "--steps-per-rev",
+        type=int,
+        default=int(os.environ["DIP_COATER_STEPS_PER_REV"])
+        if "DIP_COATER_STEPS_PER_REV" in os.environ
+        else None,
+        help="Number of full steps per revolution (env: DIP_COATER_STEPS_PER_REV)",
     )
     parser.add_argument(
         "--use-dummy-driver",
         action="store_true",
-        help="Use a dummy driver instead of the real motor driver",
+        default=os.environ.get("DIP_COATER_USE_DUMMY_DRIVER", "").lower()
+        in ("1", "true", "yes"),
+        help="Use a dummy driver instead of the real motor driver (env: DIP_COATER_USE_DUMMY_DRIVER)",
     )
     parser.add_argument(
         "--invert-direction",
         action="store_true",
-        help="Invert the motor direction for this run",
+        default=os.environ.get("DIP_COATER_INVERT_DIRECTION", "").lower()
+        in ("1", "true", "yes"),
+        help="Invert the motor direction for this run (env: DIP_COATER_INVERT_DIRECTION)",
     )
     parser.add_argument(
         "--home-direction",
         type=str,
+        default=os.environ.get("DIP_COATER_HOME_DIRECTION"),
         choices=[direction.value for direction in HomeDirection],
-        help="Override the setup homing direction for this run",
+        help="Override the setup homing direction for this run (env: DIP_COATER_HOME_DIRECTION)",
     )
     args = parser.parse_args()
 
@@ -248,9 +294,7 @@ def main():
     app_state = AppState(
         args.driver,
         setup_profile,
-        gpio_required=(
-            driver_spec.requires_gpio or setup_profile.supports_limit_switches
-        ),
+        gpio_required=(driver_spec.requires_gpio or setup_profile.requires_gpio),
     )
     app_state.config.USE_DUMMY_DRIVER = args.use_dummy_driver
 
@@ -281,7 +325,8 @@ def main():
         f"setup: {app_state.setup_profile.label}, log level: {log_level}"
     )
     app = DipCoaterApp(app_state)
-    app.title = f"Dip Coater v{__version__}"
+    suffix = " (dummy)" if app_state.config.USE_DUMMY_DRIVER else ""
+    app.title = f"Dip Coater v{__version__}{suffix}"
     app.run()
 
 

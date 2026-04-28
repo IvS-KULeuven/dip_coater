@@ -1,39 +1,73 @@
-[tool.poetry]
+[project]
 name = "dip-coater"
-version = "1.2.0"
+version = "2.0.1"
 description = "A terminal / Textual app to control a dip coater motor"
-authors = [
-    "Rik Huygen <rik.huygen@kuleuven.be>",
-    "Sibo Van Gool <sibo.vangool@kuleuven.be>"
-]
-license = "MIT"
 readme = "README.md"
-packages = [{include = "dip_coater", from = "src"}]
-package-mode = true
+requires-python = ">=3.10,<4.0"
+license = "MIT"
+authors = [
+    { name = "Rik Huygen", email = "rik.huygen@kuleuven.be" },
+    { name = "Sibo Van Gool", email = "sibo.vangool@kuleuven.be" },
+]
+dependencies = [
+    "mock-gpio>=0.1.8",
+    "pytrinamic>=0.2.11,<0.3.0",
+    "textual>=0.73.0",
+    "tmc-2209-raspberry-pi>=0.5.2",
+    "uvloop>=0.19.0; sys_platform != 'win32'",
+    "winloop; sys_platform == 'win32'",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.10,<4.0"
-textual = ">=0.73.0"
-textual-dev = "*"
-uvloop = { version = ">=0.19.0", markers = "sys_platform != 'win32'" }
-winloop = { version = "*", markers = "sys_platform == 'win32'" }
-pytrinamic = "^0.2.11"
-tmc-2209-raspberry-pi = ">=0.5.2"
-mock-gpio = "^0.1.8"
-flake8 = "^7.1.0"
+[project.optional-dependencies]
+docs = [
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.0",
+]
+rpi = [
+    "RPi.GPIO>=0.7.1",
+]
 
-[tool.poetry.group.rpi]
-optional = true
-
-[tool.poetry.group.rpi.dependencies]
-"RPi.GPIO" = ">=0.7.1"
-
-[tool.poetry.scripts]
+[project.scripts]
 dip-coater = "dip_coater.app:main"
 
-[tool.poetry.urls]
-repository = "https://github.com/IvS-KULeuven/dip_coater"
+[project.urls]
+Repository = "https://github.com/IvS-KULeuven/dip_coater"
+
+[dependency-groups]
+dev = [
+    "flake8>=7.1.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.6.0",
+    "textual-dev",
+]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = [
+    "dip_coater*",
+    "MyTMC_2209*",
+    "trinamic_wrapper*",
+]
+exclude = [
+    "trinamic_wrapper.tests*",
+]
+
+[tool.setuptools.package-data]
+dip_coater = [
+    "*.md",
+    "*.tcss",
+]
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "hardware: integration tests that require connected hardware",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"

@@ -96,26 +96,22 @@ class Coder(Static):
 
     @on(Input.Changed)
     def show_invalid_reasons(self, event: Input.Changed) -> None:
-        # Updating the UI to show the reasons why validation failed
-        if not event.validation_result.is_valid:
-            (
-                self.query_one("#coder-path-invalid-reasons", Label).update(
-                    f"[red]{event.validation_result.failure_descriptions}[/]"
-                )
-            )
+        validation_result = event.validation_result
+        path_status = self.query_one("#coder-path-invalid-reasons", Label)
+        if event.input.value == "":
+            path_status.update("[green]Using default code[/]")
+        elif validation_result is not None and not validation_result.is_valid:
+            path_status.update(f"[red]{validation_result.failure_descriptions}[/]")
         else:
-            (
-                self.query_one("#coder-path-invalid-reasons", Label).update(
-                    "[green]Valid file path[/]"
-                )
-            )
+            path_status.update("[green]Valid Python file[/]")
 
     @staticmethod
     def is_file_path_valid_python(file_path: str) -> bool:
         # Default code is allowed
         if file_path is None or file_path == "":
             return True
-        return Path(file_path).suffix == ".py"
+        path = Path(file_path).expanduser()
+        return path.is_file() and path.suffix == ".py"
 
     @on(Input.Submitted, "#code-file-path-input")
     @on(Button.Pressed, "#load-code-btn")
@@ -136,8 +132,13 @@ class Coder(Static):
             self.load_code_into_editor(file_path)
 
     def load_code_into_editor(self, file_path):
-        with open(file_path) as text:
-            self.set_editor_text(text.read())
+        try:
+            with open(Path(file_path).expanduser()) as text:
+                self.set_editor_text(text.read())
+        except OSError as e:
+            self.query_one("#coder-path-invalid-reasons", Label).update(
+                f"[red]Could not load file: {e}[/]"
+            )
 
     def load_default_code(self):
         file_path = Path(__file__).parent.parent / "code_editor_init_content.py"

@@ -4,6 +4,16 @@ Status {
     visibility: visible;
 }
 
+Header.dummy-mode {
+    background: purple;
+    color: white;
+}
+
+.state-strip {
+    text-style: bold;
+    padding: 0 1;
+}
+
 #right-side {
     width: 25%;
     height: 100%;
@@ -240,6 +250,19 @@ LogsTab {
     }
 }
 
+#diagnostics-container {
+    padding: 1;
+}
+
+#refresh-diagnostics {
+    width: 24;
+}
+
+#diagnostics-panel {
+    margin-top: 1;
+    height: 100%;
+}
+
 StatusAdvancedBase {
     border: solid $panel;
     height: 80%;
@@ -318,4 +341,3 @@ Coder {
     min-width: 0;
     padding: 0;
 }
-

@@ -7,8 +7,8 @@ import asyncio
 import platform
 
 from dip_coater.gpio import get_gpio_instance, GpioEdge, GpioState
-from dip_coater.motor.motor_driver_interface import MotorDriver
-from dip_coater.motor.tmc2209_dummy import DummyTMC2209
+from dip_coater.motor_driver.motor_driver_interface import MotorDriver
+from dip_coater.motor_driver.tmc2209.tmc2209_dummy import DummyTMC2209
 
 
 class MotorDriverTMC2209(MotorDriver):

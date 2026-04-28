@@ -6,7 +6,30 @@ from textual import on, events
 
 from dip_coater.widgets.position_controls import PositionControls
 from dip_coater.setup_profiles.machine_profile import HomeDirection
-from TMC_2209._TMC_2209_move import StopMode
+
+
+def is_normal_motor_stop(stop) -> bool:
+    return stop is None or getattr(stop, "name", None) == "NO"
+
+
+def control_button_disabled_states(
+    *,
+    motor_state: str,
+    limit_switch_up: bool | None,
+    limit_switch_down: bool | None,
+    supports_limit_switches: bool,
+    supports_homing: bool,
+) -> dict[str, bool]:
+    motor_enabled = motor_state == "enabled"
+    up_switch_open = not supports_limit_switches or limit_switch_up is False
+    down_switch_open = not supports_limit_switches or limit_switch_down is False
+    return {
+        "move-up": not (motor_enabled and up_switch_open),
+        "move-down": not (motor_enabled and down_switch_open),
+        "enable-motor": motor_state != "disabled",
+        "disable-motor": motor_state not in ("enabled", "moving", "homing", "fault"),
+        "do-homing": not (supports_homing and motor_enabled),
+    }
 
 
 class MotorControls(Static):
@@ -16,12 +39,12 @@ class MotorControls(Static):
         self.app_state.homing_found = False
 
     def compose(self) -> ComposeResult:
-        yield Button("Move UP ↑", id="move-up", variant="primary")
-        yield Button("Move DOWN ↓", id="move-down", variant="primary")
-        yield Button("ENABLE motor", id="enable-motor", variant="success")
-        yield Button("DISABLE motor", id="disable-motor", variant="error")
+        yield Button("Move up ↑", id="move-up", variant="primary")
+        yield Button("Move down ↓", id="move-down", variant="primary")
+        yield Button("Enable motor", id="enable-motor", variant="success")
+        yield Button("Stop and disable", id="disable-motor", variant="error")
         if self.app_state.motion_controller.supports_homing:
-            yield Button("Do HOMING", id="do-homing")
+            yield Button("Home", id="do-homing")
         # yield Button("STOP moving", id="stop-moving", variant="error")         Doesn't work currently...
 
     def _on_mount(self, event: events.Mount) -> None:
@@ -35,6 +58,20 @@ class MotorControls(Static):
     def update_status_widgets(self):
         self.app_state.status.update_homing_found(self.app_state.homing_found)
         self.app_state.status.update_motor_state(self.app_state.motor_state)
+        button_states = control_button_disabled_states(
+            motor_state=self.app_state.motor_state,
+            limit_switch_up=self.app_state.status.limit_switch_up,
+            limit_switch_down=self.app_state.status.limit_switch_down,
+            supports_limit_switches=(
+                self.app_state.motion_controller.supports_limit_switches
+            ),
+            supports_homing=self.app_state.motion_controller.supports_homing,
+        )
+        for button_id, disabled in button_states.items():
+            try:
+                self.query_one(f"#{button_id}", Button).disabled = disabled
+            except Exception:
+                pass
 
     def get_parameters(self) -> tuple:
         distance_mm = self.app_state.distance_controls.distance
@@ -70,7 +107,8 @@ class MotorControls(Static):
             if acceleration_mm_s2 is None:
                 acceleration_mm_s2 = def_accel
             log.write(
-                f"Moving up ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s\u00b2, {step_mode=} µs)."
+                f"[cyan]Moving up ({distance_mm=} mm, "
+                f"{speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s\u00b2, {step_mode=} µs).[/]"
             )
             self.set_motor_state("moving")
             await asyncio.sleep(0.1)
@@ -78,19 +116,22 @@ class MotorControls(Static):
                 self.app_state.motion_controller.move_up(
                     distance_mm, speed_mm_s, acceleration_mm_s2
                 )
-                stop = (
-                    await self.app_state.motion_controller.wait_for_motor_done_async()
+                stop = await self.app_state.motion_controller.wait_for_motor_done_async(
+                    active_limit_direction=HomeDirection.UP
                 )
-                if stop is None or stop == StopMode.NO:
+                if self.app_state.motor_state == "disabled":
+                    return
+                if is_normal_motor_stop(stop):
                     log.write("[green]-> Finished moving up.[/]")
                 else:
-                    log.write(f"[red]-> Stopped moving up {stop}.[/]")
+                    log.write(f"[red]-> Stopped moving up: {stop}.[/]")
                 self.set_motor_state("enabled")
             except ValueError as e:
                 log.write(f"[red]{e}[/]")
-                self.set_motor_state("enabled")
+                if self.app_state.motor_state != "disabled":
+                    self.set_motor_state("enabled")
         else:
-            log.write("[red]We cannot move up when the motor is disabled[/]")
+            log.write("[red]Cannot move up while the motor is disabled.[/]")
 
     @on(Button.Pressed, "#move-down")
     async def move_down_action(self):
@@ -106,8 +147,8 @@ class MotorControls(Static):
             if acceleration_mm_s2 is None:
                 acceleration_mm_s2 = def_accel
             log.write(
-                f"Moving down ({distance_mm=} mm, {speed_mm_s=} mm/s, {acceleration_mm_s2=} "
-                f"mm/s\u00b2, {step_mode=} µs)."
+                f"[cyan]Moving down ({distance_mm=} mm, "
+                f"{speed_mm_s=} mm/s, {acceleration_mm_s2=} mm/s\u00b2, {step_mode=} µs).[/]"
             )
             self.set_motor_state("moving")
             await asyncio.sleep(0.1)
@@ -115,19 +156,22 @@ class MotorControls(Static):
                 self.app_state.motion_controller.move_down(
                     distance_mm, speed_mm_s, acceleration_mm_s2
                 )
-                stop = (
-                    await self.app_state.motion_controller.wait_for_motor_done_async()
+                stop = await self.app_state.motion_controller.wait_for_motor_done_async(
+                    active_limit_direction=HomeDirection.DOWN
                 )
-                if stop is None or stop == StopMode.NO:
+                if self.app_state.motor_state == "disabled":
+                    return
+                if is_normal_motor_stop(stop):
                     log.write("[green]-> Finished moving down.[/]")
                 else:
-                    log.write(f"[red]-> Stopped moving down {stop}.[/]")
+                    log.write(f"[red]-> Stopped moving down: {stop}.[/]")
                 self.set_motor_state("enabled")
             except ValueError as e:
                 log.write(f"[red]{e}[/]")
-                self.set_motor_state("enabled")
+                if self.app_state.motor_state != "disabled":
+                    self.set_motor_state("enabled")
         else:
-            log.write("[red]We cannot move down when the motor is disabled[/]")
+            log.write("[red]Cannot move down while the motor is disabled.[/]")
 
     @on(Button.Pressed, "#enable-motor")
     async def enable_motor_action(self):
@@ -137,16 +181,14 @@ class MotorControls(Static):
             self.set_motor_state("enabled")
             log.write("[green]Motor is now enabled.[/]")
 
-    @on(Button.Pressed, "#disable-motor")
     async def disable_motor_action(self):
         log = self.app.query_one("#logger", RichLog)
-        if self.app_state.motor_state == "homing":
-            log.write("[red]We cannot disable the motor while homing is in progress[/]")
-            return
-        elif self.app_state.motor_state == "moving":
-            log.write("[red]We cannot disable the motor while homing is moving[/]")
-            return
-        elif self.app_state.motor_state == "enabled":
+        if self.app_state.motor_state in ("moving", "homing"):
+            self.app_state.motion_controller.stop_motor()
+            self.app_state.motion_controller.disable_motor()
+            self.set_motor_state("disabled")
+            log.write("[dark_orange]Emergency stop: motor stopped and disabled.[/]")
+        elif self.app_state.motor_state in ("enabled", "fault"):
             self.app_state.motion_controller.disable_motor()
             self.set_motor_state("disabled")
             log.write("[dark_orange]Motor is now disabled.[/]")
@@ -160,7 +202,7 @@ class MotorControls(Static):
             return
         else:
             log = self.app.query_one("#logger", RichLog)
-            log.write("[red]We cannot do homing when the motor is disabled[/]")
+            log.write("[red]Cannot home while the motor is disabled.[/]")
 
     @on(Button.Pressed, "#stop-moving")
     async def stop_moving_action(self):
@@ -195,7 +237,8 @@ class MotorControls(Static):
             self.set_homing_found(homing_found)
         except ValueError as e:
             log.write(f"[red]{e}[/]")
-        self.set_motor_state("enabled")
+        if self.app_state.motor_state != "disabled":
+            self.set_motor_state("enabled")
 
     def set_homing_found(self, homing_found: bool):
         self.app_state.homing_found = homing_found
@@ -208,12 +251,14 @@ class MotorControls(Static):
     def update_limit_switch_up_status(self, pin):
         triggered = self.app_state.motion_controller.read_limit_switch(HomeDirection.UP)
         self.app_state.status.update_limit_switch_up(triggered)
+        self.update_status_widgets()
 
     def update_limit_switch_down_status(self, pin):
         triggered = self.app_state.motion_controller.read_limit_switch(
             HomeDirection.DOWN
         )
         self.app_state.status.update_limit_switch_down(triggered)
+        self.update_status_widgets()
 
     def bind_limit_switches_to_motor(self):
         """Bind the limit switches to stop the motor driver."""

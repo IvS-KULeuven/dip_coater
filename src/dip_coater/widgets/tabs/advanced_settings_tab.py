@@ -3,7 +3,7 @@ from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, TabPane
 
 from dip_coater.utils.SettingChanged import SettingChanged
-from dip_coater.motor.driver_registry import get_driver_spec
+from dip_coater.motor_driver.driver_registry import get_driver_spec
 
 
 class AdvancedSettingsTab(TabPane):
@@ -51,6 +51,14 @@ class AdvancedSettingsTab(TabPane):
             case "chopper_mode":
                 self.app_state.motor_driver.set_chopper_mode(event.value)
                 self.app_state.status_advanced.update_chopper_mode(event.value)
+            case "stealthchop_enabled":
+                self.app_state.motor_driver.set_stealthchop_enabled(event.value)
+                self.app_state.status_advanced.update_stealthchop_enabled(event.value)
+            case "stealthchop_threshold":
+                self.app_state.motor_driver.set_stealthchop_threshold(event.value)
+                self.app_state.status_advanced.update_stealthchop_threshold(
+                    event.value
+                )
             case "spread_cycle":
                 self.app_state.motor_driver.set_spread_cycle(event.value)
                 self.app_state.status_advanced.update_spread_cycle(event.value)
@@ -73,12 +81,12 @@ class AdvancedSettingsTab(TabPane):
                 self.app_state.status_advanced.update_coolstep_threshold(event.value)
             case "threshold_speed":
                 self.app_state.status_advanced.update_threshold_speed(event.value)
-                self.app_state.advanced_settings.update_control_mode_widgets_value()
+                self.app_state.advanced_settings.update_motor_configuration()
             case "threshold_speed_enabled":
                 self.app_state.status_advanced.update_threshold_speed_enabled(
                     event.value
                 )
-                self.app_state.advanced_settings.update_control_mode_widgets_value()
+                self.app_state.advanced_settings.update_motor_configuration()
                 self.app_state.advanced_settings.update_control_mode_widgets_state()
             case "homing_revs":
                 self.app_state.status_advanced.update_homing_revs(event.value)

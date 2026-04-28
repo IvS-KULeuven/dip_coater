@@ -1,6 +1,6 @@
 from dip_coater.gpio import get_gpio_instance
 from dip_coater.config.config_loader import Config
-from dip_coater.motor.motor_driver_interface import AvailableMotorDrivers
+from dip_coater.motor_driver.motor_driver_interface import AvailableMotorDrivers
 from dip_coater.setup_profiles.machine_profile import MachineProfile
 
 

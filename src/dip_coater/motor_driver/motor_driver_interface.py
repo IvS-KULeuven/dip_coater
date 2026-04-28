@@ -5,9 +5,9 @@ from dip_coater.mechanical.mechanical_setup import MechanicalSetup
 
 
 class AvailableMotorDrivers(str, Enum):
-    TMC2209 = "TMC2209",
-    TMC2660 = "TMC2660",
-
+    TMC2209 = "TMC2209"
+    TMC2660 = "TMC2660"
+    TMC5160 = "TMC5160"
 
 
 class MotorDriver(ABC):
@@ -31,7 +31,7 @@ class MotorDriver(ABC):
 
     @abstractmethod
     def rotate(self, revs: float, rps: float, rpss: float = None):
-        """ Rotate clock-wise (viewed from the top of the motor axle)
+        """Rotate clock-wise (viewed from the top of the motor axle)
 
         :param revs: number of revolutions to turn (> 0 = clock-wise, < 0 = counter-clock-wise)
         :param rps: rotation speed in rotations per second
@@ -41,11 +41,25 @@ class MotorDriver(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def move_up(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None, *args, **kwargs):
+    def move_up(
+        self,
+        distance_mm: float,
+        speed_mm_s: float,
+        acceleration_mm_s2: float = None,
+        *args,
+        **kwargs,
+    ):
         raise NotImplementedError()
 
     @abstractmethod
-    def move_down(self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None, *args, **kwargs):
+    def move_down(
+        self,
+        distance_mm: float,
+        speed_mm_s: float,
+        acceleration_mm_s2: float = None,
+        *args,
+        **kwargs,
+    ):
         raise NotImplementedError()
 
     @abstractmethod
@@ -55,7 +69,7 @@ class MotorDriver(ABC):
     @abstractmethod
     def wait_for_motor_done(self):
         raise NotImplementedError()
-    
+
     @abstractmethod
     async def wait_for_motor_done_async(self):
         raise NotImplementedError()
@@ -65,8 +79,12 @@ class MotorDriver(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def run_to_position(self, position_mm: float, speed_mm_s: float = None,
-                        acceleration_mm_s2: float = None):
+    def run_to_position(
+        self,
+        position_mm: float,
+        speed_mm_s: float = None,
+        acceleration_mm_s2: float = None,
+    ):
         raise NotImplementedError()
 
     @abstractmethod
@@ -80,7 +98,7 @@ class MotorDriver(ABC):
         raise NotImplementedError()
 
     def set_speed(self, speed_mm_s: float):
-        """ Set the motor speed.
+        """Set the motor speed.
 
         :param speed_mm_s: The speed in mm/s
         """
@@ -94,7 +112,7 @@ class MotorDriver(ABC):
         raise NotImplementedError()
 
     def set_acceleration(self, acceleration_mm_s2: float):
-        """ Set the motor acceleration.
+        """Set the motor acceleration.
 
         :param acceleration_mm_s2: The acceleration/deceleration to use for the movement in mm/s^2
         """
@@ -109,7 +127,7 @@ class MotorDriver(ABC):
 
     @abstractmethod
     def get_microsteps(self) -> int:
-        """ Returns the current microsteps setting (e.g. 1, 2, 4, 8, 16, 32, 64, 128, 256) """
+        """Returns the current microsteps setting (e.g. 1, 2, 4, 8, 16, 32, 64, 128, 256)"""
         raise NotImplementedError()
 
     @abstractmethod

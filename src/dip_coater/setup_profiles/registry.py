@@ -1,21 +1,22 @@
 from dip_coater.mechanical.mechanical_setup import MechanicalSetup
 from dip_coater.mechanical.setup_large_coater import SetupLargeCoater
 from dip_coater.mechanical.setup_small_coater import SetupSmallCoater
-from dip_coater.motor.motor_driver_interface import AvailableMotorDrivers
+from dip_coater.motor_driver.motor_driver_interface import AvailableMotorDrivers
 from dip_coater.setup_profiles.machine_profile import (
     AvailableMachineSetups,
     HomeDirection,
-    LimitSwitchPair,
+    LimitSwitchSetup,
     MachineProfile,
 )
 
 
-_LIMIT_SWITCHES = LimitSwitchPair(
+_GPIO_LIMIT_SWITCHES = LimitSwitchSetup.gpio(
     up_pin=19,
     down_pin=26,
     up_nc=True,
     down_nc=True,
 )
+_LANDUNGSBRUECKE_REFERENCE_LIMIT_SWITCHES = LimitSwitchSetup.tmc5160_reference()
 
 _PROFILES = {
     AvailableMachineSetups.SMALL_COATER: MachineProfile(
@@ -24,7 +25,7 @@ _PROFILES = {
         mechanical_setup=SetupSmallCoater(),
         invert_motor_direction=False,
         home_direction=HomeDirection.UP,
-        limit_switches=_LIMIT_SWITCHES,
+        limit_switches=_GPIO_LIMIT_SWITCHES,
         min_position_mm=0.0,
         max_position_mm=100.0,
         homing_max_distance_mm=100.0,
@@ -35,7 +36,7 @@ _PROFILES = {
         mechanical_setup=SetupLargeCoater(),
         invert_motor_direction=True,
         home_direction=HomeDirection.UP,
-        limit_switches=_LIMIT_SWITCHES,
+        limit_switches=_LANDUNGSBRUECKE_REFERENCE_LIMIT_SWITCHES,
         min_position_mm=0.0,
         max_position_mm=100.0,
         homing_max_distance_mm=100.0,
@@ -45,6 +46,7 @@ _PROFILES = {
 DEFAULT_SETUP_BY_DRIVER = {
     AvailableMotorDrivers.TMC2209: AvailableMachineSetups.SMALL_COATER,
     AvailableMotorDrivers.TMC2660: AvailableMachineSetups.LARGE_COATER,
+    AvailableMotorDrivers.TMC5160: AvailableMachineSetups.LARGE_COATER,
 }
 
 
