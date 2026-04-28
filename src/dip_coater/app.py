@@ -41,6 +41,10 @@ from dip_coater.setup_profiles import (
 from dip_coater.setup_profiles.machine_profile import HomeDirection
 
 
+def toggled_textual_theme(current_theme) -> str:
+    return "textual-light" if current_theme.dark else "textual-dark"
+
+
 class DipCoaterApp(App):
     """A Textual App to control a dip coater motor."""
 
@@ -104,7 +108,7 @@ class DipCoaterApp(App):
 
     def action_toggle_dark(self) -> None:
         """An action to toggle dark mode."""
-        self.dark = not self.dark
+        self.theme = toggled_textual_theme(self.current_theme)
 
     def action_request_quit(self) -> None:
         self.app_state.motion_controller.cleanup()
