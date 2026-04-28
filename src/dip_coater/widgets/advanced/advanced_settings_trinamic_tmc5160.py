@@ -52,7 +52,7 @@ class AdvancedSettingsTrinamicTMC5160(AdvancedSettingsBase):
         self.update_coolstep_threshold(self.app_state.config.DEFAULT_COOLSTEP_THRESHOLD)
 
     def additional_widgets(self) -> ComposeResult:
-        with Collapsible(title="Driver mode", collapsed=False, id="driver-mode-group"):
+        with Collapsible(title="Driver mode", collapsed=True, id="driver-mode-group"):
             with Horizontal(id="interpolation-container"):
                 yield Checkbox(
                     "Invert motor direction",
@@ -74,7 +74,7 @@ class AdvancedSettingsTrinamicTMC5160(AdvancedSettingsBase):
                     classes="select",
                 )
 
-        with Collapsible(title="StealthChop", collapsed=False, id="stealthchop-group"):
+        with Collapsible(title="StealthChop", collapsed=True, id="stealthchop-group"):
             with Horizontal(id="stealthchop-container"):
                 with Vertical():
                     yield Label("Enable StealthChop")
@@ -91,7 +91,7 @@ class AdvancedSettingsTrinamicTMC5160(AdvancedSettingsBase):
                 )
                 yield Label("rev/s")
 
-        with Collapsible(title="StallGuard", collapsed=False, id="stallguard-group"):
+        with Collapsible(title="StallGuard", collapsed=True, id="stallguard-group"):
             with Horizontal(id="stallguard-container"):
                 with Vertical():
                     yield Label("Enable StallGuard")
@@ -113,7 +113,7 @@ class AdvancedSettingsTrinamicTMC5160(AdvancedSettingsBase):
                     validators=[Number(minimum=-64, maximum=63)],
                 )
 
-        with Collapsible(title="CoolStep", collapsed=False, id="coolstep-group"):
+        with Collapsible(title="CoolStep", collapsed=True, id="coolstep-group"):
             with Horizontal(id="coolstep-container"):
                 with Vertical():
                     yield Label("Enable CoolStep")

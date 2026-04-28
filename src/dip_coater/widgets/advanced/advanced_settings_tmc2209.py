@@ -33,7 +33,7 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
     # --------------- UI INIT ---------------
 
     def additional_widgets(self) -> ComposeResult:
-        with Collapsible(title="Driver mode", collapsed=False, id="driver-mode-group"):
+        with Collapsible(title="Driver mode", collapsed=True, id="driver-mode-group"):
             with Horizontal(id="interpolation-container"):
                 yield Checkbox(
                     "Invert motor direction",
@@ -54,7 +54,7 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
                     classes="checkbox",
                 )
         with Collapsible(
-            title="Threshold speed", collapsed=False, id="threshold-speed-group"
+            title="Threshold speed", collapsed=True, id="threshold-speed-group"
         ):
             with Horizontal(id="threshold-speed-container"):
                 yield Label(
@@ -80,7 +80,7 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
                 )
                 yield Label("mm/s", id="threshold-speed-unit")
 
-        with Collapsible(title="Homing", collapsed=False, id="homing-group"):
+        with Collapsible(title="Homing", collapsed=True, id="homing-group"):
             with Horizontal(id="homing-container"):
                 with Horizontal():
                     yield Label("Homing revolutions: ", id="homing-revolutions-label")

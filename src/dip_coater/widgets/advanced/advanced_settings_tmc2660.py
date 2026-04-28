@@ -40,7 +40,7 @@ class AdvancedSettingsTMC2660(AdvancedSettingsBase):
         self.update_coolstep_threshold(self.app_state.config.DEFAULT_COOLSTEP_THRESHOLD)
 
     def additional_widgets(self) -> ComposeResult:
-        with Collapsible(title="Driver mode", collapsed=False, id="driver-mode-group"):
+        with Collapsible(title="Driver mode", collapsed=True, id="driver-mode-group"):
             with Horizontal(id="interpolation-container"):
                 yield Checkbox(
                     "Invert motor direction",
@@ -64,7 +64,7 @@ class AdvancedSettingsTMC2660(AdvancedSettingsBase):
                     classes="select",
                 )
 
-        with Collapsible(title="StallGuard", collapsed=False, id="stallguard-group"):
+        with Collapsible(title="StallGuard", collapsed=True, id="stallguard-group"):
             with Horizontal(id="stallguard-container"):
                 with Vertical():
                     yield Label("Enable StallGuard")
@@ -86,7 +86,7 @@ class AdvancedSettingsTMC2660(AdvancedSettingsBase):
                     validators=[Number(minimum=-64, maximum=63)],
                 )
 
-        with Collapsible(title="CoolStep", collapsed=False, id="coolstep-group"):
+        with Collapsible(title="CoolStep", collapsed=True, id="coolstep-group"):
             with Horizontal(id="coolstep-container"):
                 with Vertical():
                     yield Label("Enable CoolStep")

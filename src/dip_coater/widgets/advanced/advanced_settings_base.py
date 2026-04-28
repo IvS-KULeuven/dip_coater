@@ -31,7 +31,7 @@ class AdvancedSettingsBase(Static):
         with Vertical():
             with Collapsible(
                 title=COMMON_ADVANCED_GROUP_TITLE,
-                collapsed=False,
+                collapsed=True,
                 id="motion-current-group",
             ):
                 yield self.app_state.step_mode
