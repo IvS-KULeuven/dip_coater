@@ -6,6 +6,8 @@ def test_install_docs_explain_software_updates_and_version_check():
 
     assert "python3 -m pip install dip-coater" in install_docs
     assert "python3 -m pip install --upgrade dip-coater" in install_docs
+    assert "dip-coater --version" in install_docs
+    assert "uv run dip-coater --version" in install_docs
     assert "## Source Checkout Install" in install_docs
     assert "## Update the Software" in install_docs
     assert "If you installed from a source checkout" in install_docs

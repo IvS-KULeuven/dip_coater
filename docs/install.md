@@ -31,7 +31,7 @@ python3 -m pip install dip-coater
 Then check that the app command exists:
 
 ```bash
-dip-coater --help
+dip-coater --version
 ```
 
 ## Raspberry Pi Install
@@ -67,7 +67,7 @@ If you already use uv from a source checkout, you can install and run the projec
 
 ```bash
 uv sync
-uv run dip-coater --help
+uv run dip-coater --version
 ```
 
 On a Raspberry Pi with GPIO hardware:

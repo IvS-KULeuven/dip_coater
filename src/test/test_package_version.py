@@ -9,10 +9,12 @@ except ModuleNotFoundError:  # pragma: no cover
 
 def test_get_version_prefers_local_pyproject(monkeypatch):
     module = importlib.import_module("dip_coater")
+    pyproject_path = Path(__file__).parents[2] / "pyproject.toml"
+    pyproject = tomllib.loads(pyproject_path.read_text())
 
     monkeypatch.setattr(module, "package_version", lambda _: "9.9.9")
 
-    assert module.get_version() == "2.0.1"
+    assert module.get_version() == pyproject["project"]["version"]
 
 
 def test_pyproject_packages_include_runtime_packages():

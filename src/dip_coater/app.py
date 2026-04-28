@@ -155,6 +155,12 @@ def main():
         description="Process logging level and motor driver type."
     )
     parser.add_argument(
+        "--version",
+        action="version",
+        version=__version__,
+        help="Print the Dip Coater version and exit.",
+    )
+    parser.add_argument(
         "-l",
         "--log-level",
         type=str,
