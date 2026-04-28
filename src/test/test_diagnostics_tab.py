@@ -5,7 +5,10 @@ from dip_coater.setup_profiles.machine_profile import (
     LimitSwitchSetup,
     MachineProfile,
 )
-from dip_coater.widgets.tabs.diagnostics_tab import build_diagnostics_rows
+from dip_coater.widgets.tabs.diagnostics_tab import (
+    build_diagnostics_rows,
+    format_diagnostics_rows,
+)
 
 
 class FakeDriver:
@@ -57,3 +60,17 @@ def test_diagnostics_rows_include_driver_limits_and_raw_reference_state():
     assert rows["UP limit config"] == "driver_reference, active_low"
     assert rows["TMC L reference raw"] == "low"
     assert rows["TMC R reference raw"] == "high"
+
+
+def test_diagnostics_format_colorizes_state_values():
+    output = format_diagnostics_rows(
+        [
+            ("Motor state", "disabled"),
+            ("UP limit switch", "triggered"),
+            ("DOWN limit switch", "open"),
+        ]
+    )
+
+    assert "[dark_orange]disabled[/]" in output
+    assert "[red]triggered[/]" in output
+    assert "[green]open[/]" in output

@@ -22,6 +22,12 @@ def motor_state_badge(motor_state: str | None) -> str:
     return f"[{color}]{state.upper()}[/]"
 
 
+def limit_switch_state_badge(triggered: bool) -> str:
+    if triggered:
+        return "[red]Triggered[/]"
+    return "[green]Open[/]"
+
+
 class Status(Static):
     speed: reactive[float | None] = reactive(None)
     distance: reactive[float | None] = reactive(None)
@@ -172,16 +178,14 @@ class Status(Static):
     def watch_limit_switch_up(self, limit_switch_up: str):
         if limit_switch_up is None:
             return
-        str_limit_switch_up = "[dark_orange]Triggered[/]" if limit_switch_up else "Open"
+        str_limit_switch_up = limit_switch_state_badge(limit_switch_up)
         msg = f"Limit switch up: {str_limit_switch_up}"
         self.query_one("#status-limit-switch-up", Label).update(msg)
 
     def watch_limit_switch_down(self, limit_switch_down: str):
         if limit_switch_down is None:
             return
-        str_limit_switch_down = (
-            "[dark_orange]Triggered[/]" if limit_switch_down else "Open"
-        )
+        str_limit_switch_down = limit_switch_state_badge(limit_switch_down)
         msg = f"Limit switch down: {str_limit_switch_down}"
         self.query_one("#status-limit-switch-down", Label).update(msg)
 

@@ -118,10 +118,37 @@ def _high_low(value: bool) -> str:
 def format_diagnostics_rows(rows: list[tuple[str, str]]) -> str:
     label_width = max((len(label) for label, _value in rows), default=0)
     lines = [
-        f"[b]{escape(label):<{label_width}}[/b]  {escape(value)}"
+        f"[b]{escape(label):<{label_width}}[/b]  {_format_diagnostics_value(label, value)}"
         for label, value in rows
     ]
     return "\n".join(lines)
+
+
+def _format_diagnostics_value(label: str, value: str) -> str:
+    if label == "Motor state":
+        return _colorize_motor_state(value)
+    if label.endswith("limit switch"):
+        return _colorize_limit_switch_state(value)
+    return escape(value)
+
+
+def _colorize_motor_state(value: str) -> str:
+    colors = {
+        "enabled": "green",
+        "disabled": "dark_orange",
+        "homing": "cyan",
+        "moving": "blue",
+    }
+    color = colors.get(value, "red")
+    return f"[{color}]{escape(value)}[/]"
+
+
+def _colorize_limit_switch_state(value: str) -> str:
+    if value == "open":
+        return "[green]open[/]"
+    if value == "triggered":
+        return "[red]triggered[/]"
+    return escape(value)
 
 
 class DiagnosticsTab(TabPane):

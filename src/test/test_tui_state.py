@@ -3,13 +3,20 @@ from dip_coater.widgets.motor_controls import (
     is_normal_motor_stop,
 )
 from dip_coater.widgets.status import Status, motor_state_badge
+from dip_coater.widgets.status import limit_switch_state_badge
 
 
 def test_motor_state_badge_uses_compact_state_label():
     assert motor_state_badge("enabled") == "[green]ENABLED[/]"
     assert motor_state_badge("moving") == "[blue]MOVING[/]"
+    assert motor_state_badge("disabled") == "[dark_orange]DISABLED[/]"
     assert motor_state_badge("fault") == "[red]FAULT[/]"
     assert motor_state_badge(None) == "[red]UNKNOWN[/]"
+
+
+def test_limit_switch_state_badge_colorizes_open_and_triggered():
+    assert limit_switch_state_badge(False) == "[green]Open[/]"
+    assert limit_switch_state_badge(True) == "[red]Triggered[/]"
 
 
 def test_normal_motor_stop_does_not_depend_on_tmc2209_imports():
