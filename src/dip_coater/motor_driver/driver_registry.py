@@ -152,6 +152,7 @@ def _create_tmc5160_driver(
     else:
         connection = open_connection(port=port, interface=interface_type).connect()
         motor = create_motor(Chip.TMC5160, connection, config=config)
+    _prepare_tmc5160_motor_for_startup(motor, logger)
     motor.set_run_current_mA(app_state.config.DEFAULT_CURRENT)
     motor.set_standstill_current_mA(app_state.config.DEFAULT_CURRENT_STANDSTILL)
     motor.set_step_mode(step_mode)
@@ -196,6 +197,25 @@ def _create_tmc5160_driver(
         right=getattr(app_state.config, "DEFAULT_REFERENCE_RIGHT_STOP_ENABLED", True),
     )
     return adapter
+
+
+def _prepare_tmc5160_motor_for_startup(motor, logger) -> None:
+    try:
+        motor.stop()
+        motor.disable()
+        if hasattr(motor, "enable_reference_stops"):
+            motor.enable_reference_stops(left=False, right=False)
+        motor.get_actual_position_rot()
+        get_actual_speed_rps = getattr(motor, "get_actual_speed_rps", None)
+        if callable(get_actual_speed_rps):
+            get_actual_speed_rps()
+    except Exception as exc:
+        msg = (
+            "TMC5160 startup initialization failed. Check that motor power is on "
+            "before connecting USB, then reconnect the Landungsbruecke USB cable."
+        )
+        logger.error(msg)
+        raise RuntimeError(msg) from exc
 
 
 _SPECS = {

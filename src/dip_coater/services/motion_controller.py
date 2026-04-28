@@ -87,6 +87,7 @@ class MotionController:
         acceleration_mm_s2: float | None = None,
     ):
         self._raise_if_limit_switch_triggered(HomeDirection.UP)
+        self._disable_opposite_triggered_driver_reference_stop(HomeDirection.UP)
         kwargs = {}
         switch = self._switch_for_direction(HomeDirection.UP)
         if switch is not None and switch.source == LimitSwitchSource.GPIO:
@@ -100,6 +101,7 @@ class MotionController:
         acceleration_mm_s2: float | None = None,
     ):
         self._raise_if_limit_switch_triggered(HomeDirection.DOWN)
+        self._disable_opposite_triggered_driver_reference_stop(HomeDirection.DOWN)
         kwargs = {}
         switch = self._switch_for_direction(HomeDirection.DOWN)
         if switch is not None and switch.source == LimitSwitchSource.GPIO:
@@ -263,6 +265,18 @@ class MotionController:
             return
         self._disabled_driver_reference_stops.remove(direction)
         self._apply_driver_reference_stop_state()
+
+    def _disable_opposite_triggered_driver_reference_stop(
+        self, direction: HomeDirection
+    ) -> None:
+        opposite_direction = (
+            HomeDirection.DOWN if direction == HomeDirection.UP else HomeDirection.UP
+        )
+        switch = self._switch_for_direction(opposite_direction)
+        if switch is None or switch.source != LimitSwitchSource.DRIVER_REFERENCE:
+            return
+        if self.read_limit_switch(opposite_direction):
+            self.disable_driver_reference_stop_until_clear(opposite_direction)
 
     def _apply_driver_reference_stop_state(self) -> None:
         if not hasattr(self.motor_driver, "enable_reference_stops"):

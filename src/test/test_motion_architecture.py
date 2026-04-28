@@ -250,6 +250,24 @@ def test_motion_controller_refuses_move_toward_triggered_reference_switch():
     assert driver.moves == []
 
 
+def test_motion_controller_disables_opposite_triggered_reference_stop_before_move():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
+    )
+    driver = FakeReferenceSwitchDriver()
+    driver.left_endstop = False
+    driver.right_endstop = True
+    controller = MotionController(driver, profile, gpio=None)
+
+    controller.move_down(1.0, 0.5)
+
+    assert driver.reference_stop_calls == [(False, True)]
+    assert driver.moves == [("down", 1.0, 0.5, None, {})]
+
+
 @pytest.mark.asyncio
 async def test_motion_controller_stops_when_active_reference_switch_triggers():
     profile = MachineProfile(
