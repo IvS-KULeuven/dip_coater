@@ -9,14 +9,14 @@ Use this page when setting up the project on a Raspberry Pi or on a normal compu
 
 ## Recommended: pip
 
-Create a virtual environment:
+Create a virtual environment (optional):
 
 ```bash
-python3 -m venv venv --prompt=dip-coater
-source venv/bin/activate
+python3 -m venv .venv --prompt=dip-coater
+source .venv/bin/activate
 ```
 
-Upgrade pip:
+Upgrade pip (optional):
 
 ```bash
 python3 -m pip install --upgrade pip
