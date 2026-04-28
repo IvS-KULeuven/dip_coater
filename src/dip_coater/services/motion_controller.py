@@ -14,6 +14,7 @@ class MotionController:
         self.motor_driver = motor_driver
         self.machine_profile = machine_profile
         self.gpio = gpio
+        self._disabled_driver_reference_stops: set[HomeDirection] = set()
 
     @property
     def supports_limit_switches(self) -> bool:
@@ -64,6 +65,9 @@ class MotionController:
             while not wait_task.done():
                 if self.read_limit_switch(active_limit_direction):
                     self.stop_motor()
+                    self.disable_driver_reference_stop_until_clear(
+                        active_limit_direction
+                    )
                     wait_task.cancel()
                     try:
                         await wait_task
@@ -224,18 +228,49 @@ class MotionController:
                 if direction == HomeDirection.UP
                 else self.motor_driver.get_right_endstop()
             )
-            return switch.is_triggered(raw_state)
+            triggered = switch.is_triggered(raw_state)
+            if not triggered:
+                self._reenable_driver_reference_stop(direction)
+            return triggered
         if switch.source == LimitSwitchSource.GPIO:
             if not self.supports_gpio_limit_switches:
                 return False
             return switch.is_triggered(self.gpio.input(switch.pin) == GpioState.HIGH)
         return False
 
+    def disable_driver_reference_stop_until_clear(
+        self, direction: HomeDirection
+    ) -> None:
+        switch = self._switch_for_direction(direction)
+        if (
+            switch is None
+            or switch.source != LimitSwitchSource.DRIVER_REFERENCE
+            or not self.supports_driver_reference_switches
+            or not hasattr(self.motor_driver, "enable_reference_stops")
+        ):
+            return
+        self._disabled_driver_reference_stops.add(direction)
+        self._apply_driver_reference_stop_state()
+
     def _switch_for_direction(self, direction: HomeDirection):
         switches = self.machine_profile.limit_switches
         if switches is None:
             return None
         return switches.switch_for(direction)
+
+    def _reenable_driver_reference_stop(self, direction: HomeDirection) -> None:
+        if direction not in self._disabled_driver_reference_stops:
+            return
+        self._disabled_driver_reference_stops.remove(direction)
+        self._apply_driver_reference_stop_state()
+
+    def _apply_driver_reference_stop_state(self) -> None:
+        if not hasattr(self.motor_driver, "enable_reference_stops"):
+            return
+        self.motor_driver.enable_reference_stops(
+            left=HomeDirection.UP not in self._disabled_driver_reference_stops,
+            right=HomeDirection.DOWN not in self._disabled_driver_reference_stops,
+        )
 
     def _raise_if_limit_switch_triggered(self, direction: HomeDirection) -> None:
         if not self.supports_limit_switches:

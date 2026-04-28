@@ -123,12 +123,16 @@ class FakeReferenceSwitchDriver(FakeDriver):
         super().__init__()
         self.left_endstop = False
         self.right_endstop = False
+        self.reference_stop_calls = []
 
     def get_left_endstop(self):
         return self.left_endstop
 
     def get_right_endstop(self):
         return self.right_endstop
+
+    def enable_reference_stops(self, *, left=True, right=True):
+        self.reference_stop_calls.append((left, right))
 
     async def wait_for_motor_done_async(self):
         while True:
@@ -270,7 +274,25 @@ async def test_motion_controller_stops_when_active_reference_switch_triggers():
     await trigger_task
 
     assert driver.stopped is True
+    assert driver.reference_stop_calls == [(False, True)]
     assert result == "up limit switch triggered"
+
+
+def test_motion_controller_reenables_reference_stop_after_switch_clears():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
+    )
+    driver = FakeReferenceSwitchDriver()
+    controller = MotionController(driver, profile, gpio=None)
+
+    controller.disable_driver_reference_stop_until_clear(HomeDirection.UP)
+    driver.left_endstop = True
+
+    assert controller.read_limit_switch(HomeDirection.UP) is False
+    assert driver.reference_stop_calls == [(False, True), (True, True)]
 
 
 def test_large_profile_uses_landungsbruecke_reference_switches():
