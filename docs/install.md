@@ -49,8 +49,8 @@ Use this path only if you are running from a cloned source checkout, for example
 ```bash
 git clone https://github.com/IvS-KULeuven/dip_coater.git
 cd dip_coater
-python3 -m venv venv --prompt=dip-coater
-source venv/bin/activate
+python3 -m venv .venv --prompt=dip-coater
+source .venv/bin/activate
 python3 -m pip install --upgrade pip
 python3 -m pip install -e .
 ```
@@ -83,7 +83,7 @@ Stop the app before updating it.
 If you installed the normal package with pip, update it from the package index:
 
 ```bash
-source venv/bin/activate
+source .venv/bin/activate
 python3 -m pip install --upgrade dip-coater
 ```
 
