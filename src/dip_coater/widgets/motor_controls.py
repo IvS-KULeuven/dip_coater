@@ -37,6 +37,7 @@ class MotorControls(Static):
         super().__init__()
         self.app_state = app_state
         self.app_state.homing_found = False
+        self._homing_task: asyncio.Task | None = None
 
     def compose(self) -> ComposeResult:
         yield Button("Move up ↑", id="move-up", variant="primary")
@@ -188,6 +189,8 @@ class MotorControls(Static):
             self.app_state.motion_controller.disable_motor()
             self.set_motor_state("disabled")
             log.write("[dark_orange]Emergency stop: motor stopped and disabled.[/]")
+            if self._homing_task is not None and not self._homing_task.done():
+                self._homing_task.cancel()
         elif self.app_state.motor_state in ("enabled", "fault"):
             self.app_state.motion_controller.disable_motor()
             self.set_motor_state("disabled")
@@ -220,23 +223,31 @@ class MotorControls(Static):
         log.write(f"[cyan]Starting limit switch homing ({speed=} mm/s)...[/]")
         self.set_motor_state("homing")
         await asyncio.sleep(0.1)
-        try:
-            home_direction = (
-                None
-                if home_up is None
-                else (HomeDirection.UP if home_up else HomeDirection.DOWN)
-            )
-            homing_found = self.app_state.motion_controller.home(
+        home_direction = (
+            None
+            if home_up is None
+            else (HomeDirection.UP if home_up else HomeDirection.DOWN)
+        )
+        self._homing_task = asyncio.create_task(
+            self.app_state.motion_controller.home_async(
                 speed,
                 home_direction=home_direction,
             )
+        )
+        try:
+            homing_found = await self._homing_task
             if homing_found:
                 log.write("-> Finished homing.")
             else:
                 log.write("[red]Homing failed[/]")
             self.set_homing_found(homing_found)
+        except asyncio.CancelledError:
+            log.write("[dark_orange]-> Homing aborted.[/]")
+            self.set_homing_found(False)
         except ValueError as e:
             log.write(f"[red]{e}[/]")
+        finally:
+            self._homing_task = None
         if self.app_state.motor_state != "disabled":
             self.set_motor_state("enabled")
 

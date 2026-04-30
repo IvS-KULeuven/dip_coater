@@ -1,4 +1,5 @@
 import asyncio
+import time
 from collections.abc import Callable
 
 from dip_coater.gpio import GpioEdge, GpioMode, GpioPUD, GpioState
@@ -7,6 +8,9 @@ from dip_coater.setup_profiles.machine_profile import (
     LimitSwitchSource,
     MachineProfile,
 )
+
+
+_REFERENCE_HOMING_BACKOFF_MM = 5.0
 
 
 class MotionController:
@@ -37,9 +41,15 @@ class MotionController:
 
     @property
     def supports_homing(self) -> bool:
-        return self.supports_gpio_limit_switches and hasattr(
+        if self.supports_gpio_limit_switches and hasattr(
             self.motor_driver, "do_limit_switch_homing"
-        )
+        ):
+            return True
+        if self.supports_driver_reference_switches and hasattr(
+            self.motor_driver, "mark_homed"
+        ):
+            return True
+        return False
 
     def enable_motor(self):
         self.motor_driver.enable_motor()
@@ -140,6 +150,37 @@ class MotionController:
             )
         if home_direction is None:
             home_direction = self.machine_profile.home_direction
+        if self.supports_gpio_limit_switches and hasattr(
+            self.motor_driver, "do_limit_switch_homing"
+        ):
+            return self._home_via_gpio_switches(speed_mm_s, home_direction)
+        return self._home_via_driver_reference(speed_mm_s, home_direction)
+
+    async def home_async(
+        self,
+        speed_mm_s: float,
+        *,
+        home_direction: HomeDirection | None = None,
+    ) -> bool:
+        if not self.supports_homing:
+            raise ValueError(
+                "The current driver/setup combination does not support homing."
+            )
+        if home_direction is None:
+            home_direction = self.machine_profile.home_direction
+        if self.supports_gpio_limit_switches and hasattr(
+            self.motor_driver, "do_limit_switch_homing"
+        ):
+            return await asyncio.to_thread(
+                self._home_via_gpio_switches, speed_mm_s, home_direction
+            )
+        return await self._home_via_driver_reference_async(
+            speed_mm_s, home_direction
+        )
+
+    def _home_via_gpio_switches(
+        self, speed_mm_s: float, home_direction: HomeDirection
+    ) -> bool:
         distance = (
             self.machine_profile.homing_max_distance_mm
             if home_direction == HomeDirection.UP
@@ -154,6 +195,150 @@ class MotionController:
             switches.up_nc,
             switches.down_nc,
         )
+
+    def _home_via_driver_reference(
+        self, speed_mm_s: float, home_direction: HomeDirection
+    ) -> bool:
+        opposite_direction = (
+            HomeDirection.DOWN if home_direction == HomeDirection.UP else HomeDirection.UP
+        )
+        if self.read_limit_switch(opposite_direction):
+            raise ValueError(
+                f"Cannot home {home_direction.value}: opposite "
+                f"({opposite_direction.value}) limit switch is triggered."
+            )
+
+        backoff_speed = max(speed_mm_s, 1.0)
+
+        if self.read_limit_switch(home_direction):
+            self.disable_driver_reference_stop_until_clear(home_direction)
+            self._move_motor_in_direction(
+                opposite_direction, _REFERENCE_HOMING_BACKOFF_MM, backoff_speed
+            )
+            self.motor_driver.wait_for_motor_done()
+            if self.read_limit_switch(home_direction):
+                raise ValueError(
+                    "Home switch still triggered after backing off; "
+                    "please check the limit switches."
+                )
+
+        distance_mm = self.machine_profile.homing_max_distance_mm
+        timeout_s = max(60.0, (distance_mm / max(speed_mm_s, 0.1)) * 2.0)
+        self._move_motor_in_direction(home_direction, distance_mm, speed_mm_s)
+
+        triggered = False
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            if self.read_limit_switch(home_direction):
+                triggered = True
+                break
+            time.sleep(0.02)
+        self.motor_driver.stop_motor()
+
+        if not triggered:
+            return False
+
+        self.motor_driver.mark_homed()
+
+        self.disable_driver_reference_stop_until_clear(home_direction)
+        self._move_motor_in_direction(
+            opposite_direction, _REFERENCE_HOMING_BACKOFF_MM, backoff_speed
+        )
+        self.motor_driver.wait_for_motor_done()
+        return True
+
+    def _move_motor_in_direction(
+        self, direction: HomeDirection, distance_mm: float, speed_mm_s: float
+    ) -> None:
+        if direction == HomeDirection.UP:
+            self.motor_driver.move_up(distance_mm, speed_mm_s)
+        else:
+            self.motor_driver.move_down(distance_mm, speed_mm_s)
+
+    async def _home_via_driver_reference_async(
+        self, speed_mm_s: float, home_direction: HomeDirection
+    ) -> bool:
+        opposite_direction = (
+            HomeDirection.DOWN if home_direction == HomeDirection.UP else HomeDirection.UP
+        )
+        if self.read_limit_switch(opposite_direction):
+            raise ValueError(
+                f"Cannot home {home_direction.value}: opposite "
+                f"({opposite_direction.value}) limit switch is triggered."
+            )
+
+        backoff_speed = max(speed_mm_s, 1.0)
+
+        if self.read_limit_switch(home_direction):
+            self.disable_driver_reference_stop_until_clear(home_direction)
+            self._move_motor_in_direction(
+                opposite_direction, _REFERENCE_HOMING_BACKOFF_MM, backoff_speed
+            )
+            await self.motor_driver.wait_for_motor_done_async()
+            if self.read_limit_switch(home_direction):
+                raise ValueError(
+                    "Home switch still triggered after backing off; "
+                    "please check the limit switches."
+                )
+
+        distance_mm = self.machine_profile.homing_max_distance_mm
+        timeout_s = max(60.0, (distance_mm / max(speed_mm_s, 0.1)) * 2.0)
+        self._move_motor_in_direction(home_direction, distance_mm, speed_mm_s)
+
+        dummy_hit_task = self._schedule_dummy_endstop_hit(home_direction)
+        try:
+            triggered = False
+            loop = asyncio.get_event_loop()
+            deadline = loop.time() + timeout_s
+            try:
+                while loop.time() < deadline:
+                    if self.read_limit_switch(home_direction):
+                        triggered = True
+                        break
+                    await asyncio.sleep(0.02)
+            finally:
+                self.motor_driver.stop_motor()
+        finally:
+            if dummy_hit_task is not None and not dummy_hit_task.done():
+                dummy_hit_task.cancel()
+
+        if not triggered:
+            return False
+
+        self.motor_driver.mark_homed()
+        self._release_dummy_endstops()
+
+        self.disable_driver_reference_stop_until_clear(home_direction)
+        self._move_motor_in_direction(
+            opposite_direction, _REFERENCE_HOMING_BACKOFF_MM, backoff_speed
+        )
+        await self.motor_driver.wait_for_motor_done_async()
+        return True
+
+    def _schedule_dummy_endstop_hit(
+        self, home_direction: HomeDirection
+    ) -> asyncio.Task | None:
+        if not getattr(self.motor_driver, "is_dummy", False):
+            return None
+        if not hasattr(self.motor_driver, "simulate_dummy_endstops"):
+            return None
+
+        async def trip_after_delay() -> None:
+            await asyncio.sleep(0.5)
+            polarity_raw_triggered = False  # ACTIVE_LOW reference-switch convention
+            if home_direction == HomeDirection.UP:
+                self.motor_driver.simulate_dummy_endstops(left=polarity_raw_triggered)
+            else:
+                self.motor_driver.simulate_dummy_endstops(right=polarity_raw_triggered)
+
+        return asyncio.create_task(trip_after_delay())
+
+    def _release_dummy_endstops(self) -> None:
+        if not getattr(self.motor_driver, "is_dummy", False):
+            return
+        if not hasattr(self.motor_driver, "simulate_dummy_endstops"):
+            return
+        self.motor_driver.simulate_dummy_endstops(left=True, right=True)
 
     def get_current_position_mm(self):
         try:

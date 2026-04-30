@@ -220,3 +220,6 @@ class AdvancedSettingsBase(Static):
 
     def get_acceleration(self) -> float:
         return self._acceleration
+
+    def get_homing_speed(self) -> float:
+        return self.app_state.config.HOMING_SPEED_MM_S

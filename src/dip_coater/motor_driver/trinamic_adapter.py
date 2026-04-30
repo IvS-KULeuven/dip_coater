@@ -56,6 +56,7 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
         self._target_position_rot: float | None = None
         self._stealthchop_enabled: bool = False
         self._stealthchop_threshold_rps: float | None = None
+        self._homing_found: bool = False
 
     def enable_motor(self):
         self._motor.enable()
@@ -120,7 +121,15 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
         self._logger.info("Motor done")
 
     def get_current_position_mm(self, homes_up: bool | None = None):
-        return self.mechanical_setup.revs_to_mm(self._motor.get_actual_position_rot())
+        raw_mm = self.mechanical_setup.revs_to_mm(
+            self._motor.get_actual_position_rot()
+        )
+        if homes_up is None:
+            return raw_mm
+        # Position convention: positive = distance away from home in the
+        # non-home direction. Combine the motor's invert flag with the
+        # home direction to translate the raw motor counter accordingly.
+        return raw_mm * self._invert_sign() * self._home_sign(homes_up)
 
     def run_to_position(
         self,
@@ -130,10 +139,31 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
         homes_up: bool | None = None,
     ):
         current_mm = self.get_current_position_mm(homes_up=homes_up)
-        self._move_mm(position_mm - current_mm, speed_mm_s, acceleration_mm_s2)
+        delta_position_mm = position_mm - current_mm
+        if homes_up is None:
+            self._move_mm(delta_position_mm, speed_mm_s, acceleration_mm_s2)
+            return
+        physical_up_delta_mm = delta_position_mm * self._home_sign(homes_up)
+        self._move_mm(physical_up_delta_mm, speed_mm_s, acceleration_mm_s2)
+
+    def _invert_sign(self) -> int:
+        return -1 if self._invert_direction else 1
+
+    @staticmethod
+    def _home_sign(homes_up: bool) -> int:
+        return -1 if homes_up else 1
 
     def is_homing_found(self):
-        return False
+        return self._homing_found
+
+    def mark_homed(self) -> None:
+        self._motor.reset_position()
+        self._target_position_rot = None
+        self._homing_found = True
+        self._logger.info("Motor marked as homed (position zeroed)")
+
+    def clear_homing(self) -> None:
+        self._homing_found = False
 
     def set_speed_rps(self, rps: float):
         if rps is None:
@@ -296,6 +326,19 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
 
     def get_right_endstop(self) -> bool:
         return self._motor.get_right_endstop()
+
+    def simulate_dummy_endstops(
+        self,
+        *,
+        left: bool | None = None,
+        right: bool | None = None,
+    ) -> None:
+        if not self.is_dummy:
+            return
+        setter = getattr(self._motor, "set_endstops", None)
+        if setter is None:
+            return
+        setter(left=left, right=right)
 
     def _active_stealthchop_threshold(self) -> float | None:
         if self._stealthchop_threshold_rps is None:

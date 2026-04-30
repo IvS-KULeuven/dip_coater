@@ -124,6 +124,8 @@ class FakeReferenceSwitchDriver(FakeDriver):
         self.left_endstop = False
         self.right_endstop = False
         self.reference_stop_calls = []
+        self.homed = False
+        self.cleared_homing = False
 
     def get_left_endstop(self):
         return self.left_endstop
@@ -134,9 +136,57 @@ class FakeReferenceSwitchDriver(FakeDriver):
     def enable_reference_stops(self, *, left=True, right=True):
         self.reference_stop_calls.append((left, right))
 
+    def mark_homed(self):
+        self.homed = True
+        self.left_endstop = False
+        self.right_endstop = False
+
+    def clear_homing(self):
+        self.cleared_homing = True
+        self.homed = False
+
+    def is_homing_found(self):
+        return self.homed
+
     async def wait_for_motor_done_async(self):
         while True:
             await asyncio.sleep(1)
+
+
+class HomingReferenceSwitchDriver(FakeReferenceSwitchDriver):
+    """Reference-switch driver simulating the home switch closing during a move.
+
+    The TMC5160 reference setup uses ACTIVE_LOW polarity: raw endstop = True means
+    the switch is open (not triggered); raw endstop = False means it's pressed.
+    """
+
+    def __init__(self, home_direction: HomeDirection):
+        super().__init__()
+        self._home_direction = home_direction
+        self._move_count = 0
+        self.left_endstop = True
+        self.right_endstop = True
+
+    def move_up(self, distance_mm, speed_mm_s, acceleration_mm_s2=None, **kwargs):
+        super().move_up(distance_mm, speed_mm_s, acceleration_mm_s2, **kwargs)
+        self._after_move(HomeDirection.UP)
+
+    def move_down(self, distance_mm, speed_mm_s, acceleration_mm_s2=None, **kwargs):
+        super().move_down(distance_mm, speed_mm_s, acceleration_mm_s2, **kwargs)
+        self._after_move(HomeDirection.DOWN)
+
+    def _after_move(self, direction: HomeDirection):
+        self._move_count += 1
+        # Simulate switch closing on the homing approach (the first long move toward home).
+        if direction == self._home_direction and self._move_count == 1:
+            if self._home_direction == HomeDirection.UP:
+                self.left_endstop = False
+            else:
+                self.right_endstop = False
+
+    def mark_homed(self):
+        # Homing zeros the position; the back-off move that follows releases the switch.
+        self.homed = True
 
 
 def test_custom_profile_can_override_setup_geometry_and_direction():
@@ -311,6 +361,187 @@ def test_motion_controller_reenables_reference_stop_after_switch_clears():
 
     assert controller.read_limit_switch(HomeDirection.UP) is False
     assert driver.reference_stop_calls == [(False, True), (True, True)]
+
+
+def test_motion_controller_supports_homing_for_driver_reference_switches():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
+        home_direction=HomeDirection.UP,
+    )
+    driver = FakeReferenceSwitchDriver()
+    controller = MotionController(driver, profile, gpio=None)
+
+    assert controller.supports_homing is True
+
+
+def test_motion_controller_homes_via_driver_reference_switch_up():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
+        home_direction=HomeDirection.UP,
+        homing_max_distance_mm=80.0,
+    )
+    driver = HomingReferenceSwitchDriver(HomeDirection.UP)
+    controller = MotionController(driver, profile, gpio=None)
+
+    homing_found = controller.home(2.0)
+
+    assert homing_found is True
+    assert driver.homed is True
+    # First move is the homing approach upward; second is the back-off downward.
+    assert driver.moves[0][0] == "up"
+    assert driver.moves[0][1] == 80.0
+    assert driver.moves[-1][0] == "down"
+    assert driver.moves[-1][1] == 5.0
+    assert driver.stopped is True
+
+
+def test_motion_controller_homes_via_driver_reference_switch_down():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
+        home_direction=HomeDirection.DOWN,
+        homing_max_distance_mm=50.0,
+    )
+    driver = HomingReferenceSwitchDriver(HomeDirection.DOWN)
+    controller = MotionController(driver, profile, gpio=None)
+
+    homing_found = controller.home(1.0)
+
+    assert homing_found is True
+    assert driver.homed is True
+    assert driver.moves[0][0] == "down"
+    assert driver.moves[0][1] == 50.0
+    assert driver.moves[-1][0] == "up"
+    assert driver.moves[-1][1] == 5.0
+
+
+def test_motion_controller_refuses_homing_when_opposite_switch_is_triggered():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
+        home_direction=HomeDirection.UP,
+    )
+    driver = HomingReferenceSwitchDriver(HomeDirection.UP)
+    driver.right_endstop = False  # active-low: pressed
+    controller = MotionController(driver, profile, gpio=None)
+
+    with pytest.raises(ValueError, match="opposite"):
+        controller.home(1.0)
+    assert driver.homed is False
+    assert driver.moves == []
+
+
+def test_motion_controller_backs_off_home_switch_before_homing():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
+        home_direction=HomeDirection.UP,
+        homing_max_distance_mm=40.0,
+    )
+
+    class StartOnSwitchDriver(HomingReferenceSwitchDriver):
+        def _after_move(self, direction):
+            if direction == HomeDirection.DOWN and not self.left_endstop:
+                # Initial back-off releases the home switch (active-low → True = open).
+                self.left_endstop = True
+                return
+            super()._after_move(direction)
+
+    driver = StartOnSwitchDriver(HomeDirection.UP)
+    driver.left_endstop = False  # active-low: home switch initially pressed
+    controller = MotionController(driver, profile, gpio=None)
+
+    homing_found = controller.home(1.0)
+
+    assert homing_found is True
+    assert driver.homed is True
+    # Sequence: down (initial back-off) -> up (approach) -> down (final back-off).
+    directions = [move[0] for move in driver.moves]
+    assert directions == ["down", "up", "down"]
+
+
+@pytest.mark.asyncio
+async def test_motion_controller_home_async_can_be_cancelled():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
+        home_direction=HomeDirection.UP,
+        homing_max_distance_mm=80.0,
+    )
+
+    class NeverHittingDriver(FakeReferenceSwitchDriver):
+        def __init__(self):
+            super().__init__()
+            self.left_endstop = True
+            self.right_endstop = True
+
+        async def wait_for_motor_done_async(self):
+            return None
+
+    driver = NeverHittingDriver()
+    controller = MotionController(driver, profile, gpio=None)
+
+    homing_task = asyncio.create_task(controller.home_async(2.0))
+    await asyncio.sleep(0.05)
+    assert not homing_task.done()
+    homing_task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await homing_task
+    assert driver.stopped is True
+    assert driver.homed is False
+
+
+@pytest.mark.asyncio
+async def test_motion_controller_simulates_endstop_hit_in_dummy_mode():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
+        home_direction=HomeDirection.UP,
+        homing_max_distance_mm=80.0,
+    )
+
+    class DummyDriver(FakeReferenceSwitchDriver):
+        is_dummy = True
+
+        def __init__(self):
+            super().__init__()
+            self.left_endstop = True
+            self.right_endstop = True
+
+        def simulate_dummy_endstops(self, *, left=None, right=None):
+            if left is not None:
+                self.left_endstop = left
+            if right is not None:
+                self.right_endstop = right
+
+        async def wait_for_motor_done_async(self):
+            return None
+
+    driver = DummyDriver()
+    controller = MotionController(driver, profile, gpio=None)
+
+    homing_found = await asyncio.wait_for(controller.home_async(2.0), timeout=2.0)
+
+    assert homing_found is True
+    assert driver.homed is True
+    assert driver.left_endstop is True  # released after homing
+    assert driver.right_endstop is True
 
 
 def test_large_profile_uses_landungsbruecke_reference_switches():

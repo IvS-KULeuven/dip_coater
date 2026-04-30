@@ -196,6 +196,18 @@ class DummyStepperMotor:
     def get_right_endstop(self) -> bool:
         return self._right_endstop
 
+    def set_endstops(
+        self,
+        *,
+        left: bool | None = None,
+        right: bool | None = None,
+    ) -> None:
+        """Override the simulated raw endstop state (test/dummy aid)."""
+        if left is not None:
+            self._left_endstop = left
+        if right is not None:
+            self._right_endstop = right
+
     def has_feature(self, name: str) -> bool:
         return name in self.SUPPORTED_FEATURES
 

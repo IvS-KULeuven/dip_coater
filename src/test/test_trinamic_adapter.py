@@ -222,6 +222,37 @@ def test_adapter_invert_direction_flips_motion():
     assert adapter.get_current_position_mm() == pytest.approx(-4.0)
 
 
+def test_adapter_position_with_homes_down_inverted_motor_reads_positive_when_moving_up():
+    motor = FakeStepperMotor()
+    adapter = make_adapter(motor, invert_direction=True)
+
+    adapter.move_up(5.0, 1.0)
+
+    assert adapter.get_current_position_mm(homes_up=False) == pytest.approx(5.0)
+
+
+def test_adapter_position_with_homes_up_inverted_motor_reads_positive_when_moving_down():
+    motor = FakeStepperMotor()
+    adapter = make_adapter(motor, invert_direction=True)
+
+    adapter.move_down(5.0, 1.0)
+
+    assert adapter.get_current_position_mm(homes_up=True) == pytest.approx(5.0)
+
+
+def test_adapter_run_to_position_honors_home_direction_with_inverted_motor():
+    motor = FakeStepperMotor()
+    adapter = make_adapter(motor, invert_direction=True)
+    # Pretend we're 5 mm above home (homes_down convention).
+    adapter.move_up(5.0, 1.0)
+    assert adapter.get_current_position_mm(homes_up=False) == pytest.approx(5.0)
+
+    adapter.run_to_position(20.0, 1.0, homes_up=False)
+
+    # Net move: from +5 mm to +20 mm = 15 mm further up.
+    assert adapter.get_current_position_mm(homes_up=False) == pytest.approx(20.0)
+
+
 @pytest.mark.asyncio
 async def test_adapter_wait_for_motor_done_async_polls_until_reached():
     motor = FakeStepperMotor()
