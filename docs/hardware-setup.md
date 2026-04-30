@@ -73,6 +73,10 @@ The small dip coater uses a BIGTREETECH TMC2209 1.3 stepper motor driver connect
 
 The big dip coater uses the `large` setup profile and is intended for the larger machine geometry. It is typically controlled with `TMC2660` or `TMC5160` hardware through PyTrinamic-backed communication.
 
+![Big lift overview](https://raw.githubusercontent.com/IvS-KULeuven/dip_coater/develop/images/big_lift/big-lift.jpeg)
+
+![Stepper motor on the big lift](https://raw.githubusercontent.com/IvS-KULeuven/dip_coater/develop/images/big_lift/tmc5160-motor.jpeg)
+
 Typical big dip coater setups use a Landungsbruecke evaluation board over USB-TMCL.
 
 Common command shape:
@@ -98,19 +102,27 @@ The big dip coater may not use the same wiring, limit switches, motor current, t
 
 ### TMC5160 Reference Limit Switches
 
-For a TMC5160 EVAL board through the Landungsbruecke, the typical limit-switch setup uses normally-closed switches at the extreme ends of travel.
+The big dip coater uses two **normally-closed (NC)** mechanical limit switches at the extreme ends of travel. They are wired directly to the reference-switch inputs on the TMC5160 EVAL board.
 
-Wire each switch as:
+![Limit switches mounted on the big lift](https://raw.githubusercontent.com/IvS-KULeuven/dip_coater/develop/images/big_lift/big-lift-limit-switches.jpeg)
 
-| Limit switch terminal | Connect to |
-|---|---|
-| `COM` | `GND` on the TMC EVAL / Landungsbruecke setup |
-| `NC` | `L` or `R` reference switch input on the TMC5160 EVAL board |
+![TMC5160 EVAL limit-switch wiring](https://raw.githubusercontent.com/IvS-KULeuven/dip_coater/develop/images/big_lift/tmc5160-limit-switch.jpeg)
 
-With this wiring:
+Wire each switch with `COM` to `GND` and `NC` to the matching reference-switch pin:
 
-- switch closed, `L`/`R` tied to `GND`: safe / open in the UI
-- switch triggered, `L`/`R` open or floating: triggered in the UI and motion stops
+| Switch | `COM` | `NC` |
+|---|---|---|
+| Top (up) limit switch | `GND` on the TMC5160 EVAL | `L` (left reference input) |
+| Bottom (down) limit switch | `GND` on the TMC5160 EVAL | `R` (right reference input) |
+
+The home direction for the big coater is `down`, so homing drives toward the bottom switch (the `R` input) and zeros the position there. Positions then increase as the platform moves upward.
+
+With NC switches and this wiring:
+
+- switch closed (untriggered), `L`/`R` tied to `GND` through the switch: open in the UI, motion allowed
+- switch released or wire broken, `L`/`R` floats high: triggered in the UI, the TMC5160 hardstops
+
+Using NC switches is intentional: a broken wire or loose connector reads as "triggered" and stops the machine, instead of silently disarming the safety stop.
 
 Put the switches at the physical extremes of the motion axis so triggering one protects the machine from moving farther in that direction.
 
