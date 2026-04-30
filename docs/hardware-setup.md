@@ -23,7 +23,7 @@ Most dip coater setups have:
 - a moving sample or substrate fixture
 - a coating vessel or solution container
 
-![Linear guide components](https://raw.githubusercontent.com/IvS-KULeuven/dip_coater/develop/images/LinearGuideComponents.png)
+![Linear guide components](https://raw.githubusercontent.com/IvS-KULeuven/dip_coater/develop/images/small_lift/LinearGuideComponents.png)
 
 ## Small Dip Coater
 
@@ -46,7 +46,7 @@ The small setup commonly has:
 - one top limit switch
 - one bottom limit switch
 
-![Bottom limit switch](https://raw.githubusercontent.com/IvS-KULeuven/dip_coater/develop/images/BottomLimitSwitch.jpg)
+![Bottom limit switch](https://raw.githubusercontent.com/IvS-KULeuven/dip_coater/develop/images/small_lift/BottomLimitSwitch.jpg)
 
 In the documented small TMC2209 setup, the blue wire is connected to `COM` and the yellow wire to `NC`.
 
@@ -67,7 +67,7 @@ The small dip coater uses a BIGTREETECH TMC2209 1.3 stepper motor driver connect
 | `DIR` | GPIO10 | Motor direction |
 | `DIAG` | GPIO5 | StallGuard or diagnostic signal |
 
-![Perf board components](https://raw.githubusercontent.com/IvS-KULeuven/dip_coater/develop/images/PerfBoardComponents.png)
+![Perf board components](https://raw.githubusercontent.com/IvS-KULeuven/dip_coater/develop/images/small_lift/PerfBoardComponents.png)
 
 ## Big Dip Coater
 
