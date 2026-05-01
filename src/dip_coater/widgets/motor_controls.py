@@ -38,6 +38,7 @@ class MotorControls(Static):
         self.app_state = app_state
         self.app_state.homing_found = False
         self._homing_task: asyncio.Task | None = None
+        self._motion_action_task: asyncio.Task | None = None
         self._motion_wait_task: asyncio.Task | None = None
 
     def compose(self) -> ComposeResult:
@@ -110,10 +111,24 @@ class MotorControls(Static):
         if self._motion_wait_task is not None and not self._motion_wait_task.done():
             self._motion_wait_task.cancel()
 
+    def start_motion_action(self, coroutine) -> None:
+        if self._motion_action_task is not None and not self._motion_action_task.done():
+            coroutine.close()
+            return
+        task = asyncio.create_task(self._run_motion_action(coroutine))
+        self._motion_action_task = task
+
+    async def _run_motion_action(self, coroutine) -> None:
+        try:
+            await coroutine
+        finally:
+            if self._motion_action_task is asyncio.current_task():
+                self._motion_action_task = None
+
     @on(Button.Pressed, "#move-up")
     async def move_up_action(self):
         distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
-        await self.move_up(distance_mm, speed_mm_s, accel_mm_s2)
+        self.start_motion_action(self.move_up(distance_mm, speed_mm_s, accel_mm_s2))
 
     async def move_up(
         self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None
@@ -158,7 +173,7 @@ class MotorControls(Static):
     @on(Button.Pressed, "#move-down")
     async def move_down_action(self):
         distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
-        await self.move_down(distance_mm, speed_mm_s, accel_mm_s2)
+        self.start_motion_action(self.move_down(distance_mm, speed_mm_s, accel_mm_s2))
 
     async def move_down(
         self, distance_mm: float, speed_mm_s: float, acceleration_mm_s2: float = None

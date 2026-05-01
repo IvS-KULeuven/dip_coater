@@ -102,7 +102,9 @@ class PositionControls(Static):
         pos = float(self.position)
         speed = self.app.query_one(SpeedControls).speed
         accel = self.app_state.advanced_settings.get_acceleration()
-        await self.move_to_position(pos, speed, accel)
+        self.app_state.motor_controls.start_motion_action(
+            self.move_to_position(pos, speed, accel)
+        )
 
     async def move_to_position(
         self,

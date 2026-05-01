@@ -113,3 +113,23 @@ async def test_stop_and_disable_button_cancels_active_motion_wait():
     assert app_state.motion_controller.disabled is True
     assert app_state.motion_controller.wait_cancelled is True
     assert app_state.motor_state == "disabled"
+
+
+@pytest.mark.asyncio
+async def test_stop_and_disable_button_interrupts_motion_started_from_ui_click():
+    app_state = FakeAppState()
+    app = EmergencyStopHarness(app_state)
+
+    async with app.run_test() as pilot:
+        move_click_task = asyncio.create_task(pilot.click("#move-up"))
+        await asyncio.wait_for(app_state.motion_controller.wait_started.wait(), 1.0)
+
+        assert app.query_one("#disable-motor", Button).disabled is False
+        await pilot.click("#disable-motor")
+
+        await asyncio.wait_for(move_click_task, 1.0)
+
+    assert app_state.motion_controller.stopped is True
+    assert app_state.motion_controller.disabled is True
+    assert app_state.motion_controller.wait_cancelled is True
+    assert app_state.motor_state == "disabled"
