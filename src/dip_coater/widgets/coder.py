@@ -55,12 +55,7 @@ class Coder(Static):
                     )
                     md.code_dark_theme = "monokai"
                     yield md
-            yield TextArea(
-                'print("Hello, World!")',
-                language="python",
-                show_line_numbers=True,
-                id="code-editor",
-            )
+            yield self.build_code_editor('print("Hello, World!")')
             with Horizontal(id="run-and-load-code-container"):
                 yield Button(
                     "RUN code",
@@ -97,6 +92,17 @@ class Coder(Static):
         self.query_one("#code-file-path-input", Input).value = config_file_path
         self.load_code_from_file(config_file_path)
         self._set_execution_controls_running(False)
+
+    @staticmethod
+    def build_code_editor(text: str) -> TextArea:
+        return TextArea(
+            text,
+            language="python",
+            theme="monokai",
+            show_line_numbers=True,
+            tab_behavior="indent",
+            id="code-editor",
+        )
 
     @on(Button.Pressed, "#run-code-btn")
     async def run_code(self):

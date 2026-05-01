@@ -2,6 +2,7 @@ import asyncio
 from types import SimpleNamespace
 
 import pytest
+from textual.widgets import TextArea
 
 from dip_coater.widgets.coder import Coder, CoderExecutionCancelled
 
@@ -48,3 +49,15 @@ def test_coder_api_refuses_new_commands_after_stop_request():
         coder.move_up(1.0, 1.0)
 
     assert motor_controls.moves == []
+
+
+def test_coder_builds_python_highlighted_editor():
+    editor = Coder.build_code_editor('def coat():\n    print("Hello, World!")\n')
+
+    assert isinstance(editor, TextArea)
+    assert editor.language == "python"
+    assert editor.theme == "monokai"
+    assert editor.show_line_numbers is True
+    assert editor.tab_behavior == "indent"
+    assert getattr(editor, "_highlight_query", None) is not None
+    assert editor._highlights
