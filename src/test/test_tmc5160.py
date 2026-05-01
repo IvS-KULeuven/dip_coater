@@ -85,13 +85,13 @@ def test_tmc5160_dummy_driver_supports_basic_motion():
     driver = _make_driver()
 
     driver.enable_motor()
-    driver.move_up(8.0, 2.0)
+    driver.move_up(0.08, 80.0)
     driver.wait_for_motor_done()
-    assert driver.get_current_position_mm() == pytest.approx(8.0)
+    assert driver.get_current_position_mm() == pytest.approx(0.08)
 
-    driver.run_to_position(3.0, 1.0)
+    driver.run_to_position(0.03, 80.0)
     driver.wait_for_motor_done()
-    assert driver.get_current_position_mm() == pytest.approx(3.0)
+    assert driver.get_current_position_mm() == pytest.approx(0.03)
 
 
 def test_tmc5160_dummy_driver_defaults_reference_switches_to_open():
@@ -105,9 +105,10 @@ def test_tmc5160_dummy_driver_supports_direction_inversion():
     driver = _make_driver()
 
     driver.invert_direction(True)
-    driver.move_up(4.0, 1.0)
+    driver.move_up(0.04, 80.0)
+    driver.wait_for_motor_done()
 
-    assert driver.get_current_position_mm() == pytest.approx(-4.0)
+    assert driver.get_current_position_mm() == pytest.approx(-0.04)
 
 
 def test_tmc5160_dummy_driver_validates_limits():

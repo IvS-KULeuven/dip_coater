@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 from ..config import Direction, MotorConfig, StepMode
 from ..exceptions import OutOfRangeError
 
@@ -43,6 +45,11 @@ class DummyStepperMotor:
         self._automatic_right_stop = False
         self._left_endstop = True
         self._right_endstop = True
+        self._motion_start_time_s: float | None = None
+        self._motion_start_position_rot = 0.0
+        self._motion_target_position_rot: float | None = None
+        self._motion_duration_s = 0.0
+        self._motion_direction = 1
 
     def set_chopper_mode(self, mode: int) -> None:
         if mode not in (0, 1):
@@ -95,8 +102,10 @@ class DummyStepperMotor:
         speed_rps: float | None = None,
         direction: Direction = Direction.CW,
     ) -> None:
+        self._update_motion_state()
         if speed_rps is not None:
             self.set_speed_rps(speed_rps)
+        self._motion_target_position_rot = None
         self._actual_speed_rps = self._speed_rps * int(direction)
         self._position_reached = False
 
@@ -105,25 +114,56 @@ class DummyStepperMotor:
         revolutions: float,
         direction: Direction = Direction.CW,
     ) -> None:
-        self._position_rot += abs(revolutions) * int(direction)
-        self._actual_speed_rps = 0.0
-        self._position_reached = True
+        self._update_motion_state()
+        delta_rot = abs(revolutions) * int(direction)
+        duration_s = self._duration_for_revolutions(abs(delta_rot))
+        if duration_s <= 0:
+            self._position_rot += delta_rot
+            self._actual_speed_rps = 0.0
+            self._position_reached = True
+            self._motion_target_position_rot = None
+            return
+        self._motion_start_time_s = time.monotonic()
+        self._motion_start_position_rot = self._position_rot
+        self._motion_target_position_rot = self._position_rot + delta_rot
+        self._motion_duration_s = duration_s
+        self._motion_direction = 1 if delta_rot >= 0 else -1
+        self._actual_speed_rps = self._speed_rps * self._motion_direction
+        self._position_reached = False
 
     def wait_until_reached(self, timeout_s: float | None = None) -> bool:
+        self._update_motion_state()
+        if self._position_reached:
+            return True
+        if timeout_s == 0:
+            return False
+        deadline = None if timeout_s is None else time.monotonic() + timeout_s
+        while not self._position_reached:
+            if deadline is not None and time.monotonic() >= deadline:
+                return False
+            time.sleep(0.01)
+            self._update_motion_state()
         return self._position_reached
 
     def stop(self) -> None:
+        self._update_motion_state()
+        self._motion_target_position_rot = None
         self._actual_speed_rps = 0.0
         self._position_reached = True
 
     def get_actual_position_rot(self) -> float:
+        self._update_motion_state()
         return self._position_rot
 
     def get_actual_speed_rps(self) -> float:
+        self._update_motion_state()
         return self._actual_speed_rps
 
     def reset_position(self) -> None:
+        self._motion_target_position_rot = None
         self._position_rot = 0.0
+        self._actual_speed_rps = 0.0
+        self._position_reached = True
 
     def set_interpolation(self, enabled: bool) -> None:
         self._interpolation = enabled
@@ -213,6 +253,34 @@ class DummyStepperMotor:
 
     def _motion_units_per_fullstep(self) -> int:
         return self._step_mode.microsteps_per_fullstep
+
+    def _duration_for_revolutions(self, revolutions: float) -> float:
+        if revolutions <= 0 or self._speed_rps <= 0:
+            return 0.0
+        return revolutions / self._speed_rps
+
+    def _update_motion_state(self) -> None:
+        if self._motion_target_position_rot is None:
+            return
+        if self._motion_start_time_s is None or self._motion_duration_s <= 0:
+            self._finish_motion()
+            return
+        elapsed_s = time.monotonic() - self._motion_start_time_s
+        if elapsed_s >= self._motion_duration_s:
+            self._finish_motion()
+            return
+        progress = max(0.0, elapsed_s / self._motion_duration_s)
+        travel_rot = self._motion_target_position_rot - self._motion_start_position_rot
+        self._position_rot = self._motion_start_position_rot + travel_rot * progress
+        self._actual_speed_rps = self._speed_rps * self._motion_direction
+        self._position_reached = False
+
+    def _finish_motion(self) -> None:
+        if self._motion_target_position_rot is not None:
+            self._position_rot = self._motion_target_position_rot
+        self._motion_target_position_rot = None
+        self._actual_speed_rps = 0.0
+        self._position_reached = True
 
     def _check_current(self, current_mA: float) -> None:
         if current_mA < 0:

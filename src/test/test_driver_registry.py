@@ -288,10 +288,10 @@ def test_create_tmc5160_dummy_driver_uses_wrapper_adapter(monkeypatch):
     assert app_state.setup_profile.invert_motor_direction is False
 
     driver.enable_motor()
-    driver.move_up(4.0, 1.0, 2.0)
+    driver.move_up(0.04, 80.0, 2.0)
     driver.wait_for_motor_done()
 
-    assert driver.get_current_position_mm() == pytest.approx(4.0)
+    assert driver.get_current_position_mm() == pytest.approx(0.04)
     assert driver.get_current() == pytest.approx(2500)
     assert driver.get_current_standstill() == pytest.approx(70)
 

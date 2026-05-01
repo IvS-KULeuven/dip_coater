@@ -1,5 +1,6 @@
 from TMC_2209._TMC_2209_logger import Loglevel
 from TMC_2209._TMC_2209_move import MovementAbsRel, StopMode
+import time
 
 
 class DummyTMCLogger:
@@ -24,6 +25,11 @@ class DummyTMC2209:
         self._movement_abs_rel = MovementAbsRel.RELATIVE
         self._current_position_steps = 0
         self._distance_to_go = 0
+        self._max_speed_steps_per_second = 0
+        self._motion_start_time_s = None
+        self._motion_start_position_steps = 0.0
+        self._motion_target_position_steps = None
+        self._motion_duration_s = 0.0
         self._motor_enabled = False
         self._spreadcycle = False
 
@@ -65,7 +71,7 @@ class DummyTMC2209:
         self._motor_enabled = enabled
 
     def set_max_speed(self, steps_per_second: float):
-        pass
+        self._max_speed_steps_per_second = abs(steps_per_second)
 
     def set_acceleration(self, steps_per_second2: float):
         pass
@@ -75,30 +81,51 @@ class DummyTMC2209:
         self.run_to_position_steps_threaded(steps, movement_abs_rel=MovementAbsRel.RELATIVE)
 
     def run_to_position_steps_threaded(self, steps: int, movement_abs_rel: MovementAbsRel = None):
+        self._update_motion_state()
         movement = movement_abs_rel if movement_abs_rel is not None else self._movement_abs_rel
         if movement == MovementAbsRel.ABSOLUTE:
-            self._current_position_steps = steps
+            target_position_steps = steps
         else:
-            self._current_position_steps += steps
-        self._distance_to_go = 0
+            target_position_steps = self._current_position_steps + steps
+        duration_s = self._duration_for_steps(
+            target_position_steps - self._current_position_steps
+        )
+        if duration_s <= 0:
+            self._current_position_steps = target_position_steps
+            self._distance_to_go = 0
+            self._motion_target_position_steps = None
+            return
+        self._motion_start_time_s = time.monotonic()
+        self._motion_start_position_steps = self._current_position_steps
+        self._motion_target_position_steps = target_position_steps
+        self._motion_duration_s = duration_s
+        self._distance_to_go = abs(target_position_steps - self._current_position_steps)
 
     def distance_to_go(self) -> int:
-        return self._distance_to_go
+        self._update_motion_state()
+        return round(self._distance_to_go)
 
     def wait_for_movement_finished_threaded(self) -> StopMode:
+        while self.distance_to_go() > 0:
+            time.sleep(0.01)
         return StopMode.NO
 
     def stop(self, stop_mode: StopMode = StopMode.HARDSTOP):
+        self._update_motion_state()
+        self._motion_target_position_steps = None
         self._distance_to_go = 0
 
     def do_homing(self, *args, **kwargs):
         pass
 
     def get_current_position(self) -> int:
-        return self._current_position_steps
+        self._update_motion_state()
+        return round(self._current_position_steps)
 
     def set_current_position(self, steps: int):
+        self._motion_target_position_steps = None
         self._current_position_steps = steps
+        self._distance_to_go = 0
 
     def read_steps_per_rev(self) -> int:
         return self._steps_per_rev
@@ -117,3 +144,35 @@ class DummyTMC2209:
 
     def test_stallguard_threshold(self, steps: int):
         pass
+
+    def _duration_for_steps(self, steps: float) -> float:
+        if steps == 0 or self._max_speed_steps_per_second <= 0:
+            return 0.0
+        return abs(steps) / self._max_speed_steps_per_second
+
+    def _update_motion_state(self) -> None:
+        if self._motion_target_position_steps is None:
+            return
+        if self._motion_start_time_s is None or self._motion_duration_s <= 0:
+            self._finish_motion()
+            return
+        elapsed_s = time.monotonic() - self._motion_start_time_s
+        if elapsed_s >= self._motion_duration_s:
+            self._finish_motion()
+            return
+        progress = max(0.0, elapsed_s / self._motion_duration_s)
+        travel_steps = (
+            self._motion_target_position_steps - self._motion_start_position_steps
+        )
+        self._current_position_steps = (
+            self._motion_start_position_steps + travel_steps * progress
+        )
+        self._distance_to_go = abs(
+            self._motion_target_position_steps - self._current_position_steps
+        )
+
+    def _finish_motion(self) -> None:
+        if self._motion_target_position_steps is not None:
+            self._current_position_steps = self._motion_target_position_steps
+        self._motion_target_position_steps = None
+        self._distance_to_go = 0
