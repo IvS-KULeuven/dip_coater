@@ -60,8 +60,10 @@ class DummyAppState:
 
 def _make_driver(app_state: DummyAppState | None = None) -> TrinamicWrapperMotorAdapter:
     spec = get_driver_spec(AvailableMotorDrivers.TMC5160)
+    app_state = app_state or DummyAppState()
+    app_state.setup_profile = spec.adjust_setup_profile(app_state.setup_profile)
     return spec.driver_factory(
-        app_state=app_state or DummyAppState(),
+        app_state=app_state,
         log_level=TMC5160LogLevel.INFO,
         log_handlers=[],
         log_formatter=None,

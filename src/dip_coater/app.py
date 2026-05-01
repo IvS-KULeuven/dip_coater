@@ -299,6 +299,7 @@ def main():
         )
     else:
         setup_profile = base_profile
+    setup_profile = driver_spec.adjust_setup_profile(setup_profile)
 
     # Build the application state
     app_state = AppState(

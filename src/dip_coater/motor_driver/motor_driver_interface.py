@@ -75,7 +75,7 @@ class MotorDriver(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_current_position_mm(self):
+    def get_current_position_mm(self, homed_up: bool = True):
         raise NotImplementedError()
 
     @abstractmethod
@@ -84,6 +84,7 @@ class MotorDriver(ABC):
         position_mm: float,
         speed_mm_s: float = None,
         acceleration_mm_s2: float = None,
+        homed_up: bool = True,
     ):
         raise NotImplementedError()
 

@@ -170,6 +170,10 @@ def _make_app_state():
 
 def test_create_tmc5160_driver_uses_trinamic_wrapper_adapter(monkeypatch):
     app_state = _make_app_state()
+    app_state.setup_profile = _driver_registry.get_driver_spec(
+        "TMC5160"
+    ).adjust_setup_profile(app_state.setup_profile)
+    setup_profile_before_factory = app_state.setup_profile
     fake_conn = FakeConn()
     fake_motor = FakeMotor()
 
@@ -223,6 +227,7 @@ def test_create_tmc5160_driver_uses_trinamic_wrapper_adapter(monkeypatch):
     assert captured["create_motor"]["config"].sense_resistor_ohms == 0.075
     assert captured["create_motor"]["config"].default_microsteps == StepMode.USTEP_16
     assert captured["create_motor"]["config"].max_current_mA_limit == 4000
+    assert app_state.setup_profile is setup_profile_before_factory
     assert app_state.setup_profile.invert_motor_direction is False
     assert fake_motor.run_current == 2500
     assert fake_motor.standstill_current == 70
@@ -254,6 +259,10 @@ def test_create_tmc5160_driver_uses_trinamic_wrapper_adapter(monkeypatch):
 
 def test_create_tmc5160_dummy_driver_uses_wrapper_adapter(monkeypatch):
     app_state = _make_app_state()
+    app_state.setup_profile = _driver_registry.get_driver_spec(
+        "TMC5160"
+    ).adjust_setup_profile(app_state.setup_profile)
+    setup_profile_before_factory = app_state.setup_profile
     app_state.config.USE_DUMMY_DRIVER = True
 
     def fail_open_connection(*args, **kwargs):
@@ -275,6 +284,7 @@ def test_create_tmc5160_dummy_driver_uses_wrapper_adapter(monkeypatch):
 
     assert isinstance(driver, TrinamicWrapperMotorAdapter)
     assert driver.is_dummy is True
+    assert app_state.setup_profile is setup_profile_before_factory
     assert app_state.setup_profile.invert_motor_direction is False
 
     driver.enable_motor()
@@ -289,3 +299,14 @@ def test_create_tmc5160_dummy_driver_uses_wrapper_adapter(monkeypatch):
 def test_tmc5160_reference_stops_default_to_both_limits_enabled():
     assert config_tmc5160.DEFAULT_REFERENCE_LEFT_STOP_ENABLED is True
     assert config_tmc5160.DEFAULT_REFERENCE_RIGHT_STOP_ENABLED is True
+
+
+def test_tmc5160_setup_adjustment_normalizes_direction_without_mutating_input():
+    spec = _driver_registry.get_driver_spec("TMC5160")
+    profile = _make_app_state().setup_profile
+
+    adjusted = spec.adjust_setup_profile(profile)
+
+    assert profile.invert_motor_direction is True
+    assert adjusted.invert_motor_direction is False
+    assert adjusted is not profile

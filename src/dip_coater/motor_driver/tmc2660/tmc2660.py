@@ -214,11 +214,17 @@ class MotorDriverTMC2660(MotorDriver):
         self.motor.stop()
         self.logger.log("Motor stopped", TMC2660LogLevel.INFO)
 
-    def get_current_position_mm(self):
+    def get_current_position_mm(self, homed_up: bool = True):
         pos = self.get_actual_position()
         return self.mechanical_setup.steps_to_mm(pos, self.microsteps)
 
-    def run_to_position(self, position_mm: float, speed_mm_s: float = None, acceleration_mm_s2: float = None):
+    def run_to_position(
+        self,
+        position_mm: float,
+        speed_mm_s: float = None,
+        acceleration_mm_s2: float = None,
+        homed_up: bool = True,
+    ):
         self.set_speed(speed_mm_s)
         self.set_acceleration(acceleration_mm_s2)
         steps = self.mechanical_setup.mm_to_steps(position_mm, self.microsteps)

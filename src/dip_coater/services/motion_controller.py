@@ -172,17 +172,12 @@ class MotionController:
         self._last_motion_timeout_s = self._estimate_motion_timeout_s(
             travel_distance_mm, speed_mm_s
         )
-        try:
-            self.motor_driver.run_to_position(
-                position_mm,
-                speed_mm_s,
-                acceleration_mm_s2,
-                self.machine_profile.homes_up,
-            )
-        except TypeError:
-            self.motor_driver.run_to_position(
-                position_mm, speed_mm_s, acceleration_mm_s2
-            )
+        self.motor_driver.run_to_position(
+            position_mm,
+            speed_mm_s,
+            acceleration_mm_s2,
+            self.machine_profile.homes_up,
+        )
 
     def home(
         self,
@@ -387,12 +382,7 @@ class MotionController:
         self.motor_driver.simulate_dummy_endstops(left=True, right=True)
 
     def get_current_position_mm(self):
-        try:
-            return self.motor_driver.get_current_position_mm(
-                self.machine_profile.homes_up
-            )
-        except TypeError:
-            return self.motor_driver.get_current_position_mm()
+        return self.motor_driver.get_current_position_mm(self.machine_profile.homes_up)
 
     def is_homing_found(self) -> bool:
         return self.motor_driver.is_homing_found()

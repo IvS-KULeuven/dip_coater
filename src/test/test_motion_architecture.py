@@ -109,15 +109,6 @@ class FakeDriver:
         self.cleaned = True
 
 
-class FakeDriverWithoutHomeFlag(FakeDriver):
-    def run_to_position(self, position_mm, speed_mm_s=None, acceleration_mm_s2=None):
-        self.last_run_to_position = (position_mm, speed_mm_s, acceleration_mm_s2)
-
-    def get_current_position_mm(self):
-        self.last_position_call = "no-flag"
-        return 7.5
-
-
 class PositionedFakeDriver(FakeDriver):
     def __init__(self, position_mm: float | None):
         super().__init__()
@@ -261,22 +252,49 @@ def test_motion_controller_passes_setup_reference_to_position_calls_when_support
     assert position == 12.5
 
 
-def test_motion_controller_falls_back_for_drivers_without_setup_reference_argument():
+def test_motion_controller_requires_standard_position_contract():
     profile = MachineProfile(
         key=AvailableMachineSetups.CUSTOM,
         label="Custom",
         mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
         limit_switches=LimitSwitchSetup.tmc5160_reference(),
     )
-    driver = FakeDriverWithoutHomeFlag()
+    driver = FakeDriver()
     controller = MotionController(driver, profile)
 
     controller.move_to_position(3.0, 0.5, 1.5)
     position = controller.get_current_position_mm()
 
-    assert driver.last_run_to_position == (3.0, 0.5, 1.5)
-    assert driver.last_position_call == "no-flag"
-    assert position == 7.5
+    assert driver.last_run_to_position == (3.0, 0.5, 1.5, True)
+    assert driver.last_position_call is True
+    assert position == 12.5
+
+
+def test_motion_controller_does_not_retry_typeerror_from_standard_position_contract():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+    )
+
+    class BuggyDriver(FakeDriver):
+        def __init__(self):
+            super().__init__()
+            self.run_to_position_calls = 0
+
+        def run_to_position(
+            self, position_mm, speed_mm_s=None, acceleration_mm_s2=None, homed_up=True
+        ):
+            self.run_to_position_calls += 1
+            raise TypeError("driver contract bug")
+
+    driver = BuggyDriver()
+    controller = MotionController(driver, profile)
+
+    with pytest.raises(TypeError, match="driver contract bug"):
+        controller.move_to_position(3.0, 0.5, 1.5)
+
+    assert driver.run_to_position_calls == 1
 
 
 def test_motion_controller_rejects_absolute_position_outside_profile_bounds():
