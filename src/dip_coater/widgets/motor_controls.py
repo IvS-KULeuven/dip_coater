@@ -38,6 +38,7 @@ class MotorControls(Static):
         self.app_state = app_state
         self.app_state.homing_found = False
         self._homing_task: asyncio.Task | None = None
+        self._motion_wait_task: asyncio.Task | None = None
 
     def compose(self) -> ComposeResult:
         yield Button("Move up ↑", id="move-up", variant="primary")
@@ -94,6 +95,21 @@ class MotorControls(Static):
             else:
                 self.bind_limit_switches_to_ui()
 
+    async def wait_for_motion_done(self, **kwargs):
+        wait_task = asyncio.create_task(
+            self.app_state.motion_controller.wait_for_motor_done_async(**kwargs)
+        )
+        self._motion_wait_task = wait_task
+        try:
+            return await wait_task
+        finally:
+            if self._motion_wait_task is wait_task:
+                self._motion_wait_task = None
+
+    def _cancel_motion_wait(self) -> None:
+        if self._motion_wait_task is not None and not self._motion_wait_task.done():
+            self._motion_wait_task.cancel()
+
     @on(Button.Pressed, "#move-up")
     async def move_up_action(self):
         distance_mm, speed_mm_s, accel_mm_s2, step_mode = self.get_parameters()
@@ -117,7 +133,7 @@ class MotorControls(Static):
                 self.app_state.motion_controller.move_up(
                     distance_mm, speed_mm_s, acceleration_mm_s2
                 )
-                stop = await self.app_state.motion_controller.wait_for_motor_done_async(
+                stop = await self.wait_for_motion_done(
                     active_limit_direction=HomeDirection.UP
                 )
                 if self.app_state.motor_state == "disabled":
@@ -131,6 +147,11 @@ class MotorControls(Static):
                 log.write(f"[red]{e}[/]")
                 if self.app_state.motor_state != "disabled":
                     self.set_motor_state("enabled")
+            except asyncio.CancelledError:
+                if self.app_state.motor_state == "disabled":
+                    log.write("[dark_orange]-> Movement aborted.[/]")
+                    return
+                raise
         else:
             log.write("[red]Cannot move up while the motor is disabled.[/]")
 
@@ -157,7 +178,7 @@ class MotorControls(Static):
                 self.app_state.motion_controller.move_down(
                     distance_mm, speed_mm_s, acceleration_mm_s2
                 )
-                stop = await self.app_state.motion_controller.wait_for_motor_done_async(
+                stop = await self.wait_for_motion_done(
                     active_limit_direction=HomeDirection.DOWN
                 )
                 if self.app_state.motor_state == "disabled":
@@ -171,6 +192,11 @@ class MotorControls(Static):
                 log.write(f"[red]{e}[/]")
                 if self.app_state.motor_state != "disabled":
                     self.set_motor_state("enabled")
+            except asyncio.CancelledError:
+                if self.app_state.motor_state == "disabled":
+                    log.write("[dark_orange]-> Movement aborted.[/]")
+                    return
+                raise
         else:
             log.write("[red]Cannot move down while the motor is disabled.[/]")
 
@@ -189,6 +215,7 @@ class MotorControls(Static):
             self.app_state.motion_controller.disable_motor()
             self.set_motor_state("disabled")
             log.write("[dark_orange]Emergency stop: motor stopped and disabled.[/]")
+            self._cancel_motion_wait()
             if self._homing_task is not None and not self._homing_task.done():
                 self._homing_task.cancel()
         elif self.app_state.motor_state in ("enabled", "fault"):

@@ -132,7 +132,7 @@ class PositionControls(Static):
             self.app_state.motion_controller.move_to_position(
                 position_mm, speed_mm_s, acceleration_mm_s2
             )
-            stop = await self.app_state.motion_controller.wait_for_motor_done_async()
+            stop = await self.app_state.motor_controls.wait_for_motion_done()
             if self.app_state.motor_state == "disabled":
                 return
             if stop is None or getattr(stop, "name", None) == "NO":
@@ -141,6 +141,11 @@ class PositionControls(Static):
                 log.write(f"[red]-> Stopped moving to position: {stop}.[/]")
         except ValueError as e:
             log.write(f"[red]{e}[/]")
+        except asyncio.CancelledError:
+            if self.app_state.motor_state == "disabled":
+                log.write("[dark_orange]-> Movement aborted.[/]")
+                return
+            raise
         finally:
             if self.app_state.motor_state != "disabled":
                 self.app_state.motor_controls.set_motor_state("enabled")
