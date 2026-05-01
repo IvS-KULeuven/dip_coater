@@ -144,7 +144,7 @@ The bundled profiles are defined in `registry.py`.
 
 - Uses `SetupLargeCoater`.
 - Uses Landungsbruecke/TMC5160 driver reference switches.
-- Defaults to `HomeDirection.UP`.
+- Defaults to `HomeDirection.DOWN`.
 
 Default setup per driver is also configured in `registry.py`:
 

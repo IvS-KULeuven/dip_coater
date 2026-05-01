@@ -331,8 +331,8 @@ def get_gpio_instance():
             return GPIOZero()
         except ImportError as err:
             print(f"ImportError: {err}")
-            print("Board is Raspberry Pi 5 but module gpiod isn't installed.")
-            print("Install gpiod using: pip install gpiod")
+            print("Board is Raspberry Pi 5 but the gpiozero/lgpio backend is missing.")
+            print('Install it with: pip install "dip-coater[rpi]"')
             raise
     elif board == Board.RASPBERRY_PI:
         print("Attempting to use RPi.GPIO for Raspberry Pi")

@@ -7,6 +7,7 @@ import pytest
 
 from dip_coater.logging.tmc5160_logger import TMC5160LogLevel
 from dip_coater.mechanical.mechanical_setup import MechanicalSetup
+from dip_coater.config import config_tmc5160
 from dip_coater.motor_driver.trinamic_adapter import TrinamicWrapperMotorAdapter
 from dip_coater.setup_profiles.machine_profile import (
     AvailableMachineSetups,
@@ -283,3 +284,8 @@ def test_create_tmc5160_dummy_driver_uses_wrapper_adapter(monkeypatch):
     assert driver.get_current_position_mm() == pytest.approx(4.0)
     assert driver.get_current() == pytest.approx(2500)
     assert driver.get_current_standstill() == pytest.approx(70)
+
+
+def test_tmc5160_reference_stops_default_to_both_limits_enabled():
+    assert config_tmc5160.DEFAULT_REFERENCE_LEFT_STOP_ENABLED is True
+    assert config_tmc5160.DEFAULT_REFERENCE_RIGHT_STOP_ENABLED is True

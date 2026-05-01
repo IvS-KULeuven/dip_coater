@@ -15,3 +15,13 @@ def test_install_docs_explain_software_updates_and_version_check():
     assert "python3 -m pip install --upgrade -e ." in install_docs
     assert "uv sync" in install_docs
     assert "version shown at the top of the UI" in install_docs
+
+
+def test_developer_setup_docs_match_large_profile_defaults():
+    developer_docs = (
+        Path(__file__).parents[2] / "docs" / "developer-setups.md"
+    ).read_text()
+
+    assert "DEFAULT_REFERENCE_LEFT_STOP_ENABLED = True" in developer_docs
+    assert "DEFAULT_REFERENCE_RIGHT_STOP_ENABLED = True" in developer_docs
+    assert "Defaults to `HomeDirection.DOWN`" in developer_docs

@@ -24,6 +24,9 @@ docs = [
     "mkdocs-material>=9.5.0",
 ]
 rpi = [
+    "gpiozero>=2.0",
+    "gpiod>=2.1",
+    "lgpio>=0.2.2",
     "RPi.GPIO>=0.7.1",
 ]
 

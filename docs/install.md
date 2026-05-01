@@ -42,6 +42,9 @@ On a Raspberry Pi with GPIO hardware, install the Raspberry Pi extra:
 python3 -m pip install "dip-coater[rpi]"
 ```
 
+This installs the GPIO backends used by both older Raspberry Pi boards
+(`RPi.GPIO`) and Raspberry Pi 5 setups (`gpiozero` with `lgpio`).
+
 ## Source Checkout Install
 
 Use this path only if you are running from a cloned source checkout, for example while developing the app or testing local changes.

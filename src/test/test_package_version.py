@@ -25,3 +25,14 @@ def test_pyproject_packages_include_runtime_packages():
     assert package_finder["where"] == ["src"]
     assert "dip_coater*" in package_finder["include"]
     assert "trinamic_wrapper*" in package_finder["include"]
+
+
+def test_rpi_extra_includes_all_gpio_backends():
+    pyproject_path = Path(__file__).parents[2] / "pyproject.toml"
+    pyproject = tomllib.loads(pyproject_path.read_text())
+
+    rpi_dependencies = pyproject["project"]["optional-dependencies"]["rpi"]
+
+    assert any(dependency.startswith("RPi.GPIO") for dependency in rpi_dependencies)
+    assert any(dependency.startswith("gpiozero") for dependency in rpi_dependencies)
+    assert any(dependency.startswith("lgpio") for dependency in rpi_dependencies)
