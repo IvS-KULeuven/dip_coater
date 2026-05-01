@@ -118,6 +118,19 @@ class FakeDriverWithoutHomeFlag(FakeDriver):
         return 7.5
 
 
+class PositionedFakeDriver(FakeDriver):
+    def __init__(self, position_mm: float | None):
+        super().__init__()
+        self.position_mm = position_mm
+
+    def get_current_position_mm(self, homed_up=True):
+        self.last_position_call = homed_up
+        return self.position_mm
+
+    def is_homing_found(self):
+        return self.position_mm is not None
+
+
 class FakeReferenceSwitchDriver(FakeDriver):
     def __init__(self):
         super().__init__()
@@ -264,6 +277,63 @@ def test_motion_controller_falls_back_for_drivers_without_setup_reference_argume
     assert driver.last_run_to_position == (3.0, 0.5, 1.5)
     assert driver.last_position_call == "no-flag"
     assert position == 7.5
+
+
+def test_motion_controller_rejects_absolute_position_outside_profile_bounds():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        min_position_mm=0.0,
+        max_position_mm=20.0,
+    )
+    driver = FakeDriver()
+    controller = MotionController(driver, profile)
+
+    with pytest.raises(ValueError, match="outside travel range"):
+        controller.move_to_position(21.0, 1.0, 2.0)
+
+    assert driver.last_run_to_position is None
+
+
+def test_motion_controller_rejects_relative_move_that_would_exceed_profile_bounds_when_homed():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        home_direction=HomeDirection.DOWN,
+        min_position_mm=0.0,
+        max_position_mm=20.0,
+    )
+    driver = PositionedFakeDriver(position_mm=19.0)
+    controller = MotionController(driver, profile)
+
+    with pytest.raises(ValueError, match="outside travel range"):
+        controller.move_up(2.0, 1.0)
+
+    assert driver.moves == []
+
+
+@pytest.mark.asyncio
+async def test_motion_controller_times_out_wait_and_stops_motor():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+    )
+
+    class NeverDoneDriver(FakeDriver):
+        async def wait_for_motor_done_async(self):
+            while True:
+                await asyncio.sleep(1)
+
+    driver = NeverDoneDriver()
+    controller = MotionController(driver, profile)
+
+    result = await controller.wait_for_motor_done_async(timeout_s=0.02)
+
+    assert driver.stopped is True
+    assert result == "motion timed out after 0.02s"
 
 
 def test_motion_controller_prefers_driver_reference_switches():

@@ -11,6 +11,9 @@ from dip_coater.setup_profiles.machine_profile import (
 
 
 _REFERENCE_HOMING_BACKOFF_MM = 5.0
+_MOTION_TIMEOUT_MIN_S = 10.0
+_MOTION_TIMEOUT_SETTLE_S = 5.0
+_MOTION_TIMEOUT_SCALE = 3.0
 
 
 class MotionController:
@@ -19,6 +22,7 @@ class MotionController:
         self.machine_profile = machine_profile
         self.gpio = gpio
         self._disabled_driver_reference_stops: set[HomeDirection] = set()
+        self._last_motion_timeout_s: float | None = None
 
     @property
     def supports_limit_switches(self) -> bool:
@@ -66,12 +70,16 @@ class MotionController:
     async def wait_for_motor_done_async(
         self,
         active_limit_direction: HomeDirection | None = None,
+        timeout_s: float | None = None,
     ):
+        timeout_s = self._last_motion_timeout_s if timeout_s is None else timeout_s
         if active_limit_direction is None or not self.supports_limit_switches:
-            return await self.motor_driver.wait_for_motor_done_async()
+            return await self._wait_for_driver_done_with_timeout(timeout_s)
 
         wait_task = asyncio.create_task(self.motor_driver.wait_for_motor_done_async())
         try:
+            loop = asyncio.get_running_loop()
+            deadline = None if timeout_s is None else loop.time() + timeout_s
             while not wait_task.done():
                 if self.read_limit_switch(active_limit_direction):
                     self.stop_motor()
@@ -84,11 +92,31 @@ class MotionController:
                     except asyncio.CancelledError:
                         pass
                     return f"{active_limit_direction.value} limit switch triggered"
+                if deadline is not None and loop.time() >= deadline:
+                    return await self._timeout_wait_task(wait_task, timeout_s)
                 await asyncio.sleep(0.05)
             return await wait_task
         finally:
             if not wait_task.done():
                 wait_task.cancel()
+
+    async def _wait_for_driver_done_with_timeout(self, timeout_s: float | None):
+        if timeout_s is None:
+            return await self.motor_driver.wait_for_motor_done_async()
+        wait_task = asyncio.create_task(self.motor_driver.wait_for_motor_done_async())
+        try:
+            return await asyncio.wait_for(wait_task, timeout=timeout_s)
+        except asyncio.TimeoutError:
+            return await self._timeout_wait_task(wait_task, timeout_s)
+
+    async def _timeout_wait_task(self, wait_task: asyncio.Task, timeout_s: float) -> str:
+        self.stop_motor()
+        wait_task.cancel()
+        try:
+            await wait_task
+        except asyncio.CancelledError:
+            pass
+        return f"motion timed out after {timeout_s:g}s"
 
     def move_up(
         self,
@@ -97,6 +125,10 @@ class MotionController:
         acceleration_mm_s2: float | None = None,
     ):
         self._raise_if_limit_switch_triggered(HomeDirection.UP)
+        self._raise_if_relative_move_outside_travel(HomeDirection.UP, distance_mm)
+        self._last_motion_timeout_s = self._estimate_motion_timeout_s(
+            distance_mm, speed_mm_s
+        )
         self._disable_opposite_triggered_driver_reference_stop(HomeDirection.UP)
         kwargs = {}
         switch = self._switch_for_direction(HomeDirection.UP)
@@ -111,6 +143,10 @@ class MotionController:
         acceleration_mm_s2: float | None = None,
     ):
         self._raise_if_limit_switch_triggered(HomeDirection.DOWN)
+        self._raise_if_relative_move_outside_travel(HomeDirection.DOWN, distance_mm)
+        self._last_motion_timeout_s = self._estimate_motion_timeout_s(
+            distance_mm, speed_mm_s
+        )
         self._disable_opposite_triggered_driver_reference_stop(HomeDirection.DOWN)
         kwargs = {}
         switch = self._switch_for_direction(HomeDirection.DOWN)
@@ -126,6 +162,16 @@ class MotionController:
         speed_mm_s: float | None = None,
         acceleration_mm_s2: float | None = None,
     ):
+        self._raise_if_position_outside_travel(position_mm)
+        current_position_mm = self.get_current_position_mm()
+        travel_distance_mm = (
+            self.machine_profile.travel_span_mm
+            if current_position_mm is None
+            else abs(position_mm - current_position_mm)
+        )
+        self._last_motion_timeout_s = self._estimate_motion_timeout_s(
+            travel_distance_mm, speed_mm_s
+        )
         try:
             self.motor_driver.run_to_position(
                 position_mm,
@@ -444,6 +490,52 @@ class MotionController:
         if switches is None:
             return None
         return switches.switch_for(direction)
+
+    def _raise_if_relative_move_outside_travel(
+        self, direction: HomeDirection, distance_mm: float
+    ) -> None:
+        if not self.is_homing_found():
+            return
+        current_position_mm = self.get_current_position_mm()
+        if current_position_mm is None:
+            return
+        projected_position_mm = current_position_mm + self._position_delta_for_move(
+            direction, distance_mm
+        )
+        self._raise_if_position_outside_travel(projected_position_mm)
+
+    def _position_delta_for_move(
+        self, direction: HomeDirection, distance_mm: float
+    ) -> float:
+        if direction == self.machine_profile.home_direction:
+            return -distance_mm
+        return distance_mm
+
+    def _raise_if_position_outside_travel(self, position_mm: float) -> None:
+        if (
+            self.machine_profile.min_position_mm
+            <= position_mm
+            <= self.machine_profile.max_position_mm
+        ):
+            return
+        raise ValueError(
+            f"Requested position {position_mm:.1f} mm is outside travel range "
+            f"{self.machine_profile.min_position_mm:.1f}.."
+            f"{self.machine_profile.max_position_mm:.1f} mm."
+        )
+
+    @staticmethod
+    def _estimate_motion_timeout_s(
+        distance_mm: float,
+        speed_mm_s: float | None,
+    ) -> float:
+        if speed_mm_s is None or speed_mm_s <= 0:
+            return _MOTION_TIMEOUT_MIN_S
+        expected_duration_s = abs(distance_mm) / speed_mm_s
+        return max(
+            _MOTION_TIMEOUT_MIN_S,
+            expected_duration_s * _MOTION_TIMEOUT_SCALE + _MOTION_TIMEOUT_SETTLE_S,
+        )
 
     def _reenable_driver_reference_stop(self, direction: HomeDirection) -> None:
         if direction not in self._disabled_driver_reference_stops:
