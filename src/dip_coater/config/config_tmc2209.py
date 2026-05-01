@@ -1,4 +1,4 @@
-from dip_coater.config.config_base import *
+from dip_coater.config.config_base import *  # noqa: F403
 from TMC_2209._TMC_2209_logger import Loglevel
 
 # TMC2209 specific settings
@@ -32,4 +32,3 @@ LOW_SPEED_SPREAD_CYCLE = False
 HIGH_SPEED_STEP_MODE = "I2"
 HIGH_SPEED_INTERPOLATION = False
 HIGH_SPEED_SPREAD_CYCLE = True
-

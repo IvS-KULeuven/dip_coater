@@ -14,3 +14,15 @@ def test_mkdocs_github_pages_workflow_is_configured():
     assert "uv run mkdocs build --strict" in workflow
     assert "actions/upload-pages-artifact@" in workflow
     assert "actions/deploy-pages@" in workflow
+
+
+def test_app_ci_workflow_runs_tests_lint_and_docs():
+    workflow_path = Path(__file__).parents[2] / ".github" / "workflows" / "ci.yml"
+
+    workflow = workflow_path.read_text()
+
+    assert "name: CI" in workflow
+    assert 'python-version: "3.10"' in workflow
+    assert "uv run pytest -q -m \"not hardware\"" in workflow
+    assert "uv run ruff check src" in workflow
+    assert "uv run --extra docs mkdocs build --strict" in workflow

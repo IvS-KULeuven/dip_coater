@@ -21,7 +21,7 @@ from __future__ import annotations
 import time
 
 import pytest
-from pytrinamic.ic import TMC2660, TMC5160
+from pytrinamic.ic import TMC5160
 
 from trinamic_wrapper import Direction, StepMode
 

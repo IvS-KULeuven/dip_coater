@@ -1,4 +1,4 @@
-from TMC_2209.TMC_2209_StepperDriver import *
+from TMC_2209.TMC_2209_StepperDriver import TMC_2209
 from TMC_2209._TMC_2209_logger import Loglevel
 from TMC_2209._TMC_2209_move import MovementAbsRel, StopMode
 import time

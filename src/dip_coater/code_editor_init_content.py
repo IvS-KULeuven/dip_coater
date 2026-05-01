@@ -4,6 +4,8 @@ Stick to the provided API and do not import any modules or use any functions tha
 the API.
 """
 
+# ruff: noqa: F821
+
 # ====== PARAMETERS ======
 distance_down = 10  # mm
 distance_up = distance_down    # mm

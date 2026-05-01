@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
-
-
 class FakeConnection:
     """Records all TMCL-style calls so tests can assert on them."""
 
