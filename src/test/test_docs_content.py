@@ -25,3 +25,11 @@ def test_developer_setup_docs_match_large_profile_defaults():
     assert "DEFAULT_REFERENCE_LEFT_STOP_ENABLED = True" in developer_docs
     assert "DEFAULT_REFERENCE_RIGHT_STOP_ENABLED = True" in developer_docs
     assert "Defaults to `HomeDirection.DOWN`" in developer_docs
+
+
+def test_coder_docs_explain_trusted_scripts_and_stop_button():
+    coder_docs = (Path(__file__).parents[2] / "docs" / "coder-api.md").read_text()
+
+    assert "trusted Python code" in coder_docs
+    assert "STOP code" in coder_docs
+    assert "between Coder API calls" in coder_docs

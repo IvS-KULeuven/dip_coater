@@ -1,6 +1,8 @@
 # Coder API
 
 The Coder tab lets you run simple Python scripts that control the dip coater.
+Scripts are trusted Python code. Only run scripts you wrote yourself or scripts
+you have reviewed.
 
 Use this for repeatable routines such as:
 
@@ -12,6 +14,16 @@ Use this for repeatable routines such as:
 
 !!! warning
     Test new scripts with the dummy driver first. Then test with small distances and low speeds before using real coating hardware.
+
+## Stopping a Script
+
+Press `STOP code` to request cancellation and disable the motor. The app stops
+the script between Coder API calls such as `move_down`, `move_up`, `sleep`, and
+`move_to_position`.
+
+`STOP code` cannot interrupt arbitrary Python while it is busy inside a loop
+that does not call the Coder API. Keep scripts simple and use short Coder API
+steps.
 
 ## Basic Script
 

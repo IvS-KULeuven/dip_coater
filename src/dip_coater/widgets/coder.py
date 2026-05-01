@@ -1,4 +1,6 @@
 import asyncio
+import concurrent.futures
+import time
 from pathlib import Path
 
 from textual import on, events
@@ -24,12 +26,19 @@ from dip_coater.utils.helpers import (
 )
 
 
+class CoderExecutionCancelled(RuntimeError):
+    """Raised when a running Coder script is stopped by the operator."""
+
+
 class Coder(Static):
     code = ""
 
     def __init__(self, app_state):
         super().__init__()
         self.app_state = app_state
+        self._app_loop: asyncio.AbstractEventLoop | None = None
+        self._stop_requested = False
+        self._is_executing = False
 
     def compose(self) -> ComposeResult:
         with Vertical():
@@ -59,6 +68,11 @@ class Coder(Static):
                     variant="success",
                 )
                 yield Button(
+                    "STOP code",
+                    id="stop-code-btn",
+                    variant="error",
+                )
+                yield Button(
                     "LOAD code from file",
                     id="load-code-btn",
                 )
@@ -82,14 +96,27 @@ class Coder(Static):
         config_file_path = config_load_coder_filepath(self.app_state)
         self.query_one("#code-file-path-input", Input).value = config_file_path
         self.load_code_from_file(config_file_path)
+        self._set_execution_controls_running(False)
 
     @on(Button.Pressed, "#run-code-btn")
     async def run_code(self):
+        if self._is_executing:
+            self.app.query_one("#logger", RichLog).write(
+                "[dark_orange]Coder script is already running.[/]"
+            )
+            return
         self.code = self.app.query_one("#code-editor", TextArea).text
         tabbed_content = self.app.query_one("#tabbed-content", TabbedContent)
         tabbed_content.active = "main-tab"
         await asyncio.sleep(0.1)
         await self.exec_code_async()
+
+    @on(Button.Pressed, "#stop-code-btn")
+    async def stop_code(self):
+        self.request_stop()
+        log = self.app.query_one("#logger", RichLog)
+        log.write("[dark_orange]Stopping Coder script...[/]")
+        await self.app_state.motor_controls.disable_motor_action()
 
     def set_editor_text(self, text: str):
         self.query_one("#code-editor", TextArea).text = text
@@ -146,24 +173,76 @@ class Coder(Static):
 
     async def exec_code_async(self):
         log = self.app.query_one("#logger", RichLog)
+        self._app_loop = asyncio.get_running_loop()
+        self._stop_requested = False
+        self._is_executing = True
+        self._set_execution_controls_running(True)
         try:
             log.write("[blue]Executing code >>>>>>>>>>>>[/]")
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(None, self.exec_code)
             log.write("[dark_cyan]>>>>>>>>>>>> Code finished.[/]")
+        except CoderExecutionCancelled as e:
+            log.write(f"[dark_orange]{e}[/]")
         except Exception as e:
             log.write(f"[red]Error executing code: {e}[/]")
             raise e
+        finally:
+            self._is_executing = False
+            self._app_loop = None
+            self._set_execution_controls_running(False)
 
     def exec_code(self):
-        exec(self.code)
+        self._raise_if_stop_requested()
+        namespace = {"self": self}
+        exec(self.code, namespace, namespace)
+        self._raise_if_stop_requested()
 
-    @staticmethod
-    def async_run(func, *args):
-        async def run():
-            await func(*args)
+    def _set_execution_controls_running(self, running: bool) -> None:
+        for button_id, disabled in (
+            ("#run-code-btn", running),
+            ("#stop-code-btn", not running),
+        ):
+            try:
+                self.query_one(button_id, Button).disabled = disabled
+            except Exception:
+                pass
 
-        asyncio.run(run())
+    def request_stop(self) -> None:
+        self._stop_requested = True
+
+    def _raise_if_stop_requested(
+        self,
+        future: concurrent.futures.Future | None = None,
+    ) -> None:
+        if not self._stop_requested:
+            return
+        if future is not None:
+            future.cancel()
+        raise CoderExecutionCancelled("Coder execution stopped.")
+
+    def async_run(self, func, *args):
+        self._raise_if_stop_requested()
+        if self._app_loop is None:
+            asyncio.run(func(*args))
+            return
+
+        future = asyncio.run_coroutine_threadsafe(func(*args), self._app_loop)
+        while True:
+            self._raise_if_stop_requested(future)
+            try:
+                return future.result(timeout=0.05)
+            except concurrent.futures.TimeoutError:
+                continue
+
+    def _write_log_from_script(self, message: str) -> None:
+        if self._app_loop is None:
+            return
+
+        def write() -> None:
+            self.app.query_one("#logger", RichLog).write(message)
+
+        self._app_loop.call_soon_threadsafe(write)
 
     """ ========== API for the code editor ========== """
 
@@ -208,7 +287,21 @@ class Coder(Static):
         home_up: bool = None,
     ):
         self.async_run(
-            self.app.query_one(PositionControls).move_to_position,
+            self._move_to_position_async,
+            position_mm,
+            speed_mm_s,
+            acceleration_mm_s2,
+            home_up,
+        )
+
+    async def _move_to_position_async(
+        self,
+        position_mm: float,
+        speed_mm_s: float,
+        acceleration_mm_s2: float = None,
+        home_up: bool = None,
+    ):
+        await self.app.query_one(PositionControls).move_to_position(
             position_mm,
             speed_mm_s,
             acceleration_mm_s2,
@@ -216,6 +309,12 @@ class Coder(Static):
         )
 
     def sleep(self, seconds: float):
-        log = self.app.query_one("#logger", RichLog)
-        log.write(f"[cyan]...Sleeping for {seconds} seconds...[/]")
-        self.async_run(asyncio.sleep, seconds)
+        self._raise_if_stop_requested()
+        self._write_log_from_script(f"[cyan]...Sleeping for {seconds} seconds...[/]")
+        deadline = time.monotonic() + seconds
+        while time.monotonic() < deadline:
+            self._raise_if_stop_requested()
+            remaining_s = deadline - time.monotonic()
+            if remaining_s <= 0:
+                break
+            time.sleep(min(0.1, remaining_s))
