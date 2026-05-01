@@ -80,7 +80,20 @@ Example values:
 DIP_COATER_DRIVER=TMC5160
 DIP_COATER_INTERFACE=usb_tmcl
 DIP_COATER_PORT=/dev/tty.usbmodemTMCEVAL1
+DIP_COATER_SESSION_LOG_FILE=logs/dip-coater-session.jsonl
 ```
+
+## Session Diagnostics
+
+The app writes persistent session diagnostics as JSON lines. By default the file is `logs/dip-coater-session.jsonl` relative to the directory where you start the app.
+
+Use `--session-log-file` or `DIP_COATER_SESSION_LOG_FILE` to choose a different path:
+
+```bash
+dip-coater --session-log-file ~/dip-coater-session.jsonl
+```
+
+The session log records startup settings, requested motion, homing attempts, motion timeouts, limit-switch stops, and shutdown cleanup.
 
 ## Useful Command Options
 
@@ -94,6 +107,7 @@ DIP_COATER_PORT=/dev/tty.usbmodemTMCEVAL1
 | `--use-dummy-driver` | Run without real hardware | `--use-dummy-driver` |
 | `--invert-direction` | Reverse motor direction for this run | `--invert-direction` |
 | `--home-direction` | Override homing direction | `--home-direction down` |
+| `--session-log-file` | Write persistent JSON-lines diagnostics | `--session-log-file logs/session.jsonl` |
 
 ## Keyboard Shortcuts
 

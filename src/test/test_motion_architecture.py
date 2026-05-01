@@ -38,6 +38,14 @@ class FakeGPIO:
         self.cleaned = True
 
 
+class CapturingSessionLog:
+    def __init__(self):
+        self.events = []
+
+    def write(self, event, **fields):
+        self.events.append((event, fields))
+
+
 class FakeDriver:
     def __init__(self):
         self.moves = []
@@ -270,6 +278,50 @@ def test_motion_controller_requires_standard_position_contract():
     assert position == 12.5
 
 
+def test_motion_controller_records_relative_move_diagnostics():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+    )
+    driver = FakeDriver()
+    session_log = CapturingSessionLog()
+    controller = MotionController(driver, profile, session_log=session_log)
+
+    controller.move_up(4.0, 2.0, 1.5)
+
+    assert session_log.events == [
+        (
+            "motion_requested",
+            {
+                "kind": "relative",
+                "direction": "up",
+                "distance_mm": 4.0,
+                "speed_mm_s": 2.0,
+                "acceleration_mm_s2": 1.5,
+                "timeout_s": 11.0,
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_motion_controller_records_motion_completion():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+    )
+    driver = FakeDriver()
+    session_log = CapturingSessionLog()
+    controller = MotionController(driver, profile, session_log=session_log)
+
+    result = await controller.wait_for_motor_done_async(timeout_s=1.0)
+
+    assert result is None
+    assert session_log.events == [("motion_completed", {"result": None})]
+
+
 def test_motion_controller_does_not_retry_typeerror_from_standard_position_contract():
     profile = MachineProfile(
         key=AvailableMachineSetups.CUSTOM,
@@ -346,12 +398,14 @@ async def test_motion_controller_times_out_wait_and_stops_motor():
                 await asyncio.sleep(1)
 
     driver = NeverDoneDriver()
-    controller = MotionController(driver, profile)
+    session_log = CapturingSessionLog()
+    controller = MotionController(driver, profile, session_log=session_log)
 
     result = await controller.wait_for_motor_done_async(timeout_s=0.02)
 
     assert driver.stopped is True
     assert result == "motion timed out after 0.02s"
+    assert session_log.events == [("motion_timeout", {"timeout_s": 0.02})]
 
 
 def test_motion_controller_prefers_driver_reference_switches():
@@ -415,7 +469,8 @@ async def test_motion_controller_stops_when_active_reference_switch_triggers():
         limit_switches=LimitSwitchSetup.tmc5160_reference(),
     )
     driver = FakeReferenceSwitchDriver()
-    controller = MotionController(driver, profile, gpio=None)
+    session_log = CapturingSessionLog()
+    controller = MotionController(driver, profile, gpio=None, session_log=session_log)
 
     async def trigger_limit_switch():
         await asyncio.sleep(0.02)
@@ -432,6 +487,12 @@ async def test_motion_controller_stops_when_active_reference_switch_triggers():
     assert driver.stopped is True
     assert driver.reference_stop_calls == [(False, True)]
     assert result == "up limit switch triggered"
+    assert session_log.events == [
+        (
+            "limit_switch_stop",
+            {"direction": "up", "source": "driver_reference"},
+        )
+    ]
 
 
 def test_motion_controller_reenables_reference_stop_after_switch_clears():

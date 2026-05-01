@@ -3,6 +3,7 @@ import time
 from collections.abc import Callable
 
 from dip_coater.gpio import GpioEdge, GpioMode, GpioPUD, GpioState
+from dip_coater.logging.session_log import NullSessionLog
 from dip_coater.setup_profiles.machine_profile import (
     HomeDirection,
     LimitSwitchSource,
@@ -17,10 +18,17 @@ _MOTION_TIMEOUT_SCALE = 3.0
 
 
 class MotionController:
-    def __init__(self, motor_driver, machine_profile: MachineProfile, gpio=None):
+    def __init__(
+        self,
+        motor_driver,
+        machine_profile: MachineProfile,
+        gpio=None,
+        session_log=None,
+    ):
         self.motor_driver = motor_driver
         self.machine_profile = machine_profile
         self.gpio = gpio
+        self.session_log = session_log or NullSessionLog()
         self._disabled_driver_reference_stops: set[HomeDirection] = set()
         self._last_motion_timeout_s: float | None = None
 
@@ -65,7 +73,9 @@ class MotionController:
         self.motor_driver.stop_motor()
 
     def wait_for_motor_done(self):
-        return self.motor_driver.wait_for_motor_done()
+        result = self.motor_driver.wait_for_motor_done()
+        self._record_motion_completed(result)
+        return result
 
     async def wait_for_motor_done_async(
         self,
@@ -91,26 +101,34 @@ class MotionController:
                         await wait_task
                     except asyncio.CancelledError:
                         pass
+                    self._record_limit_switch_stop(active_limit_direction)
                     return f"{active_limit_direction.value} limit switch triggered"
                 if deadline is not None and loop.time() >= deadline:
                     return await self._timeout_wait_task(wait_task, timeout_s)
                 await asyncio.sleep(0.05)
-            return await wait_task
+            result = await wait_task
+            self._record_motion_completed(result)
+            return result
         finally:
             if not wait_task.done():
                 wait_task.cancel()
 
     async def _wait_for_driver_done_with_timeout(self, timeout_s: float | None):
         if timeout_s is None:
-            return await self.motor_driver.wait_for_motor_done_async()
+            result = await self.motor_driver.wait_for_motor_done_async()
+            self._record_motion_completed(result)
+            return result
         wait_task = asyncio.create_task(self.motor_driver.wait_for_motor_done_async())
         try:
-            return await asyncio.wait_for(wait_task, timeout=timeout_s)
+            result = await asyncio.wait_for(wait_task, timeout=timeout_s)
+            self._record_motion_completed(result)
+            return result
         except asyncio.TimeoutError:
             return await self._timeout_wait_task(wait_task, timeout_s)
 
     async def _timeout_wait_task(self, wait_task: asyncio.Task, timeout_s: float) -> str:
         self.stop_motor()
+        self.session_log.write("motion_timeout", timeout_s=timeout_s)
         wait_task.cancel()
         try:
             await wait_task
@@ -129,6 +147,15 @@ class MotionController:
         self._last_motion_timeout_s = self._estimate_motion_timeout_s(
             distance_mm, speed_mm_s
         )
+        self.session_log.write(
+            "motion_requested",
+            kind="relative",
+            direction=HomeDirection.UP.value,
+            distance_mm=distance_mm,
+            speed_mm_s=speed_mm_s,
+            acceleration_mm_s2=acceleration_mm_s2,
+            timeout_s=self._last_motion_timeout_s,
+        )
         self._disable_opposite_triggered_driver_reference_stop(HomeDirection.UP)
         kwargs = {}
         switch = self._switch_for_direction(HomeDirection.UP)
@@ -146,6 +173,15 @@ class MotionController:
         self._raise_if_relative_move_outside_travel(HomeDirection.DOWN, distance_mm)
         self._last_motion_timeout_s = self._estimate_motion_timeout_s(
             distance_mm, speed_mm_s
+        )
+        self.session_log.write(
+            "motion_requested",
+            kind="relative",
+            direction=HomeDirection.DOWN.value,
+            distance_mm=distance_mm,
+            speed_mm_s=speed_mm_s,
+            acceleration_mm_s2=acceleration_mm_s2,
+            timeout_s=self._last_motion_timeout_s,
         )
         self._disable_opposite_triggered_driver_reference_stop(HomeDirection.DOWN)
         kwargs = {}
@@ -172,6 +208,15 @@ class MotionController:
         self._last_motion_timeout_s = self._estimate_motion_timeout_s(
             travel_distance_mm, speed_mm_s
         )
+        self.session_log.write(
+            "motion_requested",
+            kind="absolute",
+            position_mm=position_mm,
+            travel_distance_mm=travel_distance_mm,
+            speed_mm_s=speed_mm_s,
+            acceleration_mm_s2=acceleration_mm_s2,
+            timeout_s=self._last_motion_timeout_s,
+        )
         self.motor_driver.run_to_position(
             position_mm,
             speed_mm_s,
@@ -191,11 +236,24 @@ class MotionController:
             )
         if home_direction is None:
             home_direction = self.machine_profile.home_direction
+        self.session_log.write(
+            "homing_requested",
+            direction=home_direction.value,
+            speed_mm_s=speed_mm_s,
+        )
         if self.supports_gpio_limit_switches and hasattr(
             self.motor_driver, "do_limit_switch_homing"
         ):
-            return self._home_via_gpio_switches(speed_mm_s, home_direction)
-        return self._home_via_driver_reference(speed_mm_s, home_direction)
+            homing_found = self._home_via_gpio_switches(speed_mm_s, home_direction)
+        else:
+            homing_found = self._home_via_driver_reference(speed_mm_s, home_direction)
+        self.session_log.write(
+            "homing_completed",
+            direction=home_direction.value,
+            speed_mm_s=speed_mm_s,
+            homing_found=homing_found,
+        )
+        return homing_found
 
     async def home_async(
         self,
@@ -209,15 +267,28 @@ class MotionController:
             )
         if home_direction is None:
             home_direction = self.machine_profile.home_direction
+        self.session_log.write(
+            "homing_requested",
+            direction=home_direction.value,
+            speed_mm_s=speed_mm_s,
+        )
         if self.supports_gpio_limit_switches and hasattr(
             self.motor_driver, "do_limit_switch_homing"
         ):
-            return await asyncio.to_thread(
+            homing_found = await asyncio.to_thread(
                 self._home_via_gpio_switches, speed_mm_s, home_direction
             )
-        return await self._home_via_driver_reference_async(
-            speed_mm_s, home_direction
+        else:
+            homing_found = await self._home_via_driver_reference_async(
+                speed_mm_s, home_direction
+            )
+        self.session_log.write(
+            "homing_completed",
+            direction=home_direction.value,
+            speed_mm_s=speed_mm_s,
+            homing_found=homing_found,
         )
+        return homing_found
 
     def _home_via_gpio_switches(
         self, speed_mm_s: float, home_direction: HomeDirection
@@ -388,6 +459,7 @@ class MotionController:
         return self.motor_driver.is_homing_found()
 
     def cleanup(self):
+        self.session_log.write("session_cleanup")
         self.motor_driver.cleanup()
         if (
             self.gpio is not None
@@ -552,6 +624,17 @@ class MotionController:
             left=HomeDirection.UP not in self._disabled_driver_reference_stops,
             right=HomeDirection.DOWN not in self._disabled_driver_reference_stops,
         )
+
+    def _record_limit_switch_stop(self, direction: HomeDirection) -> None:
+        switch = self._switch_for_direction(direction)
+        self.session_log.write(
+            "limit_switch_stop",
+            direction=direction.value,
+            source=switch.source.value if switch is not None else None,
+        )
+
+    def _record_motion_completed(self, result) -> None:
+        self.session_log.write("motion_completed", result=result)
 
     def _raise_if_limit_switch_triggered(self, direction: HomeDirection) -> None:
         if not self.supports_limit_switches:

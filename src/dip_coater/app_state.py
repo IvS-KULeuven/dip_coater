@@ -1,5 +1,6 @@
 from dip_coater.gpio import get_gpio_instance
 from dip_coater.config.config_loader import Config
+from dip_coater.logging.session_log import NullSessionLog
 from dip_coater.motor_driver.motor_driver_interface import AvailableMotorDrivers
 from dip_coater.setup_profiles.machine_profile import MachineProfile
 
@@ -25,6 +26,7 @@ class AppState:
         self.gpio = get_gpio_instance() if gpio_required else None
         self.motor_driver = None
         self.motion_controller = None
+        self.session_log = NullSessionLog()
         self.motor_state = "disabled"
         self.homing_found = False
         self.motor_logger_handler = None

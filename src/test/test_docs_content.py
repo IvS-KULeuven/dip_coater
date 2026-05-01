@@ -33,3 +33,11 @@ def test_coder_docs_explain_trusted_scripts_and_stop_button():
     assert "trusted Python code" in coder_docs
     assert "STOP code" in coder_docs
     assert "between Coder API calls" in coder_docs
+
+
+def test_run_docs_explain_session_log_file():
+    run_docs = (Path(__file__).parents[2] / "docs" / "run-the-app.md").read_text()
+
+    assert "--session-log-file" in run_docs
+    assert "DIP_COATER_SESSION_LOG_FILE" in run_docs
+    assert "JSON lines" in run_docs

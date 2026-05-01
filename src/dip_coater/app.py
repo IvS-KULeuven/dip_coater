@@ -19,6 +19,7 @@ except ModuleNotFoundError:
 from dip_coater.app_state import AppState
 
 from dip_coater.logging.motor_logger import MotorLoggerHandler, TempLoggerHandler
+from dip_coater.logging.session_log import SessionLog
 from dip_coater.commands.help_command import HelpCommand
 from dip_coater.screens.help_screen import HelpScreen
 
@@ -87,6 +88,10 @@ class DipCoaterApp(App):
             f"invert_direction={self.app_state.setup_profile.invert_motor_direction}"
             "[/]"
         )
+        if self.app_state.session_log.path is not None:
+            log.write(
+                f"[cyan][startup] session_log={self.app_state.session_log.path}[/]"
+            )
 
     def compose(self) -> ComposeResult:
         yield Header(
@@ -264,6 +269,17 @@ def main():
         choices=[direction.value for direction in HomeDirection],
         help="Override the setup homing direction for this run (env: DIP_COATER_HOME_DIRECTION)",
     )
+    parser.add_argument(
+        "--session-log-file",
+        type=str,
+        default=os.environ.get(
+            "DIP_COATER_SESSION_LOG_FILE", "logs/dip-coater-session.jsonl"
+        ),
+        help=(
+            "Write persistent JSON-lines session diagnostics to this path "
+            "(env: DIP_COATER_SESSION_LOG_FILE)"
+        ),
+    )
     args = parser.parse_args()
 
     driver_spec = get_driver_spec(args.driver)
@@ -308,6 +324,7 @@ def main():
         gpio_required=(driver_spec.requires_gpio or setup_profile.requires_gpio),
     )
     app_state.config.USE_DUMMY_DRIVER = args.use_dummy_driver
+    app_state.session_log = SessionLog(args.session_log_file)
 
     # Build the motor driver
     app_state.motor_logger_handler = TempLoggerHandler()
@@ -328,6 +345,25 @@ def main():
         driver,
         app_state.setup_profile,
         gpio=app_state.gpio,
+        session_log=app_state.session_log,
+    )
+    app_state.session_log.write(
+        "session_started",
+        version=__version__,
+        driver=args.driver.value,
+        setup=app_state.setup_profile.key.value,
+        setup_label=app_state.setup_profile.label,
+        dummy_driver=args.use_dummy_driver,
+        interface=args.interface,
+        port=args.port,
+        log_level=args.log_level,
+        home_direction=app_state.setup_profile.home_direction.value,
+        invert_direction=app_state.setup_profile.invert_motor_direction,
+        mm_per_revolution=app_state.setup_profile.mechanical_setup.mm_per_revolution,
+        gearbox_ratio=app_state.setup_profile.mechanical_setup.gearbox_ratio,
+        steps_per_revolution=(
+            app_state.setup_profile.mechanical_setup.steps_per_revolution
+        ),
     )
 
     # Build and start the application
