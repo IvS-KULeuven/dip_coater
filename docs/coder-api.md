@@ -28,13 +28,14 @@ steps.
 ## Basic Script
 
 This script lowers the moving assembly by 10 mm, waits 5 seconds, then raises it by 10 mm.
+The examples use keyword arguments so the distance, speed, and acceleration units stay clear.
 
 ```python
 self.enable_motor()
 
-self.move_down(10, 5)
-self.sleep(5)
-self.move_up(10, 2)
+self.move_down(distance_mm=10, speed_mm_s=5)
+self.sleep(seconds=5)
+self.move_up(distance_mm=10, speed_mm_s=2)
 
 self.disable_motor()
 ```
@@ -66,8 +67,8 @@ self.move_down(distance_mm, speed_mm_s, acceleration_mm_s2=None)
 Examples:
 
 ```python
-self.move_down(10, 5)
-self.move_down(10, 5, 10)
+self.move_down(distance_mm=10, speed_mm_s=5)
+self.move_down(distance_mm=10, speed_mm_s=5, acceleration_mm_s2=10)
 ```
 
 The first example lowers the moving assembly by 10 mm at 5 mm/s. The second also sets acceleration to 10 mm/s^2.
@@ -81,8 +82,8 @@ self.move_up(distance_mm, speed_mm_s, acceleration_mm_s2=None)
 Examples:
 
 ```python
-self.move_up(10, 5)
-self.move_up(10, 5, 10)
+self.move_up(distance_mm=10, speed_mm_s=5)
+self.move_up(distance_mm=10, speed_mm_s=5, acceleration_mm_s2=10)
 ```
 
 ### Home the Motor
@@ -109,9 +110,9 @@ self.move_to_position(position_mm, speed_mm_s=None, acceleration_mm_s2=None)
 Examples:
 
 ```python
-self.move_to_position(10)
-self.move_to_position(10, 5)
-self.move_to_position(10, 5, 10)
+self.move_to_position(position_mm=10)
+self.move_to_position(position_mm=10, speed_mm_s=5)
+self.move_to_position(position_mm=10, speed_mm_s=5, acceleration_mm_s2=10)
 ```
 
 ### Wait
@@ -123,7 +124,7 @@ self.sleep(seconds)
 Example:
 
 ```python
-self.sleep(5)
+self.sleep(seconds=5)
 ```
 
 ## Example: Simple Dip Cycle
@@ -132,13 +133,13 @@ self.sleep(5)
 self.enable_motor()
 
 # Move into the liquid.
-self.move_down(20, 4)
+self.move_down(distance_mm=20, speed_mm_s=4)
 
 # Wait while submerged.
-self.sleep(10)
+self.sleep(seconds=10)
 
 # Withdraw slowly.
-self.move_up(20, 1)
+self.move_up(distance_mm=20, speed_mm_s=1)
 
 self.disable_motor()
 ```
@@ -149,10 +150,10 @@ self.disable_motor()
 self.enable_motor()
 
 for cycle in range(3):
-    self.move_down(15, 4)
-    self.sleep(5)
-    self.move_up(15, 2)
-    self.sleep(10)
+    self.move_down(distance_mm=15, speed_mm_s=4)
+    self.sleep(seconds=5)
+    self.move_up(distance_mm=15, speed_mm_s=2)
+    self.sleep(seconds=10)
 
 self.disable_motor()
 ```

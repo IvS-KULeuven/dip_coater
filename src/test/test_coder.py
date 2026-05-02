@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 from types import SimpleNamespace
 
 import pytest
@@ -49,6 +50,12 @@ def test_coder_api_refuses_new_commands_after_stop_request():
         coder.move_up(1.0, 1.0)
 
     assert motor_controls.moves == []
+
+
+def test_coder_move_to_position_allows_default_speed():
+    signature = inspect.signature(Coder.move_to_position)
+
+    assert signature.parameters["speed_mm_s"].default is None
 
 
 def test_coder_builds_python_highlighted_editor():

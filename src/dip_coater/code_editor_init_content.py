@@ -19,12 +19,12 @@ wait_time = 5       # s
 self.enable_motor()
 
 # == MOVE DOWN ==
-self.move_down(distance_down, speed_down)
+self.move_down(distance_mm=distance_down, speed_mm_s=speed_down)
 
 # == WAIT ==
-self.sleep(wait_time)
+self.sleep(seconds=wait_time)
 
 # == MOVE UP ==
-self.move_up(distance_up, speed_up)
+self.move_up(distance_mm=distance_up, speed_mm_s=speed_up)
 
 self.disable_motor()

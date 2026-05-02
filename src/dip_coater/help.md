@@ -62,21 +62,20 @@ You can create custom control routines using the coder in the `Coder` tab. To do
 following functions (the so-called 'Coder API'):
 - `self.enable_motor()`: arm the motor
 - `self.disable_motor()`: disarm the motor
-- `self.move_down(distance_mm, speed_mm_s, acceleration_mm_s=None)`: move the motor down by supplying the following parameters:
+- `self.move_down(distance_mm, speed_mm_s, acceleration_mm_s2=None)`: move the motor down by supplying the following parameters:
   - `distance_mm`: the distance in mm to move down
   - `speed_mm_s`: the speed in mm/s to move down
-  - `acceleration_mm_s`: (optional) the acceleration in mm/s^2 to move down (leave empty for default acceleration)
-- `self.move_up(distance_mm, speed_mm_s, acceleration_mm_s=None)`: move the motor up by supplying the following parameters:
+  - `acceleration_mm_s2`: (optional) the acceleration in mm/s^2 to move down (leave empty for default acceleration)
+- `self.move_up(distance_mm, speed_mm_s, acceleration_mm_s2=None)`: move the motor up by supplying the following parameters:
   - `distance_mm`: the distance in mm to move up
   - `speed_mm_s`: the speed in mm/s to move up
-  - `acceleration_mm_s`: (optional) the acceleration in mm/s^2 to move up (leave empty for default acceleration)
+  - `acceleration_mm_s2`: (optional) the acceleration in mm/s^2 to move up (leave empty for default acceleration)
 - `self.home_motor(home_up=True)`: home the motor, necessary for moving to absolute positions
   - `home_up` (optional) if the motor was homed at the top limit switch, set to `True`, if homed using the bottom limit switch, set `False`
-- `self.move_to_position(self, position_mm, speed_mm_s=None, acceleration_mm_s2=None, home_up=True)`: move the motor to an absolute position in mm
+- `self.move_to_position(position_mm, speed_mm_s=None, acceleration_mm_s2=None)`: move the motor to an absolute position in mm
   - `position_mm`: the absolute position in mm to move to
   - `speed_mm_s`: (optional) the speed in mm/s to move to the absolute position (leave empty to use the last set speed)
   - `acceleration_mm_s2`: (optional) the acceleration in mm/s^2 to move to the absolute position (leave empty to use the last set acceleration)
-  - `home_up`: (optional) if the motor was homed at the top limit switch, set to `True`, if homed using the bottom limit switch, set `False`
 - `self.sleep(seconds)`: wait for a number of seconds
 
 For example, to move the motor down by 10 mm at a speed of 5 mm/s, then wait 5 seconds, and then move up by 10 mm at 2 mm/s,
@@ -87,13 +86,13 @@ you can write the following code in the `Coder` tab:
 self.enable_motor()
 
 # Move down
-self.move_down(10, 5)
+self.move_down(distance_mm=10, speed_mm_s=5)
 
 # Wait for 5 seconds
-self.sleep(5)
+self.sleep(seconds=5)
 
 # Move up
-self.move_up(10, 2)
+self.move_up(distance_mm=10, speed_mm_s=2)
 
 # Disarm the motor
 self.disable_motor()

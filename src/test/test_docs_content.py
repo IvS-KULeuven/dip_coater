@@ -35,6 +35,31 @@ def test_coder_docs_explain_trusted_scripts_and_stop_button():
     assert "between Coder API calls" in coder_docs
 
 
+def test_coder_examples_use_explicit_keyword_arguments():
+    root = Path(__file__).parents[2]
+    docs_coder = (root / "docs" / "coder-api.md").read_text()
+    bundled_coder = (root / "src" / "dip_coater" / "coder_API.md").read_text()
+    help_docs = (root / "src" / "dip_coater" / "help.md").read_text()
+    initial_code = (
+        root / "src" / "dip_coater" / "code_editor_init_content.py"
+    ).read_text()
+
+    assert "self.move_down(distance_mm=10, speed_mm_s=5)" in docs_coder
+    assert (
+        "self.move_down(distance_mm=10, speed_mm_s=5, acceleration_mm_s2=10)"
+        in docs_coder
+    )
+    assert "self.move_up(distance_mm=10, speed_mm_s=5)" in bundled_coder
+    assert "self.move_to_position(position_mm=10, speed_mm_s=5)" in bundled_coder
+    assert "self.move_down(distance_mm=10, speed_mm_s=5)" in help_docs
+    assert (
+        "self.move_down(distance_mm=distance_down, speed_mm_s=speed_down)"
+        in initial_code
+    )
+    assert "self.move_down(10, 5)" not in docs_coder
+    assert "self.move_up(10, 2)" not in help_docs
+
+
 def test_run_docs_explain_session_log_file():
     run_docs = (Path(__file__).parents[2] / "docs" / "run-the-app.md").read_text()
 

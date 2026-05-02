@@ -288,7 +288,7 @@ class Coder(Static):
     def move_to_position(
         self,
         position_mm: float,
-        speed_mm_s: float,
+        speed_mm_s: float = None,
         acceleration_mm_s2: float = None,
         home_up: bool = None,
     ):
