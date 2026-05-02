@@ -59,10 +59,16 @@ def test_python_api_docs_are_configured_for_docstring_reference():
     root = Path(__file__).parents[2]
     pyproject = (root / "pyproject.toml").read_text()
     mkdocs = (root / "mkdocs.yml").read_text()
-    api_docs = (root / "docs" / "python-api.md").read_text()
+    api_index = (root / "docs" / "api" / "index.md").read_text()
+    motion_docs = (root / "docs" / "api" / "motion-controller.md").read_text()
+    setup_docs = (root / "docs" / "api" / "setup-profiles.md").read_text()
 
     assert "mkdocstrings[python]" in pyproject
     assert "mkdocstrings" in mkdocs
     assert "docstring_style: sphinx" in mkdocs
-    assert "Python API: python-api.md" in mkdocs
-    assert "::: dip_coater.services.motion_controller.MotionController" in api_docs
+    assert "Overview: api/index.md" in mkdocs
+    assert "Motion Controller: api/motion-controller.md" in mkdocs
+    assert "Motor Drivers: api/motor-drivers.md" in mkdocs
+    assert "::: dip_coater.services.motion_controller.MotionController" in motion_docs
+    assert "::: dip_coater.setup_profiles.machine_profile.MachineProfile" in setup_docs
+    assert "motion-controller.md" in api_index

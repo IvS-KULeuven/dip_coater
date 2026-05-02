@@ -32,7 +32,15 @@ nav:
   - Use the Interface: using-the-ui.md
   - Coder API: coder-api.md
   - Python Examples: python-examples.md
-  - Python API: python-api.md
+  - Python API:
+      - Overview: api/index.md
+      - App State: api/app-state.md
+      - Setup Profiles: api/setup-profiles.md
+      - Mechanical Conversions: api/mechanical.md
+      - Motor Drivers: api/motor-drivers.md
+      - Motion Controller: api/motion-controller.md
+      - Session Logging: api/logging.md
+      - Helpers: api/helpers.md
   - Troubleshooting: troubleshooting.md
   - Developer Notes: developer-notes.md
   - Developer Setup Profiles: developer-setups.md
