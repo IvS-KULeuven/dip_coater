@@ -72,3 +72,18 @@ def test_python_api_docs_are_configured_for_docstring_reference():
     assert "::: dip_coater.services.motion_controller.MotionController" in motion_docs
     assert "::: dip_coater.setup_profiles.machine_profile.MachineProfile" in setup_docs
     assert "motion-controller.md" in api_index
+
+
+def test_mkdocs_navigation_groups_user_and_developer_pages():
+    mkdocs = (Path(__file__).parents[2] / "mkdocs.yml").read_text()
+
+    assert "  - Dip Coater:\n      - Start: index.md" in mkdocs
+    assert "      - Troubleshooting: troubleshooting.md" in mkdocs
+    assert "\n  - Troubleshooting: troubleshooting.md" not in mkdocs
+    assert (
+        "  - Developer:\n"
+        "      - Notes: developer-notes.md\n"
+        "      - Setup Profiles: developer-setups.md"
+    ) in mkdocs
+    assert "\n  - Developer Notes: developer-notes.md" not in mkdocs
+    assert "\n  - Developer Setup Profiles: developer-setups.md" not in mkdocs

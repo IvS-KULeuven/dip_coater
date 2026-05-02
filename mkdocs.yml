@@ -25,13 +25,15 @@ theme:
         name: Switch to light mode
 
 nav:
-  - Start: index.md
-  - Install: install.md
-  - Hardware Setup: hardware-setup.md
-  - Run the App: run-the-app.md
-  - Use the Interface: using-the-ui.md
-  - Coder API: coder-api.md
-  - Python Examples: python-examples.md
+  - Dip Coater:
+      - Start: index.md
+      - Install: install.md
+      - Hardware Setup: hardware-setup.md
+      - Run the App: run-the-app.md
+      - Use the Interface: using-the-ui.md
+      - Coder API: coder-api.md
+      - Python Examples: python-examples.md
+      - Troubleshooting: troubleshooting.md
   - Python API:
       - Overview: api/index.md
       - App State: api/app-state.md
@@ -41,9 +43,9 @@ nav:
       - Motion Controller: api/motion-controller.md
       - Session Logging: api/logging.md
       - Helpers: api/helpers.md
-  - Troubleshooting: troubleshooting.md
-  - Developer Notes: developer-notes.md
-  - Developer Setup Profiles: developer-setups.md
+  - Developer:
+      - Notes: developer-notes.md
+      - Setup Profiles: developer-setups.md
   - Reference:
       - TMC2660 EVAL Parameters: TMC2660_EVALParameters.md
       - TMC5160 EVAL Parameters: TMC5160_EVALParameters.md
