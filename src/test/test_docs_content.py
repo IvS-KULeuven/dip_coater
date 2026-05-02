@@ -41,3 +41,15 @@ def test_run_docs_explain_session_log_file():
     assert "--session-log-file" in run_docs
     assert "DIP_COATER_SESSION_LOG_FILE" in run_docs
     assert "JSON lines" in run_docs
+
+
+def test_python_examples_docs_reference_example_scripts():
+    examples_docs = (
+        Path(__file__).parents[2] / "docs" / "python-examples.md"
+    ).read_text()
+
+    assert "examples/tmc2209_example.py" in examples_docs
+    assert "examples/tmc2660_example.py" in examples_docs
+    assert "examples/tmc5160_example.py" in examples_docs
+    assert "examples/tmc5160_homing_example.py" in examples_docs
+    assert "--real-hardware" in examples_docs
