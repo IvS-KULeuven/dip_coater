@@ -56,6 +56,19 @@ _MICROSTEPS_TO_STEP_MODE = {
 
 @dataclass(frozen=True)
 class MotorDriverSpec:
+    """Factory metadata for one supported motor driver.
+
+    :param driver_type: Driver enum value represented by this spec.
+    :param requires_gpio: Whether the driver itself needs GPIO access.
+    :param default_setup: Default machine setup used with this driver.
+    :param driver_factory: Callable that builds the concrete driver instance.
+    :param log_level_from_name: Callable that resolves a log-level name.
+    :param log_level_options: Callable that returns selectable log-level options.
+    :param create_advanced_settings: Callable that creates the advanced-settings widget.
+    :param create_advanced_status: Callable that creates the advanced-status widget.
+    :param adjust_setup_profile: Callable that normalizes a selected machine profile.
+    """
+
     driver_type: AvailableMotorDrivers
     requires_gpio: bool
     default_setup: AvailableMachineSetups
@@ -275,6 +288,11 @@ _SPECS = {
 
 
 def get_driver_spec(driver_type: AvailableMotorDrivers | str) -> MotorDriverSpec:
+    """Return driver factory metadata by driver type.
+
+    :param driver_type: Driver enum value or string name.
+    :return: Matching motor-driver spec.
+    """
     if not isinstance(driver_type, AvailableMotorDrivers):
         driver_type = AvailableMotorDrivers(driver_type)
     try:

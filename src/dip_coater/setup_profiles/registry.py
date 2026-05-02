@@ -51,16 +51,30 @@ DEFAULT_SETUP_BY_DRIVER = {
 
 
 def list_machine_setups() -> list[AvailableMachineSetups]:
+    """List built-in machine setup keys.
+
+    :return: Available machine setup keys registered by the package.
+    """
     return list(_PROFILES.keys())
 
 
 def get_default_setup_for_driver(
     driver_type: AvailableMotorDrivers,
 ) -> AvailableMachineSetups:
+    """Return the default machine setup for a motor-driver type.
+
+    :param driver_type: Motor driver that will be used.
+    :return: Default machine setup key for that driver.
+    """
     return DEFAULT_SETUP_BY_DRIVER[driver_type]
 
 
 def get_machine_profile(setup_key: AvailableMachineSetups | str) -> MachineProfile:
+    """Return a built-in machine profile by key.
+
+    :param setup_key: Machine setup enum value or string key.
+    :return: Matching machine profile.
+    """
     if not isinstance(setup_key, AvailableMachineSetups):
         setup_key = AvailableMachineSetups(setup_key)
     try:
@@ -78,6 +92,16 @@ def create_custom_profile(
     invert_motor_direction: bool | None = None,
     home_direction: HomeDirection | None = None,
 ) -> MachineProfile:
+    """Create a custom profile by overriding a base profile.
+
+    :param base_profile: Existing profile to copy defaults from.
+    :param mm_per_revolution: Replacement travel per motor revolution, or ``None``.
+    :param gearbox_ratio: Replacement gearbox ratio, or ``None``.
+    :param steps_per_revolution: Replacement full steps per motor revolution, or ``None``.
+    :param invert_motor_direction: Replacement direction-inversion flag, or ``None``.
+    :param home_direction: Replacement home direction, or ``None``.
+    :return: Custom machine profile with copied safety limits and limit switches.
+    """
     mechanical_setup = MechanicalSetup(
         mm_per_revolution=(
             base_profile.mechanical_setup.mm_per_revolution

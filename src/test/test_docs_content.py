@@ -53,3 +53,16 @@ def test_python_examples_docs_reference_example_scripts():
     assert "examples/tmc5160_example.py" in examples_docs
     assert "examples/tmc5160_homing_example.py" in examples_docs
     assert "--real-hardware" in examples_docs
+
+
+def test_python_api_docs_are_configured_for_docstring_reference():
+    root = Path(__file__).parents[2]
+    pyproject = (root / "pyproject.toml").read_text()
+    mkdocs = (root / "mkdocs.yml").read_text()
+    api_docs = (root / "docs" / "python-api.md").read_text()
+
+    assert "mkdocstrings[python]" in pyproject
+    assert "mkdocstrings" in mkdocs
+    assert "docstring_style: sphinx" in mkdocs
+    assert "Python API: python-api.md" in mkdocs
+    assert "::: dip_coater.services.motion_controller.MotionController" in api_docs

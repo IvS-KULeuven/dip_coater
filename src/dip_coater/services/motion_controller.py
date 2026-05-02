@@ -18,6 +18,13 @@ _MOTION_TIMEOUT_SCALE = 3.0
 
 
 class MotionController:
+    """Coordinate motor-driver motion, homing, limits, and session logging.
+
+    This class is the main Python API for moving a configured dip-coater lift.
+    It keeps machine-profile safety rules separate from concrete motor-driver
+    implementations.
+    """
+
     def __init__(
         self,
         motor_driver,
@@ -25,6 +32,13 @@ class MotionController:
         gpio=None,
         session_log=None,
     ):
+        """Create a motion controller for one motor driver and machine profile.
+
+        :param motor_driver: Driver object implementing the dip-coater motor API.
+        :param machine_profile: Machine profile that defines mechanics and limits.
+        :param gpio: Optional GPIO adapter used for GPIO-backed limit switches.
+        :param session_log: Optional session log writer.
+        """
         self.motor_driver = motor_driver
         self.machine_profile = machine_profile
         self.gpio = gpio
@@ -34,15 +48,27 @@ class MotionController:
 
     @property
     def supports_limit_switches(self) -> bool:
+        """Report whether any configured limit-switch source is usable.
+
+        :return: ``True`` when GPIO or driver-reference switches are available.
+        """
         return self.supports_gpio_limit_switches or self.supports_driver_reference_switches
 
     @property
     def supports_gpio_limit_switches(self) -> bool:
+        """Report whether GPIO-backed limit switches are configured and usable.
+
+        :return: ``True`` when GPIO limit switches can be read.
+        """
         switches = self.machine_profile.limit_switches
         return switches is not None and switches.uses_gpio and self.gpio is not None
 
     @property
     def supports_driver_reference_switches(self) -> bool:
+        """Report whether driver-reference limit switches are configured and usable.
+
+        :return: ``True`` when the driver exposes reference-switch reads.
+        """
         switches = self.machine_profile.limit_switches
         return (
             switches is not None
@@ -53,6 +79,10 @@ class MotionController:
 
     @property
     def supports_homing(self) -> bool:
+        """Report whether this driver/setup pair supports homing.
+
+        :return: ``True`` when a supported homing method is available.
+        """
         if self.supports_gpio_limit_switches and hasattr(
             self.motor_driver, "do_limit_switch_homing"
         ):
@@ -64,15 +94,22 @@ class MotionController:
         return False
 
     def enable_motor(self):
+        """Enable the motor through the underlying driver."""
         self.motor_driver.enable_motor()
 
     def disable_motor(self):
+        """Disable the motor through the underlying driver."""
         self.motor_driver.disable_motor()
 
     def stop_motor(self):
+        """Request an immediate stop through the underlying driver."""
         self.motor_driver.stop_motor()
 
     def wait_for_motor_done(self):
+        """Block until the active motor command is complete.
+
+        :return: Driver-specific completion result.
+        """
         result = self.motor_driver.wait_for_motor_done()
         self._record_motion_completed(result)
         return result
@@ -82,6 +119,12 @@ class MotionController:
         active_limit_direction: HomeDirection | None = None,
         timeout_s: float | None = None,
     ):
+        """Wait asynchronously for motion completion, timeout, or a limit switch.
+
+        :param active_limit_direction: Direction whose limit switch should stop the move.
+        :param timeout_s: Optional timeout in seconds, or ``None`` to use the last motion estimate.
+        :return: Driver-specific completion result or a status string.
+        """
         timeout_s = self._last_motion_timeout_s if timeout_s is None else timeout_s
         if active_limit_direction is None or not self.supports_limit_switches:
             return await self._wait_for_driver_done_with_timeout(timeout_s)
@@ -142,6 +185,12 @@ class MotionController:
         speed_mm_s: float,
         acceleration_mm_s2: float | None = None,
     ):
+        """Move the lift upward by a relative distance.
+
+        :param distance_mm: Relative distance in millimeters.
+        :param speed_mm_s: Speed in millimeters per second.
+        :param acceleration_mm_s2: Optional acceleration in millimeters per second squared.
+        """
         self._raise_if_limit_switch_triggered(HomeDirection.UP)
         self._raise_if_relative_move_outside_travel(HomeDirection.UP, distance_mm)
         self._last_motion_timeout_s = self._estimate_motion_timeout_s(
@@ -169,6 +218,12 @@ class MotionController:
         speed_mm_s: float,
         acceleration_mm_s2: float | None = None,
     ):
+        """Move the lift downward by a relative distance.
+
+        :param distance_mm: Relative distance in millimeters.
+        :param speed_mm_s: Speed in millimeters per second.
+        :param acceleration_mm_s2: Optional acceleration in millimeters per second squared.
+        """
         self._raise_if_limit_switch_triggered(HomeDirection.DOWN)
         self._raise_if_relative_move_outside_travel(HomeDirection.DOWN, distance_mm)
         self._last_motion_timeout_s = self._estimate_motion_timeout_s(
@@ -198,6 +253,12 @@ class MotionController:
         speed_mm_s: float | None = None,
         acceleration_mm_s2: float | None = None,
     ):
+        """Move the lift to an absolute position in the homed coordinate system.
+
+        :param position_mm: Target absolute position in millimeters.
+        :param speed_mm_s: Optional speed in millimeters per second.
+        :param acceleration_mm_s2: Optional acceleration in millimeters per second squared.
+        """
         self._raise_if_position_outside_travel(position_mm)
         current_position_mm = self.get_current_position_mm()
         travel_distance_mm = (
@@ -230,6 +291,12 @@ class MotionController:
         *,
         home_direction: HomeDirection | None = None,
     ) -> bool:
+        """Run a blocking homing sequence.
+
+        :param speed_mm_s: Homing speed in millimeters per second.
+        :param home_direction: Direction to home toward, or ``None`` to use the profile default.
+        :return: ``True`` when the home reference was found.
+        """
         if not self.supports_homing:
             raise ValueError(
                 "The current driver/setup combination does not support homing."
@@ -261,6 +328,12 @@ class MotionController:
         *,
         home_direction: HomeDirection | None = None,
     ) -> bool:
+        """Run an asynchronous homing sequence.
+
+        :param speed_mm_s: Homing speed in millimeters per second.
+        :param home_direction: Direction to home toward, or ``None`` to use the profile default.
+        :return: ``True`` when the home reference was found.
+        """
         if not self.supports_homing:
             raise ValueError(
                 "The current driver/setup combination does not support homing."
@@ -453,12 +526,21 @@ class MotionController:
         self.motor_driver.simulate_dummy_endstops(left=True, right=True)
 
     def get_current_position_mm(self):
+        """Return the current absolute lift position.
+
+        :return: Current position in millimeters, or ``None`` when unknown.
+        """
         return self.motor_driver.get_current_position_mm(self.machine_profile.homes_up)
 
     def is_homing_found(self) -> bool:
+        """Report whether the lift has a known home reference.
+
+        :return: ``True`` when homing has completed successfully.
+        """
         return self.motor_driver.is_homing_found()
 
     def cleanup(self):
+        """Release motor-driver and GPIO resources."""
         self.session_log.write("session_cleanup")
         self.motor_driver.cleanup()
         if (
@@ -468,6 +550,7 @@ class MotionController:
             self.gpio.cleanup()
 
     def setup_limit_switches_io(self):
+        """Configure GPIO input pins for GPIO-backed limit switches."""
         if not self.supports_gpio_limit_switches:
             return
         switches = self.machine_profile.limit_switches
@@ -479,6 +562,7 @@ class MotionController:
         self.gpio.setup(pin, GpioMode.IN, pull_up_down=GpioPUD.PUD_UP)
 
     def bind_limit_switches_to_motor(self):
+        """Bind GPIO limit switches directly to drivers that support callbacks."""
         if not self.supports_gpio_limit_switches or not hasattr(
             self.motor_driver, "bind_limit_switch"
         ):
@@ -498,6 +582,12 @@ class MotionController:
         callback: Callable,
         bouncetime=None,
     ):
+        """Bind a callback to a GPIO-backed limit switch.
+
+        :param direction: Direction whose limit switch should be watched.
+        :param callback: Callback called by the GPIO adapter.
+        :param bouncetime: Optional debounce time passed to the GPIO adapter.
+        """
         switch = self._switch_for_direction(direction)
         if (
             not self.supports_gpio_limit_switches
@@ -512,6 +602,11 @@ class MotionController:
         )
 
     def read_limit_switch(self, direction: HomeDirection) -> bool:
+        """Read and interpret a configured limit switch.
+
+        :param direction: Direction whose limit switch should be read.
+        :return: ``True`` when the switch is triggered.
+        """
         switch = self._switch_for_direction(direction)
         if switch is None:
             return False
@@ -536,6 +631,10 @@ class MotionController:
     def disable_driver_reference_stop_until_clear(
         self, direction: HomeDirection
     ) -> None:
+        """Temporarily disable a triggered driver-reference stop.
+
+        :param direction: Direction whose reference stop should be disabled until clear.
+        """
         switch = self._switch_for_direction(direction)
         if (
             switch is None

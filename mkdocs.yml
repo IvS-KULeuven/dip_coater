@@ -32,12 +32,25 @@ nav:
   - Use the Interface: using-the-ui.md
   - Coder API: coder-api.md
   - Python Examples: python-examples.md
+  - Python API: python-api.md
   - Troubleshooting: troubleshooting.md
   - Developer Notes: developer-notes.md
   - Developer Setup Profiles: developer-setups.md
   - Reference:
       - TMC2660 EVAL Parameters: TMC2660_EVALParameters.md
       - TMC5160 EVAL Parameters: TMC5160_EVALParameters.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: sphinx
+            merge_init_into_class: true
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
 
 markdown_extensions:
   - admonition

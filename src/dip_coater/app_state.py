@@ -6,8 +6,11 @@ from dip_coater.setup_profiles.machine_profile import MachineProfile
 
 
 class AppState:
-    """
-    This class is used to store a shared state of the application.
+    """Shared runtime state for the dip-coater application.
+
+    The TUI, examples, and controller setup code use this object to keep the
+    selected driver, configuration module, hardware access objects, and widgets
+    connected.
     """
 
     def __init__(
@@ -17,6 +20,12 @@ class AppState:
         *,
         gpio_required: bool = False,
     ):
+        """Create application state for one driver/setup combination.
+
+        :param driver_type: Motor driver type to configure.
+        :param setup_profile: Machine profile selected for this run.
+        :param gpio_required: Whether GPIO access should be initialized.
+        """
         self.driver_type = driver_type
         self.config = Config(driver_type)
         self.setup_profile = setup_profile

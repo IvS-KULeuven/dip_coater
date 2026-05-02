@@ -10,6 +10,8 @@ def get_version() -> str:
     Prefer the local ``pyproject.toml`` when running from a source checkout so
     the TUI and CLI startup line follow the project version directly. Fall back
     to installed package metadata for packaged installs.
+
+    :return: Project version string, or ``0.0.0+unknown`` as a fallback.
     """
 
     pyproject_path = Path(__file__).resolve().parents[2] / "pyproject.toml"
