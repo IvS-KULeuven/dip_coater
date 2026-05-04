@@ -16,6 +16,20 @@ python3 -m venv .venv --prompt=dip-coater
 source .venv/bin/activate
 ```
 
+On Windows PowerShell:
+
+```powershell
+py -m venv .venv --prompt dip-coater
+.\.venv\Scripts\Activate.ps1
+```
+
+On Windows Command Prompt:
+
+```bat
+py -m venv .venv --prompt dip-coater
+.venv\Scripts\activate.bat
+```
+
 Upgrade pip (optional):
 
 ```bash
@@ -58,6 +72,10 @@ python3 -m pip install --upgrade pip
 python3 -m pip install -e .
 ```
 
+On Windows, use the same commands but activate the virtual environment with
+`.\.venv\Scripts\Activate.ps1` in PowerShell or `.venv\Scripts\activate.bat`
+in Command Prompt.
+
 On a Raspberry Pi with GPIO hardware:
 
 ```bash
@@ -88,6 +106,18 @@ If you installed the normal package with pip, update it from the package index:
 ```bash
 source .venv/bin/activate
 python3 -m pip install --upgrade dip-coater
+```
+
+On Windows, activate the virtual environment with:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Or from Command Prompt:
+
+```bat
+.venv\Scripts\activate.bat
 ```
 
 On a Raspberry Pi with GPIO hardware:

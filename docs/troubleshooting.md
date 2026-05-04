@@ -17,6 +17,20 @@ source .venv/bin/activate
 dip-coater --help
 ```
 
+On Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+dip-coater --help
+```
+
+On Windows Command Prompt:
+
+```bat
+.venv\Scripts\activate.bat
+dip-coater --help
+```
+
 If you installed with uv, run:
 
 ```bash

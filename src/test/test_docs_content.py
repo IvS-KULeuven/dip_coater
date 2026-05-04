@@ -6,6 +6,8 @@ def test_install_docs_explain_software_updates_and_version_check():
 
     assert "python3 -m pip install dip-coater" in install_docs
     assert "python3 -m pip install --upgrade dip-coater" in install_docs
+    assert ".\\.venv\\Scripts\\Activate.ps1" in install_docs
+    assert ".venv\\Scripts\\activate.bat" in install_docs
     assert "dip-coater --version" in install_docs
     assert "uv run dip-coater --version" in install_docs
     assert "## Source Checkout Install" in install_docs
@@ -66,6 +68,16 @@ def test_run_docs_explain_session_log_file():
     assert "--session-log-file" in run_docs
     assert "DIP_COATER_SESSION_LOG_FILE" in run_docs
     assert "JSON lines" in run_docs
+
+
+def test_troubleshooting_docs_include_windows_venv_activation():
+    troubleshooting_docs = (
+        Path(__file__).parents[2] / "docs" / "troubleshooting.md"
+    ).read_text()
+
+    assert "source .venv/bin/activate" in troubleshooting_docs
+    assert ".\\.venv\\Scripts\\Activate.ps1" in troubleshooting_docs
+    assert ".venv\\Scripts\\activate.bat" in troubleshooting_docs
 
 
 def test_python_examples_docs_reference_example_scripts():
