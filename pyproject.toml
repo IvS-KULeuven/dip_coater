@@ -1,6 +1,6 @@
 [project]
 name = "dip-coater"
-version = "2.0.5"
+version = "2.0.6"
 description = "A terminal / Textual app to control a dip coater motor"
 readme = "README.md"
 requires-python = ">=3.10,<4.0"
