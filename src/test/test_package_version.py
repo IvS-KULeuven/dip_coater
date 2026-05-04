@@ -36,3 +36,15 @@ def test_rpi_extra_includes_all_gpio_backends():
     assert any(dependency.startswith("RPi.GPIO") for dependency in rpi_dependencies)
     assert any(dependency.startswith("gpiozero") for dependency in rpi_dependencies)
     assert any(dependency.startswith("lgpio") for dependency in rpi_dependencies)
+
+
+def test_tree_sitter_dependencies_are_optional_for_syntax_highlighting():
+    pyproject_path = Path(__file__).parents[2] / "pyproject.toml"
+    pyproject = tomllib.loads(pyproject_path.read_text())
+
+    dependencies = pyproject["project"]["dependencies"]
+    syntax_dependencies = pyproject["project"]["optional-dependencies"]["syntax"]
+
+    assert not any(dependency.startswith("tree-sitter") for dependency in dependencies)
+    assert "tree-sitter>=0.23.0,<0.24.0" in syntax_dependencies
+    assert "tree-sitter-python>=0.23.0,<0.24.0" in syntax_dependencies

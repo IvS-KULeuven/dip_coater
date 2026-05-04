@@ -1,6 +1,7 @@
 import asyncio
 import concurrent.futures
 import time
+from importlib.util import find_spec
 from pathlib import Path
 
 from textual import on, events
@@ -95,13 +96,28 @@ class Coder(Static):
 
     @staticmethod
     def build_code_editor(text: str) -> TextArea:
+        editor_kwargs = {
+            "theme": "monokai",
+            "show_line_numbers": True,
+            "tab_behavior": "indent",
+            "id": "code-editor",
+        }
+        if Coder._python_syntax_highlighting_available():
+            try:
+                return TextArea(text, language="python", **editor_kwargs)
+            except Exception:
+                pass
         return TextArea(
             text,
-            language="python",
-            theme="monokai",
-            show_line_numbers=True,
-            tab_behavior="indent",
-            id="code-editor",
+            language=None,
+            **editor_kwargs,
+        )
+
+    @staticmethod
+    def _python_syntax_highlighting_available() -> bool:
+        return (
+            find_spec("tree_sitter") is not None
+            and find_spec("tree_sitter_python") is not None
         )
 
     @on(Button.Pressed, "#run-code-btn")

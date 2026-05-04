@@ -42,6 +42,13 @@ Install the app:
 python3 -m pip install dip-coater
 ```
 
+The Coder editor works without syntax highlighting by default. To install the
+optional Python syntax-highlighting packages too:
+
+```bash
+python3 -m pip install "dip-coater[syntax]"
+```
+
 Then check that the app command exists:
 
 ```bash

@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 from textual.widgets import TextArea
 
+from dip_coater.widgets import coder as coder_module
 from dip_coater.widgets.coder import Coder, CoderExecutionCancelled
 
 
@@ -58,6 +59,10 @@ def test_coder_move_to_position_allows_default_speed():
     assert signature.parameters["speed_mm_s"].default is None
 
 
+@pytest.mark.skipif(
+    not Coder._python_syntax_highlighting_available(),
+    reason="Python syntax highlighting packages are optional",
+)
 def test_coder_builds_python_highlighted_editor():
     editor = Coder.build_code_editor('def coat():\n    print("Hello, World!")\n')
 
@@ -68,3 +73,45 @@ def test_coder_builds_python_highlighted_editor():
     assert editor.tab_behavior == "indent"
     assert getattr(editor, "_highlight_query", None) is not None
     assert editor._highlights
+
+
+def test_coder_editor_falls_back_to_plain_text_without_syntax_packages(monkeypatch):
+    monkeypatch.setattr(
+        Coder,
+        "_python_syntax_highlighting_available",
+        staticmethod(lambda: False),
+    )
+
+    editor = Coder.build_code_editor('def coat():\n    print("Hello, World!")\n')
+
+    assert isinstance(editor, TextArea)
+    assert editor.language is None
+    assert editor.theme == "monokai"
+    assert editor.show_line_numbers is True
+    assert editor.tab_behavior == "indent"
+    assert getattr(editor, "_highlight_query", None) is None
+
+
+def test_coder_editor_falls_back_to_plain_text_when_syntax_setup_fails(monkeypatch):
+    real_text_area = coder_module.TextArea
+
+    def text_area_with_broken_syntax(*args, **kwargs):
+        if kwargs.get("language") == "python":
+            raise RuntimeError("syntax setup failed")
+        return real_text_area(*args, **kwargs)
+
+    monkeypatch.setattr(
+        Coder,
+        "_python_syntax_highlighting_available",
+        staticmethod(lambda: True),
+    )
+    monkeypatch.setattr(coder_module, "TextArea", text_area_with_broken_syntax)
+
+    editor = Coder.build_code_editor('def coat():\n    print("Hello, World!")\n')
+
+    assert isinstance(editor, TextArea)
+    assert editor.language is None
+    assert editor.theme == "monokai"
+    assert editor.show_line_numbers is True
+    assert editor.tab_behavior == "indent"
+    assert getattr(editor, "_highlight_query", None) is None

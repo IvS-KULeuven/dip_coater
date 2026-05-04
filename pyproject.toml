@@ -13,14 +13,16 @@ dependencies = [
     "mock-gpio>=0.1.8",
     "pytrinamic>=0.2.11,<0.3.0",
     "textual>=0.73.0",
-    "tree-sitter>=0.23.0,<0.24.0",
-    "tree-sitter-python>=0.23.0,<0.24.0",
     "tmc-2209-raspberry-pi>=0.5.2",
     "uvloop>=0.19.0; sys_platform != 'win32'",
     "winloop; sys_platform == 'win32'",
 ]
 
 [project.optional-dependencies]
+syntax = [
+    "tree-sitter>=0.23.0,<0.24.0",
+    "tree-sitter-python>=0.23.0,<0.24.0",
+]
 docs = [
     "mkdocs>=1.6.0",
     "mkdocs-material>=9.5.0",

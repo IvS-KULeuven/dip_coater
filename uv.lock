@@ -498,8 +498,6 @@ dependencies = [
     { name = "pytrinamic" },
     { name = "textual" },
     { name = "tmc-2209-raspberry-pi" },
-    { name = "tree-sitter" },
-    { name = "tree-sitter-python" },
     { name = "uvloop", marker = "sys_platform != 'win32'" },
     { name = "winloop", marker = "sys_platform == 'win32'" },
 ]
@@ -515,6 +513,10 @@ rpi = [
     { name = "gpiozero" },
     { name = "lgpio" },
     { name = "rpi-gpio" },
+]
+syntax = [
+    { name = "tree-sitter" },
+    { name = "tree-sitter-python" },
 ]
 
 [package.dev-dependencies]
@@ -539,12 +541,12 @@ requires-dist = [
     { name = "rpi-gpio", marker = "extra == 'rpi'", specifier = ">=0.7.1" },
     { name = "textual", specifier = ">=0.73.0" },
     { name = "tmc-2209-raspberry-pi", specifier = ">=0.5.2" },
-    { name = "tree-sitter", specifier = ">=0.23.0,<0.24.0" },
-    { name = "tree-sitter-python", specifier = ">=0.23.0,<0.24.0" },
+    { name = "tree-sitter", marker = "extra == 'syntax'", specifier = ">=0.23.0,<0.24.0" },
+    { name = "tree-sitter-python", marker = "extra == 'syntax'", specifier = ">=0.23.0,<0.24.0" },
     { name = "uvloop", marker = "sys_platform != 'win32'", specifier = ">=0.19.0" },
     { name = "winloop", marker = "sys_platform == 'win32'" },
 ]
-provides-extras = ["docs", "rpi"]
+provides-extras = ["syntax", "docs", "rpi"]
 
 [package.metadata.requires-dev]
 dev = [

@@ -5,6 +5,7 @@ def test_install_docs_explain_software_updates_and_version_check():
     install_docs = (Path(__file__).parents[2] / "docs" / "install.md").read_text()
 
     assert "python3 -m pip install dip-coater" in install_docs
+    assert 'python3 -m pip install "dip-coater[syntax]"' in install_docs
     assert "python3 -m pip install --upgrade dip-coater" in install_docs
     assert ".\\.venv\\Scripts\\Activate.ps1" in install_docs
     assert ".venv\\Scripts\\activate.bat" in install_docs
