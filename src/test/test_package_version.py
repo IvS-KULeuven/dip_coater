@@ -46,5 +46,14 @@ def test_tree_sitter_dependencies_are_optional_for_syntax_highlighting():
     syntax_dependencies = pyproject["project"]["optional-dependencies"]["syntax"]
 
     assert not any(dependency.startswith("tree-sitter") for dependency in dependencies)
-    assert "tree-sitter>=0.23.0,<0.24.0" in syntax_dependencies
-    assert "tree-sitter-python>=0.23.0,<0.24.0" in syntax_dependencies
+    assert "tree-sitter>=0.25.0" in syntax_dependencies
+    assert "tree-sitter-python>=0.23.0" in syntax_dependencies
+
+
+def test_textual_runtime_dependency_tracks_current_release():
+    pyproject_path = Path(__file__).parents[2] / "pyproject.toml"
+    pyproject = tomllib.loads(pyproject_path.read_text())
+
+    dependencies = pyproject["project"]["dependencies"]
+
+    assert "textual>=8.2.5" in dependencies

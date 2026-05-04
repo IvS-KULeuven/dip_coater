@@ -115,10 +115,16 @@ class Coder(Static):
 
     @staticmethod
     def _python_syntax_highlighting_available() -> bool:
-        return (
-            find_spec("tree_sitter") is not None
-            and find_spec("tree_sitter_python") is not None
-        )
+        if (
+            find_spec("tree_sitter") is None
+            or find_spec("tree_sitter_python") is None
+        ):
+            return False
+
+        try:
+            return TextArea("pass\n", language="python").is_syntax_aware
+        except Exception:
+            return False
 
     @on(Button.Pressed, "#run-code-btn")
     async def run_code(self):
