@@ -583,6 +583,19 @@ class MotorDriverTMC2660(MotorDriver):
         self.logger.remove_handler(handler)
 
     def cleanup(self):
-        self.disable_motor()
-        self.interface.close()
+        """Stop motion, disable outputs, and close the interface fail-safely."""
+        first_error = None
+        for cleanup_step in (
+            self.stop_motor,
+            self.disable_motor,
+            self.interface.close,
+        ):
+            try:
+                cleanup_step()
+            except Exception as exc:
+                if first_error is None:
+                    first_error = exc
+
+        if first_error is not None:
+            raise first_error
         self.logger.log("Motor driver cleaned up", TMC2660LogLevel.INFO)

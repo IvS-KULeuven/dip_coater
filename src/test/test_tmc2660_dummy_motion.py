@@ -183,3 +183,35 @@ def test_tmc2660_sync_wait_sleeps_between_status_polls(monkeypatch):
     driver.wait_for_motor_done()
 
     assert sleep_calls == [0.1, 0.1]
+
+
+def test_tmc2660_cleanup_stops_before_disabling_and_closing():
+    driver = MotorDriverTMC2660.__new__(MotorDriverTMC2660)
+    calls = []
+    driver.stop_motor = lambda: calls.append("stop")
+    driver.disable_motor = lambda: calls.append("disable")
+    driver.interface = SimpleNamespace(close=lambda: calls.append("close"))
+    driver.logger = SimpleNamespace(log=lambda *args: calls.append("log"))
+
+    driver.cleanup()
+
+    assert calls == ["stop", "disable", "close", "log"]
+
+
+def test_tmc2660_cleanup_attempts_every_step_after_stop_failure():
+    driver = MotorDriverTMC2660.__new__(MotorDriverTMC2660)
+    calls = []
+
+    def fail_stop():
+        calls.append("stop")
+        raise RuntimeError("stop failed")
+
+    driver.stop_motor = fail_stop
+    driver.disable_motor = lambda: calls.append("disable")
+    driver.interface = SimpleNamespace(close=lambda: calls.append("close"))
+    driver.logger = SimpleNamespace(log=lambda *args: calls.append("log"))
+
+    with pytest.raises(RuntimeError, match="stop failed"):
+        driver.cleanup()
+
+    assert calls == ["stop", "disable", "close"]
