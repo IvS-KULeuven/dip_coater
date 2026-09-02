@@ -5,8 +5,8 @@ from dataclasses import dataclass
 class MechanicalSetup:
     """Mechanical conversion constants for one lift setup.
 
-    :param mm_per_revolution: Linear travel produced by one motor revolution.
-    :param gearbox_ratio: Gear ratio between the motor and the lift drive.
+    :param mm_per_revolution: Linear travel produced by one lift-drive revolution.
+    :param gearbox_ratio: Motor revolutions per lift-drive revolution.
     :param steps_per_revolution: Full motor steps in one motor revolution.
     """
 
@@ -52,7 +52,7 @@ class MechanicalSetup:
         :param position_mm: Linear position or distance in millimeters.
         :return: Motor revolutions.
         """
-        return position_mm / self.mm_per_revolution / self.gearbox_ratio
+        return position_mm / self.mm_per_revolution * self.gearbox_ratio
 
     def revs_to_mm(self, revs: float) -> float:
         """Convert motor revolutions to linear position.
@@ -60,7 +60,7 @@ class MechanicalSetup:
         :param revs: Motor revolutions.
         :return: Linear position or distance in millimeters.
         """
-        return revs * self.mm_per_revolution * self.gearbox_ratio
+        return revs * self.mm_per_revolution / self.gearbox_ratio
 
     def steps_to_revs(self, steps: int, microsteps: int) -> float:
         """Convert microsteps to motor revolutions.
@@ -104,7 +104,7 @@ class MechanicalSetup:
         :param velocity_mm_s: Linear velocity in millimeters per second.
         :return: Rotations per second.
         """
-        return velocity_mm_s / self.mm_per_revolution / self.gearbox_ratio
+        return velocity_mm_s / self.mm_per_revolution * self.gearbox_ratio
 
     def rps_to_mm_s(self, rps: float) -> float:
         """Convert rotations per second to linear velocity.
@@ -112,7 +112,7 @@ class MechanicalSetup:
         :param rps: Rotations per second.
         :return: Linear velocity in millimeters per second.
         """
-        return rps * self.mm_per_revolution * self.gearbox_ratio
+        return rps * self.mm_per_revolution / self.gearbox_ratio
 
     def rps_to_stepss(self, rps: float, microsteps: int) -> int:
         """Convert rotations per second to microsteps per second.
@@ -175,7 +175,7 @@ class MechanicalSetup:
         return (
             None
             if not acceleration_mm_s2
-            else acceleration_mm_s2 / self.mm_per_revolution / self.gearbox_ratio
+            else acceleration_mm_s2 / self.mm_per_revolution * self.gearbox_ratio
         )
 
     def rpss_to_mm_s2(self, rpss: float) -> float:
@@ -184,7 +184,7 @@ class MechanicalSetup:
         :param rpss: Rotations per second squared.
         :return: Linear acceleration in millimeters per second squared, or ``None`` for a falsey input.
         """
-        return None if not rpss else rpss * self.mm_per_revolution * self.gearbox_ratio
+        return None if not rpss else rpss * self.mm_per_revolution / self.gearbox_ratio
 
     def rpss_to_stepss(self, rpss: float, microsteps: int) -> int:
         """Convert rotations per second squared to microsteps per second squared.
