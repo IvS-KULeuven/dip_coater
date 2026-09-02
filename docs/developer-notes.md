@@ -20,8 +20,19 @@ uv run pytest -q -m "not hardware" --cov=dip_coater --cov=trinamic_wrapper \
   --cov-branch --cov-report=term-missing --cov-report=xml
 ```
 
-The configured floor is 60% across the application and Trinamic wrapper. Raise
+The configured floor is 80% across the application and Trinamic wrapper. Raise
 it as coverage improves; do not lower it to accommodate untested changes.
+
+Run the real Textual application against all dummy backends, including button
+dispatch, motion, shutdown, session events, and simulated TMC5160 homing:
+
+```bash
+uv run pytest -q src/test/test_app_integration.py
+```
+
+These are full application tests but never access physical hardware. They use
+the same `initialize_runtime()` construction path as the command-line entry
+point.
 
 Run hardware tests only when the correct hardware is connected.
 

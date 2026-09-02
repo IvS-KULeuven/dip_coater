@@ -86,7 +86,7 @@ source = ["dip_coater", "trinamic_wrapper"]
 show_missing = true
 skip_covered = true
 precision = 1
-fail_under = 60
+fail_under = 80
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]

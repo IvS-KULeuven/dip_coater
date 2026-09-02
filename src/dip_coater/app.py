@@ -19,7 +19,7 @@ except ModuleNotFoundError:
 from dip_coater.app_state import AppState
 
 from dip_coater.logging.motor_logger import MotorLoggerHandler, TempLoggerHandler
-from dip_coater.logging.session_log import SessionLog
+from dip_coater.logging.session_log import NullSessionLog, SessionLog
 from dip_coater.commands.help_command import HelpCommand
 from dip_coater.screens.help_screen import HelpScreen
 
@@ -42,7 +42,7 @@ from dip_coater.setup_profiles import (
     get_machine_profile,
     list_machine_setups,
 )
-from dip_coater.setup_profiles.machine_profile import HomeDirection
+from dip_coater.setup_profiles.machine_profile import HomeDirection, MachineProfile
 
 
 def toggled_textual_theme(current_theme) -> str:
@@ -217,6 +217,86 @@ def _cleanup_failed_startup(app_state) -> None:
             )
 
 
+def initialize_runtime(
+    driver_type: AvailableMotorDrivers,
+    setup_profile: MachineProfile,
+    *,
+    use_dummy_driver: bool,
+    interface_type: str,
+    port: str | None,
+    log_level_name: str = "INFO",
+    session_log=None,
+) -> AppState:
+    """Build a complete runtime state through the production startup path.
+
+    The CLI and full-application tests share this boundary so driver creation,
+    profile normalization, logging, safety validation, and cleanup behavior do
+    not drift apart.
+    """
+    driver_spec = get_driver_spec(driver_type)
+    setup_profile = driver_spec.adjust_setup_profile(setup_profile)
+    validate_driver_setup_compatibility(
+        driver_type,
+        setup_profile,
+        use_dummy_driver=use_dummy_driver,
+    )
+    app_state = AppState(
+        driver_type,
+        setup_profile,
+        gpio_required=(driver_spec.requires_gpio or setup_profile.requires_gpio),
+    )
+    app_state.config.USE_DUMMY_DRIVER = use_dummy_driver
+    app_state.session_log = (
+        NullSessionLog() if session_log is None else session_log
+    )
+
+    try:
+        app_state.motor_logger_handler = TempLoggerHandler()
+        logging_format = logging.Formatter(
+            "%(asctime)s - %(levelname)s - %(message)s", "%Y%m%d %H:%M:%S"
+        )
+        log_level = driver_spec.log_level_from_name(log_level_name)
+        app_state.motor_driver = driver_spec.driver_factory(
+            app_state=app_state,
+            log_level=log_level,
+            log_handlers=[app_state.motor_logger_handler],
+            log_formatter=logging_format,
+            interface_type=interface_type,
+            port=port,
+        )
+        app_state.motion_controller = MotionController(
+            app_state.motor_driver,
+            app_state.setup_profile,
+            gpio=app_state.gpio,
+            session_log=app_state.session_log,
+        )
+        app_state.session_log.write(
+            "session_started",
+            version=__version__,
+            driver=driver_type.value,
+            setup=app_state.setup_profile.key.value,
+            setup_label=app_state.setup_profile.label,
+            dummy_driver=use_dummy_driver,
+            interface=interface_type,
+            port=port,
+            log_level=log_level_name,
+            home_direction=app_state.setup_profile.home_direction.value,
+            invert_direction=app_state.setup_profile.invert_motor_direction,
+            mm_per_revolution=(
+                app_state.setup_profile.mechanical_setup.mm_per_revolution
+            ),
+            gearbox_ratio=app_state.setup_profile.mechanical_setup.gearbox_ratio,
+            steps_per_revolution=(
+                app_state.setup_profile.mechanical_setup.steps_per_revolution
+            ),
+        )
+    except BaseException:
+        _cleanup_failed_startup(app_state)
+        raise
+
+    return app_state
+
+
 def main():
     # Handle command line arguments
     parser = argparse.ArgumentParser(
@@ -347,7 +427,6 @@ def main():
     )
     args = parser.parse_args()
 
-    driver_spec = get_driver_spec(args.driver)
     setup_key = (
         args.setup
         if args.setup is not None
@@ -380,73 +459,20 @@ def main():
         )
     else:
         setup_profile = base_profile
-    setup_profile = driver_spec.adjust_setup_profile(setup_profile)
-    validate_driver_setup_compatibility(
+    app_state = initialize_runtime(
         args.driver,
         setup_profile,
         use_dummy_driver=args.use_dummy_driver,
+        interface_type=args.interface,
+        port=args.port,
+        log_level_name=args.log_level,
+        session_log=SessionLog(args.session_log_file),
     )
-
-    # Build the application state
-    app_state = AppState(
-        args.driver,
-        setup_profile,
-        gpio_required=(driver_spec.requires_gpio or setup_profile.requires_gpio),
+    log_level = get_driver_spec(args.driver).log_level_from_name(args.log_level)
+    print(
+        f"Starting Dip Coater v{__version__}, driver: {args.driver}, "
+        f"setup: {app_state.setup_profile.label}, log level: {log_level}"
     )
-    app_state.config.USE_DUMMY_DRIVER = args.use_dummy_driver
-    app_state.session_log = SessionLog(args.session_log_file)
-
-    try:
-        # Build the motor driver and finish runtime initialization before
-        # transferring resource ownership to run_app().
-        app_state.motor_logger_handler = TempLoggerHandler()
-        logging_format = logging.Formatter(
-            "%(asctime)s - %(levelname)s - %(message)s", "%Y%m%d %H:%M:%S"
-        )
-        log_level = driver_spec.log_level_from_name(args.log_level)
-        driver = driver_spec.driver_factory(
-            app_state=app_state,
-            log_level=log_level,
-            log_handlers=[app_state.motor_logger_handler],
-            log_formatter=logging_format,
-            interface_type=args.interface,
-            port=args.port,
-        )
-        app_state.motor_driver = driver
-        app_state.motion_controller = MotionController(
-            driver,
-            app_state.setup_profile,
-            gpio=app_state.gpio,
-            session_log=app_state.session_log,
-        )
-        app_state.session_log.write(
-            "session_started",
-            version=__version__,
-            driver=args.driver.value,
-            setup=app_state.setup_profile.key.value,
-            setup_label=app_state.setup_profile.label,
-            dummy_driver=args.use_dummy_driver,
-            interface=args.interface,
-            port=args.port,
-            log_level=args.log_level,
-            home_direction=app_state.setup_profile.home_direction.value,
-            invert_direction=app_state.setup_profile.invert_motor_direction,
-            mm_per_revolution=(
-                app_state.setup_profile.mechanical_setup.mm_per_revolution
-            ),
-            gearbox_ratio=app_state.setup_profile.mechanical_setup.gearbox_ratio,
-            steps_per_revolution=(
-                app_state.setup_profile.mechanical_setup.steps_per_revolution
-            ),
-        )
-
-        print(
-            f"Starting Dip Coater v{__version__}, driver: {args.driver}, "
-            f"setup: {app_state.setup_profile.label}, log level: {log_level}"
-        )
-    except BaseException:
-        _cleanup_failed_startup(app_state)
-        raise
 
     # run_app owns all initialized resources from this point onward.
     run_app(app_state)

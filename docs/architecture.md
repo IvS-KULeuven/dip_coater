@@ -5,16 +5,20 @@ changing the application.
 
 ## Runtime flow
 
-The command-line entry point selects a machine profile and a motor-driver
-specification. The driver registry creates the concrete driver, then a
-`MotionController` applies machine-level motion and safety rules. `AppState`
-connects that runtime to the Textual UI and the Coder API.
+The command-line entry point selects a machine profile and motor-driver
+specification. `initialize_runtime()` is the single production construction
+boundary: it normalizes and validates the profile, creates the concrete driver
+through the registry, attaches logging, and creates the `MotionController`.
+`AppState` connects that runtime to the Textual UI and the Coder API.
 
 ```text
 CLI and environment
         |
         v
 machine profile + driver registry
+        |
+        v
+initialize_runtime()
         |
         v
 concrete motor driver <-> MotionController
@@ -30,6 +34,7 @@ concrete motor driver <-> MotionController
 |---|---|---|
 | Machine profile | Geometry, travel range, homing direction, safety-switch configuration | Hardware communication |
 | Driver registry | Driver selection, construction, and setup compatibility | User-interface state |
+| `initialize_runtime()` | Startup ordering, runtime wiring, session-start event, and rollback after partial startup | Motion policy or widget behavior |
 | Motor driver | Chip communication, register units, and resource cleanup | Machine travel policy |
 | `MotionController` | Input validation, travel checks, homing reference, timeouts, limit handling, and session events | Textual widgets |
 | `AppState` | References shared by the runtime and UI | Motion or register calculations |
