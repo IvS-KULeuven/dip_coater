@@ -6,7 +6,7 @@ from textual import on, events
 from textual.widgets import Label, Button, Checkbox, Collapsible, Input, RichLog, Switch
 
 from dip_coater.widgets.advanced.advanced_settings_base import AdvancedSettingsBase
-from dip_coater.utils.helpers import clamp
+from dip_coater.utils.helpers import clamp, validated_number_from_submission
 from dip_coater.utils.SettingChanged import SettingChanged
 
 
@@ -202,15 +202,18 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
         self._spread_cycle = spread_cycle
 
     @on(Input.Submitted, "#threshold-speed-input")
-    def submit_threshold_speed_input(self):
-        threshold_speed_input = self.query_one("#threshold-speed-input", Input)
-        threshold_speed = float(threshold_speed_input.value)
+    def submit_threshold_speed_input(self, event: Input.Submitted):
+        threshold_speed = validated_number_from_submission(
+            event, self._threshold_speed, float
+        )
+        if threshold_speed is None:
+            return
         threshold_speed_validated = clamp(
             threshold_speed,
             self.app_state.config.MIN_THRESHOLD_SPEED,
             self.app_state.config.MAX_THRESHOLD_SPEED,
         )
-        threshold_speed_input.value = f"{threshold_speed_validated}"
+        event.input.value = f"{threshold_speed_validated}"
         self.update_threshold_speed(threshold_speed_validated)
 
     def update_threshold_speed(self, threshold_speed: reactive[float | None]):
@@ -270,45 +273,54 @@ class AdvancedSettingsTMC2209(AdvancedSettingsBase):
         spread_cycle_checkbox.disabled = disabled
 
     @on(Input.Submitted, "#homing-revolutions-input")
-    def submit_homing_revs_input(self):
-        homing_revs_input = self.query_one("#homing-revolutions-input", Input)
-        homing_revs = int(homing_revs_input.value)
+    def submit_homing_revs_input(self, event: Input.Submitted):
+        homing_revs = validated_number_from_submission(
+            event, self._homing_revs, int
+        )
+        if homing_revs is None:
+            return
         homing_revs_validated = clamp(
             homing_revs,
             self.app_state.config.HOMING_MIN_REVOLUTIONS,
             self.app_state.config.HOMING_MAX_REVOLUTIONS,
         )
-        homing_revs_input.value = f"{homing_revs_validated}"
+        event.input.value = f"{homing_revs_validated}"
         self.update_homing_revs(homing_revs_validated)
 
     def update_homing_revs(self, homing_revs: reactive[int | None]):
         self._homing_revs = homing_revs
 
     @on(Input.Submitted, "#homing-threshold-input")
-    def submit_homing_threshold_input(self):
-        homing_threshold_input = self.query_one("#homing-threshold-input", Input)
-        homing_threshold = int(homing_threshold_input.value)
+    def submit_homing_threshold_input(self, event: Input.Submitted):
+        homing_threshold = validated_number_from_submission(
+            event, self._homing_threshold, int
+        )
+        if homing_threshold is None:
+            return
         homing_threshold_validated = clamp(
             homing_threshold,
             self.app_state.config.HOMING_MIN_THRESHOLD,
             self.app_state.config.HOMING_MAX_THRESHOLD,
         )
-        homing_threshold_input.value = f"{homing_threshold_validated}"
+        event.input.value = f"{homing_threshold_validated}"
         self.update_homing_threshold(homing_threshold_validated)
 
     def update_homing_threshold(self, homing_threshold: reactive[int | None]):
         self._homing_threshold = homing_threshold
 
     @on(Input.Submitted, "#homing-speed-input")
-    def submit_homing_speed_input(self):
-        homing_speed_input = self.query_one("#homing-speed-input", Input)
-        homing_speed = float(homing_speed_input.value)
+    def submit_homing_speed_input(self, event: Input.Submitted):
+        homing_speed = validated_number_from_submission(
+            event, self._homing_speed, float
+        )
+        if homing_speed is None:
+            return
         homing_speed_validated = clamp(
             homing_speed,
             self.app_state.config.HOMING_MIN_SPEED,
             self.app_state.config.HOMING_MAX_SPEED,
         )
-        homing_speed_input.value = f"{homing_speed_validated}"
+        event.input.value = f"{homing_speed_validated}"
         self.update_homing_speed(homing_speed_validated)
 
     def update_homing_speed(self, homing_speed: reactive[float | None]):

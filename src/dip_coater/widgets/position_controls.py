@@ -8,7 +8,7 @@ from textual.containers import Horizontal
 from textual.widgets import Static, Label, Button, Input, RichLog
 
 from dip_coater.widgets.speed_controls import SpeedControls
-from dip_coater.utils.helpers import clamp
+from dip_coater.utils.helpers import clamp, validated_number_from_submission
 
 
 class PositionControls(Static):
@@ -171,10 +171,10 @@ class PositionControls(Static):
         distance_input.value = f"{position}"
 
     @on(Input.Submitted, "#position-input")
-    def submit_position_input(self):
-        position_input = self.query_one("#position-input", Input)
-        position = float(position_input.value)
-        self.set_position(position)
+    def submit_position_input(self, event: Input.Submitted):
+        position = validated_number_from_submission(event, self.position, float)
+        if position is not None:
+            self.set_position(position)
 
     def update_button_states(self, homing_found):
         self.query_one("#set-to-current-pos-btn", Button).disabled = not homing_found

@@ -6,7 +6,7 @@ from textual.validation import Number
 from textual import on
 from textual.widgets import Static, Label, Button, Input
 
-from dip_coater.utils.helpers import clamp
+from dip_coater.utils.helpers import clamp, validated_number_from_submission
 
 
 class DistanceControls(Static):
@@ -62,10 +62,10 @@ class DistanceControls(Static):
         self.set_distance(new_distance)
 
     @on(Input.Submitted, "#distance-input")
-    def submit_distance_input(self):
-        distance_input = self.query_one("#distance-input", Input)
-        distance = float(distance_input.value)
-        self.set_distance(distance)
+    def submit_distance_input(self, event: Input.Submitted):
+        distance = validated_number_from_submission(event, self.distance, float)
+        if distance is not None:
+            self.set_distance(distance)
 
     def set_distance(self, distance: float):
         validated_distance = clamp(distance, self.app_state.config.MIN_DISTANCE,

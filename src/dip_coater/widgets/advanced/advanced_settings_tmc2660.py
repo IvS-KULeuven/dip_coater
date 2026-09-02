@@ -7,6 +7,7 @@ from textual.widgets import Label, Checkbox, Collapsible, Select, Switch, Input
 
 from dip_coater.widgets.advanced.advanced_settings_base import AdvancedSettingsBase
 from dip_coater.utils.SettingChanged import SettingChanged
+from dip_coater.utils.helpers import validated_number_from_submission
 from dip_coater.motor_driver.tmc2660 import ChopperMode
 
 
@@ -168,9 +169,11 @@ class AdvancedSettingsTMC2660(AdvancedSettingsBase):
         self._stallguard_filter_enabled = stallguard_filter_enabled
 
     @on(Input.Submitted, "#stallguard-threshold")
-    def submit_stallguard_threshold(self, event: Input.Changed):
-        if event.validation_result.is_valid:
-            stallguard_threshold = event.input.value
+    def submit_stallguard_threshold(self, event: Input.Submitted):
+        stallguard_threshold = validated_number_from_submission(
+            event, self._stallguard_threshold, int
+        )
+        if stallguard_threshold is not None:
             self.update_stallguard_threshold(stallguard_threshold)
 
     def update_stallguard_threshold(self, stallguard_threshold: reactive[int | None]):
@@ -185,9 +188,11 @@ class AdvancedSettingsTMC2660(AdvancedSettingsBase):
         self._coolstep_enabled = coolstep_enabled
 
     @on(Input.Submitted, "#coolstep-threshold")
-    def submit_coolstep_threshold(self, event: Input.Changed):
-        if event.validation_result.is_valid:
-            coolstep_threshold = event.input.value
+    def submit_coolstep_threshold(self, event: Input.Submitted):
+        coolstep_threshold = validated_number_from_submission(
+            event, self._coolstep_threshold, int
+        )
+        if coolstep_threshold is not None:
             self.update_coolstep_threshold(coolstep_threshold)
 
     def update_coolstep_threshold(self, coolstep_threshold: reactive[int | None]):

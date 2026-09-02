@@ -12,6 +12,19 @@ def clamp(value, min_value, max_value):
     return max(min(value, max_value), min_value)
 
 
+def validated_number_from_submission(event, previous_value, number_type=float):
+    """Return a validated numeric input value or restore its last good value."""
+    validation_result = getattr(event, "validation_result", None)
+    if validation_result is None or not validation_result.is_valid:
+        event.input.value = "" if previous_value is None else str(previous_value)
+        return None
+    try:
+        return number_type(event.input.value)
+    except (TypeError, ValueError):
+        event.input.value = "" if previous_value is None else str(previous_value)
+        return None
+
+
 def config_save_coder_filepath(app_state, filepath: str):
     """Save the current coder script path to the app config file.
 

@@ -6,7 +6,7 @@ from textual.validation import Number
 from textual.widgets import Static, Checkbox, Collapsible, Input, RadioButton, Label
 
 from dip_coater.widgets.step_mode import StepMode
-from dip_coater.utils.helpers import clamp
+from dip_coater.utils.helpers import clamp, validated_number_from_submission
 from dip_coater.utils.SettingChanged import SettingChanged
 
 
@@ -129,15 +129,18 @@ class AdvancedSettingsBase(Static):
     # --------------- WIDGET INTERACTIONS ---------------
 
     @on(Input.Submitted, "#acceleration-input")
-    def submit_acceleration_input(self):
-        acceleration_input = self.query_one("#acceleration-input", Input)
-        acceleration = float(acceleration_input.value)
+    def submit_acceleration_input(self, event: Input.Submitted):
+        acceleration = validated_number_from_submission(
+            event, self._acceleration, float
+        )
+        if acceleration is None:
+            return
         acceleration_validated = clamp(
             acceleration,
             self.app_state.config.MIN_ACCELERATION,
             self.app_state.config.MAX_ACCELERATION,
         )
-        acceleration_input.value = f"{acceleration_validated}"
+        event.input.value = f"{acceleration_validated}"
         self.update_acceleration(acceleration_validated)
 
     def update_acceleration(self, acceleration: reactive[float | None]):
@@ -149,15 +152,16 @@ class AdvancedSettingsBase(Static):
         self._acceleration = round(validated_acceleration, 1)
 
     @on(Input.Submitted, "#current-input")
-    def submit_current_input(self):
-        current_input = self.query_one("#current-input", Input)
-        current = int(current_input.value)
+    def submit_current_input(self, event: Input.Submitted):
+        current = validated_number_from_submission(event, self._current, int)
+        if current is None:
+            return
         current_validated = clamp(
             current,
             self.app_state.config.MIN_CURRENT,
             self.app_state.config.MAX_CURRENT,
         )
-        current_input.value = f"{current_validated}"
+        event.input.value = f"{current_validated}"
         self.update_current(current_validated)
 
     def update_current(self, current: reactive[int | None]):
@@ -168,15 +172,18 @@ class AdvancedSettingsBase(Static):
         )
 
     @on(Input.Submitted, "#current-standstill-input")
-    def submit_current_standstill_input(self):
-        current_standstill_input = self.query_one("#current-standstill-input", Input)
-        current_standstill = int(current_standstill_input.value)
+    def submit_current_standstill_input(self, event: Input.Submitted):
+        current_standstill = validated_number_from_submission(
+            event, self._current_standstill, int
+        )
+        if current_standstill is None:
+            return
         current_standstill_validated = clamp(
             current_standstill,
             self.app_state.config.MIN_CURRENT,
             self.app_state.config.MAX_CURRENT,
         )
-        current_standstill_input.value = f"{current_standstill_validated}"
+        event.input.value = f"{current_standstill_validated}"
         self.update_current_standstill(current_standstill_validated)
 
     def update_current_standstill(self, current_standstill: reactive[int | None]):

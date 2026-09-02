@@ -7,6 +7,7 @@ from textual.widgets import Checkbox, Collapsible, Input, Label, Select, Switch
 
 from dip_coater.motor_driver.tmc2660 import ChopperMode
 from dip_coater.utils.SettingChanged import SettingChanged
+from dip_coater.utils.helpers import validated_number_from_submission
 from dip_coater.widgets.advanced.advanced_settings_base import AdvancedSettingsBase
 
 
@@ -207,8 +208,11 @@ class AdvancedSettingsTrinamicTMC5160(AdvancedSettingsBase):
 
     @on(Input.Submitted, "#stealthchop-threshold")
     def submit_stealthchop_threshold(self, event: Input.Submitted):
-        if event.validation_result.is_valid:
-            self.update_stealthchop_threshold(float(event.input.value))
+        threshold = validated_number_from_submission(
+            event, self._stealthchop_threshold, float
+        )
+        if threshold is not None:
+            self.update_stealthchop_threshold(threshold)
 
     def update_stealthchop_threshold(
         self, stealthchop_threshold: reactive[float | None]
@@ -233,8 +237,11 @@ class AdvancedSettingsTrinamicTMC5160(AdvancedSettingsBase):
 
     @on(Input.Submitted, "#stallguard-threshold")
     def submit_stallguard_threshold(self, event: Input.Submitted):
-        if event.validation_result.is_valid:
-            self.update_stallguard_threshold(int(event.input.value))
+        threshold = validated_number_from_submission(
+            event, self._stallguard_threshold, int
+        )
+        if threshold is not None:
+            self.update_stallguard_threshold(threshold)
 
     def update_stallguard_threshold(self, stallguard_threshold: reactive[int | None]):
         self._stallguard_threshold = stallguard_threshold
@@ -248,8 +255,11 @@ class AdvancedSettingsTrinamicTMC5160(AdvancedSettingsBase):
 
     @on(Input.Submitted, "#coolstep-threshold")
     def submit_coolstep_threshold(self, event: Input.Submitted):
-        if event.validation_result.is_valid:
-            self.update_coolstep_threshold(int(event.input.value))
+        threshold = validated_number_from_submission(
+            event, self._coolstep_threshold, int
+        )
+        if threshold is not None:
+            self.update_coolstep_threshold(threshold)
 
     def update_coolstep_threshold(self, coolstep_threshold: reactive[int | None]):
         self._coolstep_threshold = coolstep_threshold

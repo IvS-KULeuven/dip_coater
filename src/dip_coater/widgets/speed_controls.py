@@ -6,7 +6,7 @@ from textual.validation import Number
 from textual.widget import Widget
 from textual.widgets import Button, Input, Label
 
-from dip_coater.utils.helpers import clamp
+from dip_coater.utils.helpers import clamp, validated_number_from_submission
 
 
 class SpeedControls(Widget):
@@ -62,10 +62,10 @@ class SpeedControls(Widget):
         self.update_speed(new_speed)
 
     @on(Input.Submitted, "#speed-input")
-    def submit_speed_input(self):
-        speed_input = self.query_one("#speed-input", Input)
-        speed = float(speed_input.value)
-        self.update_speed(speed)
+    def submit_speed_input(self, event: Input.Submitted):
+        speed = validated_number_from_submission(event, self.speed, float)
+        if speed is not None:
+            self.update_speed(speed)
 
     def update_speed(self, speed: float):
         validated_speed = clamp(speed, self.app_state.config.MIN_SPEED,
