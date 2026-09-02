@@ -17,7 +17,13 @@ class StepMode(Static):
                     yield RadioButton(label, id=mode)
 
     def on_mount(self):
-        self.app_state.motor_driver.set_microsteps(self.step_mode)
+        try:
+            self.app_state.motor_driver.set_microsteps(self.step_mode)
+        except Exception as error:
+            self.app_state.motor_controls.handle_motion_fault(
+                error, "Initialize microstep setting"
+            )
+            return
         self.query_one(f"#{self.app_state.config.DEFAULT_STEP_MODE}", RadioButton).value = True
 
     def update_microsteps(self, microsteps: int):
@@ -35,8 +41,14 @@ class StepMode(Static):
     def set_microsteps(self, step_mode: int, step_mode_label):
         if self.app_state.motor_state in ("moving", "homing"):
             return
+        try:
+            self.app_state.motor_driver.set_microsteps(step_mode)
+        except Exception as error:
+            self.app_state.motor_controls.handle_motion_fault(
+                error, "Update microstep setting"
+            )
+            return
         self.step_mode = step_mode
-        self.app_state.motor_driver.set_microsteps(self.step_mode)
         if self.app_state.config.STEP_MODE_WRITE_TO_LOG:
             log = self.app.query_one("#logger", RichLog)
             log.write(f"StepMode set to {step_mode_label} µsteps.")

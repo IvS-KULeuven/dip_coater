@@ -105,3 +105,29 @@ def test_step_mode_changes_are_ignored_during_motion():
     StepMode.set_microsteps(step_mode, 16, "1/16")
 
     assert calls == []
+
+
+def test_step_mode_driver_failure_preserves_cached_value_and_faults():
+    failure = RuntimeError("microstep write failed")
+    faults = []
+
+    def fail_microsteps(_value):
+        raise failure
+
+    step_mode = SimpleNamespace(
+        step_mode=8,
+        app_state=SimpleNamespace(
+            motor_state="enabled",
+            motor_driver=SimpleNamespace(set_microsteps=fail_microsteps),
+            motor_controls=SimpleNamespace(
+                handle_motion_fault=lambda error, operation: faults.append(
+                    (error, operation)
+                )
+            ),
+        ),
+    )
+
+    StepMode.set_microsteps(step_mode, 16, "1/16")
+
+    assert step_mode.step_mode == 8
+    assert faults == [(failure, "Update microstep setting")]
