@@ -439,6 +439,15 @@ class MotionController:
     def _home_via_driver_reference(
         self, speed_mm_s: float, home_direction: HomeDirection
     ) -> bool:
+        try:
+            return self._run_driver_reference_homing(speed_mm_s, home_direction)
+        except BaseException:
+            self._best_effort_stop()
+            raise
+
+    def _run_driver_reference_homing(
+        self, speed_mm_s: float, home_direction: HomeDirection
+    ) -> bool:
         opposite_direction = (
             HomeDirection.DOWN if home_direction == HomeDirection.UP else HomeDirection.UP
         )
@@ -498,6 +507,17 @@ class MotionController:
     async def _home_via_driver_reference_async(
         self, speed_mm_s: float, home_direction: HomeDirection
     ) -> bool:
+        try:
+            return await self._run_driver_reference_homing_async(
+                speed_mm_s, home_direction
+            )
+        except BaseException:
+            self._best_effort_stop()
+            raise
+
+    async def _run_driver_reference_homing_async(
+        self, speed_mm_s: float, home_direction: HomeDirection
+    ) -> bool:
         opposite_direction = (
             HomeDirection.DOWN if home_direction == HomeDirection.UP else HomeDirection.UP
         )
@@ -554,6 +574,12 @@ class MotionController:
         )
         await self.motor_driver.wait_for_motor_done_async()
         return True
+
+    def _best_effort_stop(self) -> None:
+        try:
+            self.stop_motor()
+        except Exception:
+            pass
 
     def _schedule_dummy_endstop_hit(
         self, home_direction: HomeDirection

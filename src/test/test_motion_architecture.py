@@ -862,6 +862,69 @@ def test_motion_controller_homes_via_driver_reference_switch_down():
     assert driver.moves[-1][1] == 5.0
 
 
+def test_reference_homing_stops_motor_when_switch_read_fails():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
+        home_direction=HomeDirection.UP,
+    )
+
+    class FaultingSwitchDriver(FakeReferenceSwitchDriver):
+        def __init__(self):
+            super().__init__()
+            self.left_endstop = True
+            self.right_endstop = True
+            self.left_reads = 0
+
+        def get_left_endstop(self):
+            self.left_reads += 1
+            if self.left_reads > 1:
+                raise RuntimeError("reference input failed")
+            return self.left_endstop
+
+    driver = FaultingSwitchDriver()
+    controller = MotionController(driver, profile)
+
+    with pytest.raises(RuntimeError, match="reference input failed"):
+        controller.home(2.0)
+
+    assert driver.moves
+    assert driver.stopped is True
+    assert driver.homed is False
+
+
+@pytest.mark.asyncio
+async def test_reference_homing_cancellation_stops_initial_backoff():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
+        home_direction=HomeDirection.UP,
+    )
+
+    class StuckBackoffDriver(FakeReferenceSwitchDriver):
+        def __init__(self):
+            super().__init__()
+            self.left_endstop = False
+            self.right_endstop = True
+
+    driver = StuckBackoffDriver()
+    controller = MotionController(driver, profile)
+    homing_task = asyncio.create_task(controller.home_async(2.0))
+    await asyncio.sleep(0.02)
+
+    homing_task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await homing_task
+
+    assert driver.moves[0][0] == "down"
+    assert driver.stopped is True
+    assert driver.homed is False
+
+
 def test_motion_controller_refuses_homing_when_opposite_switch_is_triggered():
     profile = MachineProfile(
         key=AvailableMachineSetups.CUSTOM,
