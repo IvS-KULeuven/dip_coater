@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 
@@ -51,16 +52,19 @@ def test_ci_has_no_duplicate_unit_test_workflow():
     assert not duplicate.exists()
 
 
-def test_workflows_use_maintained_action_majors():
+def test_workflows_use_published_action_refs():
     workflows = Path(__file__).parents[2] / ".github" / "workflows"
     contents = "\n".join(path.read_text() for path in workflows.glob("*.yml"))
 
-    assert "actions/checkout@v4" not in contents
-    assert "actions/setup-python@v5" not in contents
-    assert "astral-sh/setup-uv@v5" not in contents
-    assert "actions/checkout@v6" in contents
-    assert "actions/setup-python@v6" in contents
-    assert "astral-sh/setup-uv@v9" in contents
+    checkout_refs = re.findall(r"uses:\s+actions/checkout@(\S+)", contents)
+    setup_python_refs = re.findall(r"uses:\s+actions/setup-python@(\S+)", contents)
+    setup_uv_refs = re.findall(r"uses:\s+astral-sh/setup-uv@(\S+)", contents)
+    assert checkout_refs
+    assert setup_python_refs
+    assert setup_uv_refs
+    assert set(checkout_refs) == {"v7"}
+    assert set(setup_python_refs) == {"v7"}
+    assert set(setup_uv_refs) == {"v10.0.1"}
 
     docs_workflow = (workflows / "docs.yml").read_text()
     assert "actions/upload-pages-artifact@v5" in docs_workflow

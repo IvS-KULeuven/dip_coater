@@ -35,11 +35,11 @@ jobs:
       DIP_COATER_TMC5160_STANDSTILL_MA: "100"
       TRINAMIC_HW_PORT: ${{ vars.DIP_COATER_TMC5160_PORT }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v9
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.10"
       - run: uv sync --locked
@@ -68,9 +68,9 @@ jobs:
       DIP_COATER_TMC5160_CURRENT_MA: "500"
       TRINAMIC_HW_PORT: ${{ vars.DIP_COATER_TMC5160_PORT }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v9
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.0.1
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.10"
       - run: uv sync --locked
@@ -87,9 +87,9 @@ jobs:
     env:
       TRINAMIC_HW_PORT: ${{ vars.DIP_COATER_TMC2660_PORT }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v9
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.0.1
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.10"
       - run: uv sync --locked
@@ -111,9 +111,9 @@ jobs:
     env:
       TRINAMIC_HW_PORT: ${{ vars.DIP_COATER_TMC2660_PORT }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v9
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.0.1
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.10"
       - run: uv sync --locked
@@ -131,9 +131,9 @@ jobs:
       DIP_COATER_TMC2209_CURRENT_MA: "500"
       DIP_COATER_TMC2209_STANDSTILL_MA: "100"
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v9
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.0.1
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.10"
       - run: uv sync --extra rpi --locked
@@ -150,9 +150,9 @@ jobs:
       DIP_COATER_TMC2209_CURRENT_MA: "500"
       DIP_COATER_TMC2209_STANDSTILL_MA: "100"
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v9
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.0.1
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.10"
       - run: uv sync --extra rpi --locked
