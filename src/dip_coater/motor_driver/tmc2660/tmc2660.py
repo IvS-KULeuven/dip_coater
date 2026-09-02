@@ -34,7 +34,7 @@ class VSenseFullScale(Enum):
     VSENSE_FULL_SCALE_165mV = (1, 165)
 
     def __init__(self, value, voltage):
-        self.value_ = value
+        self._value_ = value
         self.voltage = voltage
 
 
@@ -144,7 +144,7 @@ class MotorDriverTMC2660(MotorDriver):
                 self.lb.GP.DriversEnable: False,
                 self.motor.AP.PositionReachedFlag: True,
                 self.motor.AP.MicrostepResolution: self.verify_microsteps(step_mode),
-                self.motor.AP.VSense: VSenseFullScale.VSENSE_FULL_SCALE_305mV.value,
+                self.motor.AP.VSense: vsense_full_scale.value,
                 self.motor.AP.MaxCurrent: self._convert_current_to_value(current_mA),
                 self.motor.AP.StandbyCurrent: self._convert_current_to_value(current_standstill_mA),
                 self.motor.AP.MaxVelocity: self.app_state.mechanical_setup.rps_to_stepss(1, step_mode),
@@ -155,6 +155,7 @@ class MotorDriverTMC2660(MotorDriver):
         # Configure the motor
         self.disable_motor()
         self.set_step_dir_source(step_dir_source)
+        self.set_vsense_full_scale(vsense_full_scale)
         self.set_chopper_mode(chopper_mode)
         self.set_microsteps(step_mode)
         self.invert_direction(invert_direction)

@@ -4,7 +4,10 @@ import pytest
 
 from dip_coater.mechanical.mechanical_setup import MechanicalSetup
 from dip_coater.motor_driver.tmc2660 import tmc2660_dummy
-from dip_coater.motor_driver.tmc2660.tmc2660 import MotorDriverTMC2660
+from dip_coater.motor_driver.tmc2660.tmc2660 import (
+    MotorDriverTMC2660,
+    VSenseFullScale,
+)
 from dip_coater.motor_driver.tmc2660.tmc2660_dummy import (
     DummyAxisParameters,
     DummyEvalBoard,
@@ -75,3 +78,19 @@ def test_tmc2660_microsteps_use_tmcl_index_encoding(microsteps, register_value):
 
     assert driver.dummy_values[driver.motor.AP.MicrostepResolution] == register_value
     assert driver.get_microsteps() == microsteps
+
+
+def test_tmc2660_vsense_enum_exposes_scalar_register_values():
+    assert VSenseFullScale.VSENSE_FULL_SCALE_305mV.value == 0
+    assert VSenseFullScale.VSENSE_FULL_SCALE_165mV.value == 1
+
+
+def test_tmc2660_applies_selected_vsense_during_initialization():
+    driver = make_driver(
+        step_mode=8,
+        current_mA=1000,
+        vsense_full_scale=VSenseFullScale.VSENSE_FULL_SCALE_165mV,
+    )
+
+    assert driver.get_vsense_full_scale() == 1
+    assert driver.vsense_fs is VSenseFullScale.VSENSE_FULL_SCALE_165mV
