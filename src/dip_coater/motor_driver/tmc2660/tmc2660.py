@@ -126,10 +126,60 @@ class MotorDriverTMC2660(MotorDriver):
             self.lb = DummyLandungsbruecke()
             self.eval_board = DummyEvalBoard(self.dummy_values)
             self.motor = self.eval_board.motors[0]
+            self._initialize_motor(
+                step_mode=step_mode,
+                current_mA=current_mA,
+                current_standstill_mA=current_standstill_mA,
+                invert_direction=invert_direction,
+                chopper_mode=chopper_mode,
+                stallguard_enabled=stallguard_enabled,
+                stallguard_threshold=stallguard_threshold,
+                coolstep_enabled=coolstep_enabled,
+                coolstep_threshold=coolstep_threshold,
+                vsense_full_scale=vsense_full_scale,
+                step_dir_source=step_dir_source,
+            )
         else:
             self.interface = ConnectionManager(f"{interface_txt} {port_txt}").connect()
-            self.eval_board = TMC2660_eval(self.interface)
-            self.lb = Landungsbruecke(self.interface)
+            try:
+                self.eval_board = TMC2660_eval(self.interface)
+                self.lb = Landungsbruecke(self.interface)
+                self._initialize_motor(
+                    step_mode=step_mode,
+                    current_mA=current_mA,
+                    current_standstill_mA=current_standstill_mA,
+                    invert_direction=invert_direction,
+                    chopper_mode=chopper_mode,
+                    stallguard_enabled=stallguard_enabled,
+                    stallguard_threshold=stallguard_threshold,
+                    coolstep_enabled=coolstep_enabled,
+                    coolstep_threshold=coolstep_threshold,
+                    vsense_full_scale=vsense_full_scale,
+                    step_dir_source=step_dir_source,
+                )
+            except BaseException:
+                try:
+                    self.interface.close()
+                except Exception:
+                    pass
+                raise
+
+    def _initialize_motor(
+        self,
+        *,
+        step_mode: int,
+        current_mA: int,
+        current_standstill_mA: int,
+        invert_direction: bool,
+        chopper_mode: ChopperMode,
+        stallguard_enabled: bool,
+        stallguard_threshold: int,
+        coolstep_enabled: bool,
+        coolstep_threshold: int,
+        vsense_full_scale: VSenseFullScale,
+        step_dir_source: StepDirSource,
+    ) -> None:
+        """Finish initialization after the transport objects exist."""
         self.bank = 0
         self.axis = 0
         if not self.is_dummy:

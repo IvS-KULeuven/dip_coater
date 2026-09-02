@@ -240,3 +240,34 @@ def test_tmc2660_cleanup_attempts_every_step_after_stop_failure():
         driver.cleanup()
 
     assert calls == ["stop", "disable", "close"]
+
+
+def test_tmc2660_closes_real_interface_when_board_initialization_fails(
+    monkeypatch,
+):
+    app_state = SimpleNamespace(
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        config=SimpleNamespace(USE_DUMMY_DRIVER=False),
+    )
+    fake_interface = SimpleNamespace(closed=False)
+
+    def close():
+        fake_interface.closed = True
+
+    fake_interface.close = close
+    monkeypatch.setattr(tmc2660, "_PYTRINAMIC_AVAILABLE", True)
+    monkeypatch.setattr(
+        tmc2660,
+        "ConnectionManager",
+        lambda _args: SimpleNamespace(connect=lambda: fake_interface),
+    )
+
+    def fail_board_initialization(_interface):
+        raise RuntimeError("board initialization failed")
+
+    monkeypatch.setattr(tmc2660, "TMC2660_eval", fail_board_initialization)
+
+    with pytest.raises(RuntimeError, match="board initialization failed"):
+        MotorDriverTMC2660(app_state, log_handlers=[])
+
+    assert fake_interface.closed is True
