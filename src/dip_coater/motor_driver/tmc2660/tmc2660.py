@@ -282,8 +282,12 @@ class MotorDriverTMC2660(MotorDriver):
     def set_microsteps(self, microsteps: int):
         microstep_index = self.verify_microsteps(microsteps)
         self.microsteps = microsteps
+        # EvalSystem SAP 140 accepts 1, 2, ..., 256, but GAP 140 on the
+        # TMC2660 reports log2(microsteps). Store the readback form only in
+        # the dummy backend so it reproduces that asymmetric firmware API.
+        parameter_value = microstep_index if self.is_dummy else microsteps
         self._set_axis_parameter(
-            self.motor.AP.MicrostepResolution, microstep_index
+            self.motor.AP.MicrostepResolution, parameter_value
         )
 
         verify_microsteps = self.get_microsteps()

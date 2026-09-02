@@ -72,13 +72,38 @@ def test_tmc2660_dummy_move_by_duration_depends_on_steps_and_velocity(monkeypatc
     ("microsteps", "register_value"),
     [(1, 0), (2, 1), (16, 4), (256, 8)],
 )
-def test_tmc2660_microsteps_use_tmcl_index_encoding(microsteps, register_value):
+def test_tmc2660_dummy_matches_exponent_readback(microsteps, register_value):
     driver = make_driver(step_mode=8)
 
     driver.set_microsteps(microsteps)
 
     assert driver.dummy_values[driver.motor.AP.MicrostepResolution] == register_value
     assert driver.get_microsteps() == microsteps
+
+
+def test_real_tmc2660_writes_physical_microstep_count_to_eval_firmware():
+    writes = []
+
+    class FakeMotor:
+        AP = SimpleNamespace(MicrostepResolution="microsteps")
+
+        def set_axis_parameter(self, parameter, value):
+            writes.append((parameter, value))
+
+        def get_axis_parameter(self, parameter, axis):
+            # EvalSystem GAP 140 returns log2(microsteps): 4 means 16.
+            return 4
+
+    driver = MotorDriverTMC2660.__new__(MotorDriverTMC2660)
+    driver.is_dummy = False
+    driver.motor = FakeMotor()
+    driver.axis = 0
+    driver.logger = SimpleNamespace(log=lambda *args: None)
+
+    driver.set_microsteps(16)
+
+    assert writes == [("microsteps", 16)]
+    assert driver.get_microsteps() == 16
 
 
 def test_tmc2660_vsense_enum_exposes_scalar_register_values():

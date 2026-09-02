@@ -107,6 +107,15 @@ def test_hardware_docs_do_not_claim_tmc2660_supports_large_reference_switches():
     )
 
 
+def test_tmc2660_parameter_docs_distinguish_set_and_read_microstep_values():
+    parameter_docs = (
+        Path(__file__).parents[2] / "docs" / "TMC2660_EVALParameters.md"
+    ).read_text()
+
+    assert "Set AP 140 with the physical microstep count" in parameter_docs
+    assert "readback is the base-2 exponent" in parameter_docs
+
+
 def test_python_api_docs_are_configured_for_docstring_reference():
     root = Path(__file__).parents[2]
     pyproject = (root / "pyproject.toml").read_text()
