@@ -34,6 +34,13 @@ class FakeMotionController:
         self.wait_result = None
         self.stop_error = None
         self.disable_error = None
+        self.enable_error = None
+        self.enabled = False
+
+    def enable_motor(self):
+        if self.enable_error is not None:
+            raise self.enable_error
+        self.enabled = True
 
     def move_up(self, distance_mm, speed_mm_s, acceleration_mm_s2):
         self.move = (distance_mm, speed_mm_s, acceleration_mm_s2)
@@ -180,6 +187,21 @@ async def test_emergency_stop_attempts_every_action_after_driver_failure(
 
     async with app.run_test():
         await app_state.motor_controls.disable_motor_action()
+
+    assert app_state.motion_controller.stopped is True
+    assert app_state.motion_controller.disabled is True
+    assert app_state.motor_state == "fault"
+
+
+@pytest.mark.asyncio
+async def test_enable_failure_stops_disables_and_sets_fault_state():
+    app_state = FakeAppState()
+    app_state.motor_state = "disabled"
+    app_state.motion_controller.enable_error = RuntimeError("enable failed")
+    app = EmergencyStopHarness(app_state)
+
+    async with app.run_test():
+        await app_state.motor_controls.enable_motor_action()
 
     assert app_state.motion_controller.stopped is True
     assert app_state.motion_controller.disabled is True

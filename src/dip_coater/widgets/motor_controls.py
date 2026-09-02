@@ -274,9 +274,13 @@ class MotorControls(Static):
     async def enable_motor_action(self):
         log = self.app.query_one("#logger", RichLog)
         if self.app_state.motor_state == "disabled":
-            self.app_state.motion_controller.enable_motor()
-            self.set_motor_state("enabled")
-            log.write("[green]Motor is now enabled.[/]")
+            try:
+                self.app_state.motion_controller.enable_motor()
+            except Exception as error:
+                self.handle_motion_fault(error, "Motor enable")
+            else:
+                self.set_motor_state("enabled")
+                log.write("[green]Motor is now enabled.[/]")
 
     async def disable_motor_action(self):
         log = self.app.query_one("#logger", RichLog)
