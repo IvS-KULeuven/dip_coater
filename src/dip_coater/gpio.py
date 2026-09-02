@@ -188,69 +188,81 @@ class GPIOd(GPIOBase):
 
 
 class GPIOZero(GPIOBase):
-    def __init__(self):
-        from gpiozero.pins.lgpio import LGPIOFactory
-        from gpiozero import Device
-        Device.pin_factory = LGPIOFactory()
+    def __init__(self, button_class=None, led_class=None):
+        if (button_class is None) != (led_class is None):
+            raise ValueError("button_class and led_class must be provided together")
+        if button_class is None:
+            from gpiozero import Button, Device, LED
+            from gpiozero.pins.lgpio import LGPIOFactory
+
+            Device.pin_factory = LGPIOFactory()
+            button_class = Button
+            led_class = LED
+        self._button_class = button_class
+        self._led_class = led_class
         self.pins = {}
 
     def setup(self, pin, mode: GpioMode, pull_up_down: GpioPUD = GpioPUD.PUD_UP,
               active_state: GpioState = None):
-        from gpiozero import LED, Button
         if mode == GpioMode.OUT:
-            self.pins[pin] = LED(pin)
-        # Input
-        if mode == GpioMode.IN:
+            self.pins[pin] = self._led_class(pin)
+        else:
             pull_up = True if pull_up_down == GpioPUD.PUD_UP else \
                 False if pull_up_down == GpioPUD.PUD_DOWN else None
             active_state_value = True if active_state == GpioState.HIGH else \
                 False if active_state == GpioState.LOW else None
             # gpiozero doesn't support pull-up/pull-down when an active state is set
             pull_up = pull_up if active_state is None else None
-            self.pins[pin] = Button(pin, pull_up=pull_up, active_state=active_state_value)
-        # Output
-        else:
-            self.pins[pin] = LED(pin)
+            self.pins[pin] = self._button_class(
+                pin, pull_up=pull_up, active_state=active_state_value
+            )
 
     def output(self, pin, state: GpioState):
         self.pins[pin].on() if state == GpioState.HIGH else self.pins[pin].off()
 
     def input(self, pin) -> GpioState:
-        return GpioState.HIGH if self.pins[pin].is_pressed else GpioState.LOW
+        return GpioState.HIGH if self.pins[pin].pin.state else GpioState.LOW
 
     def add_event_detect(self, pin, edge: GpioEdge, callback, bouncetime=None):
-        from gpiozero import Button
         if pin not in self.pins:
             raise ValueError(f"Pin {pin} is not set up")
         if callback and not callable(callback):
             raise ValueError("Callback must be callable")
-        if not isinstance(self.pins[pin], Button):
+        if not isinstance(self.pins[pin], self._button_class):
             raise ValueError("Event detection can only be added to a button")
 
-        def wrapped_callback(button):
-            """ Convert the gpiozero Button object to the pin number, to comply with the RPi.GPIO
-            callback signature """
-            callback(pin)
+        button = self.pins[pin]
+        if bouncetime is not None:
+            button.bounce_time = bouncetime / 1000
 
-        if edge == GpioEdge.RISING:
-            self.pins[pin].when_pressed = wrapped_callback
-        elif edge == GpioEdge.FALLING:
-            self.pins[pin].when_released = wrapped_callback
-        elif edge == GpioEdge.BOTH:
-            self.pins[pin].when_pressed = wrapped_callback
-            self.pins[pin].when_released = wrapped_callback
+        def wrapped_callback(_button=None):
+            """Translate gpiozero's logical events to electrical GPIO edges."""
+            state = self.input(pin)
+            matches_edge = (
+                edge == GpioEdge.BOTH
+                or (edge == GpioEdge.RISING and state == GpioState.HIGH)
+                or (edge == GpioEdge.FALLING and state == GpioState.LOW)
+            )
+            if matches_edge and callback:
+                callback(pin)
+
+        button.when_pressed = wrapped_callback
+        button.when_released = wrapped_callback
 
     def add_event_callback(self, pin, callback):
-        # In gpiozero, we can't add multiple callbacks, so we'll combine them
-        existing_callback = self.pins[pin].when_pressed
+        # gpiozero only stores one callback per logical transition, so combine
+        # callbacks without changing which electrical edge is being watched.
+        button = self.pins[pin]
+        for attribute in ("when_pressed", "when_released"):
+            existing_callback = getattr(button, attribute)
+            if existing_callback is None:
+                continue
 
-        def combined_callback():
-            if existing_callback:
-                existing_callback()
-            callback()
+            def combined_callback(device=None, existing=existing_callback):
+                existing(device)
+                callback(pin)
 
-        self.pins[pin].when_pressed = combined_callback
-        self.pins[pin].when_released = combined_callback
+            setattr(button, attribute, combined_callback)
 
     def remove_event_detect(self, pin):
         self.pins[pin].when_pressed = None
@@ -259,6 +271,7 @@ class GPIOZero(GPIOBase):
     def cleanup(self):
         for pin in self.pins.values():
             pin.close()
+        self.pins.clear()
 
 
 class DummyGPIO(GPIOBase):
