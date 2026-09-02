@@ -1,4 +1,5 @@
 from pathlib import Path
+from types import SimpleNamespace
 
 from dip_coater.widgets.motor_controls import (
     control_button_disabled_states,
@@ -19,6 +20,28 @@ def test_motor_state_badge_uses_compact_state_label():
 def test_limit_switch_state_badge_colorizes_open_and_triggered():
     assert limit_switch_state_badge(False) == "[green]Open[/]"
     assert limit_switch_state_badge(True) == "[red]Triggered[/]"
+
+
+def test_status_mount_uses_widget_owned_polling_timer():
+    scheduled = []
+    timer = object()
+    callback = object()
+    status = SimpleNamespace(
+        app_state=SimpleNamespace(
+            config=SimpleNamespace(DEFAULT_SPEED=1.0, DEFAULT_DISTANCE=2.0),
+            homing_found=False,
+            motor_state="disabled",
+        ),
+        update_motor_state=lambda _state: None,
+        fetch_new_position=callback,
+        set_interval=lambda interval, scheduled_callback: (
+            scheduled.append((interval, scheduled_callback)) or timer
+        ),
+    )
+    Status._on_mount(status)
+
+    assert scheduled == [(0.5, callback)]
+    assert status.position_timer is timer
 
 
 def test_status_widget_only_has_compact_motor_state_line():

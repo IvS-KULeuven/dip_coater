@@ -5,9 +5,6 @@ from textual.containers import Vertical
 from textual.widgets import Label
 from textual.widgets import RichLog, Rule
 
-from dip_coater.utils.threading_util import AsyncioStoppableTimer
-
-
 MOTOR_STATE_COLORS = {
     "enabled": "green",
     "disabled": "red",
@@ -38,7 +35,7 @@ class Status(Static):
     position: reactive[float | None] = reactive(None)
     status_error: reactive[str | None] = reactive(None)
 
-    position_thread = None
+    position_timer = None
 
     def __init__(self, app_state, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -74,8 +71,7 @@ class Status(Static):
         self.limit_switch_down = False
         self.position = 0
         self.update_motor_state(self.app_state.motor_state)
-        self.position_thread = AsyncioStoppableTimer(0.5, self.fetch_new_position)
-        self.position_thread.start()
+        self.position_timer = self.set_interval(0.5, self.fetch_new_position)
 
     def update_speed(self, speed: float):
         self.speed = speed
@@ -158,8 +154,8 @@ class Status(Static):
         self._last_polling_error = None
 
     def on_unmount(self):
-        if self.position_thread is not None:
-            self.position_thread.stop()
+        if self.position_timer is not None:
+            self.position_timer.stop()
 
     # --------------- WATCHERS (called automatically when reactive has changed) ---------------
 
