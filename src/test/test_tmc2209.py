@@ -1,4 +1,5 @@
 import threading
+import math
 from types import SimpleNamespace
 
 import pytest
@@ -203,3 +204,80 @@ def test_stallguard_homing_restores_chopper_mode_after_failure():
         driver.do_stallguard_homing(speed_mm_s=2.0)
 
     assert restored_modes == [True]
+
+
+def make_current_test_driver():
+    driver = MotorDriverTMC2209.__new__(MotorDriverTMC2209)
+    driver.current = 600.0
+    driver.current_standstill = 100.0
+    driver._min_current_mA = 31.0
+    driver._max_current_mA = 2475.0
+    driver.tmc = SimpleNamespace(set_current=lambda *_args, **_kwargs: None)
+    return driver
+
+
+@pytest.mark.parametrize(
+    "current_mA",
+    [0, -1, 2476, float("nan"), float("inf"), True, "600"],
+)
+def test_tmc2209_rejects_invalid_run_current(current_mA):
+    driver = make_current_test_driver()
+
+    with pytest.raises(ValueError, match="run current"):
+        driver.set_current(current_mA)
+
+    assert driver.current == 600.0
+
+
+@pytest.mark.parametrize(
+    "current_mA",
+    [0, -1, 2476, float("nan"), float("inf"), True, "100"],
+)
+def test_tmc2209_rejects_invalid_standstill_current(current_mA):
+    driver = make_current_test_driver()
+
+    with pytest.raises(ValueError, match="standstill current"):
+        driver.set_current_standstill(current_mA)
+
+    assert driver.current_standstill == 100.0
+
+
+def test_tmc2209_rejects_standstill_current_above_run_current():
+    driver = make_current_test_driver()
+
+    with pytest.raises(ValueError, match="must not exceed run current"):
+        driver.set_current_standstill(700.0)
+
+    with pytest.raises(ValueError, match="must not be below standstill current"):
+        driver.set_current(50.0)
+
+
+@pytest.mark.parametrize("method_name", ["set_current", "set_current_standstill"])
+def test_tmc2209_current_cache_changes_only_after_uart_success(method_name):
+    driver = make_current_test_driver()
+
+    def fail_current(*_args, **_kwargs):
+        raise RuntimeError("UART write failed")
+
+    driver.tmc.set_current = fail_current
+    original_run = driver.current
+    original_standstill = driver.current_standstill
+
+    with pytest.raises(RuntimeError, match="UART write failed"):
+        getattr(driver, method_name)(500.0 if method_name == "set_current" else 50.0)
+
+    assert driver.current == original_run
+    assert driver.current_standstill == original_standstill
+
+
+def test_tmc2209_current_setters_write_finite_hold_multiplier():
+    calls = []
+    driver = make_current_test_driver()
+    driver.tmc.set_current = lambda *args, **kwargs: calls.append((args, kwargs))
+
+    driver.set_current(500.0)
+    driver.set_current_standstill(50.0)
+
+    multipliers = [kwargs["hold_current_multiplier"] for _args, kwargs in calls]
+    assert all(math.isfinite(value) and 0 <= value <= 1 for value in multipliers)
+    assert multipliers == pytest.approx([0.2, 0.1])

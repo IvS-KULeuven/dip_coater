@@ -4,6 +4,7 @@ from TMC_2209._TMC_2209_move import MovementAbsRel, StopMode
 import time
 import logging
 import asyncio
+import math
 import platform
 
 from dip_coater.gpio import get_gpio_instance, GpioEdge, GpioState
@@ -73,6 +74,8 @@ class MotorDriverTMC2209(MotorDriver):
         self.tmc.set_direction_reg(invert_direction)
         self.current = current_mA
         self.current_standstill = current_standstill_mA
+        self._min_current_mA = getattr(app_state.config, "MIN_CURRENT", 31.0)
+        self._max_current_mA = getattr(app_state.config, "MAX_CURRENT", 2475.0)
         self.tmc.set_pdn_disable(False)
         self.set_current(current_mA)
         self.set_current_standstill(current_standstill_mA)
@@ -336,14 +339,22 @@ class MotorDriverTMC2209(MotorDriver):
 
         :param current: The current to set for the motor driver in mA
         """
-        self.current = current_mA
-        multiplier = self.calculate_hold_current_multiplier()
+        self._validate_current("run current", current_mA)
+        if current_mA < self.current_standstill:
+            raise ValueError("run current must not be below standstill current")
+        multiplier = self._hold_current_multiplier(
+            current_mA, self.current_standstill
+        )
         self.tmc.set_current(current_mA, hold_current_multiplier=multiplier, pdn_disable=False)
+        self.current = current_mA
 
     def set_current_standstill(self, current_mA: int = 150):
-        self.current_standstill = current_mA
-        multiplier = self.calculate_hold_current_multiplier()
+        self._validate_current("standstill current", current_mA)
+        if current_mA > self.current:
+            raise ValueError("standstill current must not exceed run current")
+        multiplier = self._hold_current_multiplier(self.current, current_mA)
         self.tmc.set_current(self.current, hold_current_multiplier=multiplier, pdn_disable=False)
+        self.current_standstill = current_mA
 
     def invert_direction(self, invert_direction: bool = False):
         """ Set the direction of the motor driver
@@ -412,7 +423,37 @@ class MotorDriverTMC2209(MotorDriver):
     # --------------- HELPER METHODS ---------------
 
     def calculate_hold_current_multiplier(self):
-        return self.current_standstill / self.current
+        return self._hold_current_multiplier(
+            self.current, self.current_standstill
+        )
+
+    def _validate_current(self, name: str, current_mA: float) -> None:
+        try:
+            valid = not isinstance(current_mA, bool) and math.isfinite(current_mA)
+        except (TypeError, ValueError):
+            valid = False
+        if (
+            not valid
+            or current_mA < self._min_current_mA
+            or current_mA > self._max_current_mA
+        ):
+            raise ValueError(
+                f"{name} must be finite and between "
+                f"{self._min_current_mA:g} and {self._max_current_mA:g} mA"
+            )
+
+    @staticmethod
+    def _hold_current_multiplier(
+        run_current_mA: float, standstill_current_mA: float
+    ) -> float:
+        if run_current_mA <= 0:
+            raise ValueError("run current must be positive")
+        multiplier = standstill_current_mA / run_current_mA
+        if not math.isfinite(multiplier) or not 0 <= multiplier <= 1:
+            raise ValueError(
+                "standstill current must not exceed run current"
+            )
+        return multiplier
 
     def read_back_config(self):
         self.tmc.read_ioin()
