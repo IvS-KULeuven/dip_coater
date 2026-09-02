@@ -14,7 +14,13 @@ from typing import Any
 from pytrinamic.ic import TMC5160
 
 from ..config import MotorConfig
-from ..conversions import cs_to_mA_rms, mA_rms_to_cs
+from ..conversions import (
+    cs_to_mA_rms,
+    mA_rms_to_cs,
+    rps2_to_amax_tmc5160,
+    rps_to_vmax_tmc5160,
+    vmax_to_rps_tmc5160,
+)
 from .base import BaseStepperMotor
 
 
@@ -97,23 +103,27 @@ class TMC5160Motor(BaseStepperMotor):
     # ------------------------------------------------------------------ #
 
     def _rps_to_raw_speed(self, rps: float) -> int:
-        units_per_rev = (
-            self._config.full_steps_per_rev * self._motion_units_per_fullstep()
+        return rps_to_vmax_tmc5160(
+            rps,
+            self._config.full_steps_per_rev,
+            self._config.clock_hz,
+            self._motion_units_per_fullstep(),
         )
-        return int(round(rps * units_per_rev * (1 << 24) / self._config.clock_hz))
 
     def _raw_speed_to_rps(self, raw: int) -> float:
-        units_per_rev = (
-            self._config.full_steps_per_rev * self._motion_units_per_fullstep()
+        return vmax_to_rps_tmc5160(
+            raw,
+            self._config.full_steps_per_rev,
+            self._config.clock_hz,
+            self._motion_units_per_fullstep(),
         )
-        return raw * self._config.clock_hz / (1 << 24) / units_per_rev
 
     def _rps2_to_raw_accel(self, rps2: float) -> int:
-        units_per_rev = (
-            self._config.full_steps_per_rev * self._motion_units_per_fullstep()
-        )
-        return int(
-            round(rps2 * units_per_rev * (1 << 41) / (self._config.clock_hz ** 2))
+        return rps2_to_amax_tmc5160(
+            rps2,
+            self._config.full_steps_per_rev,
+            self._config.clock_hz,
+            self._motion_units_per_fullstep(),
         )
 
     def _set_speed_raw(self, raw: int) -> None:

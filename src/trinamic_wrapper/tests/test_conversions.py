@@ -126,6 +126,21 @@ class TestTmc5160Velocity:
         assert rps_to_vmax_tmc5160(0.0, **self.PARAMS) == 0
         assert vmax_to_rps_tmc5160(0, **self.PARAMS) == 0.0
 
+    def test_conversion_uses_configured_microstep_resolution(self):
+        vmax = rps_to_vmax_tmc5160(
+            1.0,
+            **self.PARAMS,
+            microsteps_per_fullstep=16,
+        )
+        expected = round(200 * 16 * (2**24) / 16_000_000)
+
+        assert vmax == expected
+        assert vmax_to_rps_tmc5160(
+            vmax,
+            **self.PARAMS,
+            microsteps_per_fullstep=16,
+        ) == pytest.approx(1.0, rel=1e-3)
+
 
 class TestTmc5160Acceleration:
     PARAMS = dict(full_steps_per_rev=200, clock_hz=16_000_000.0)
@@ -143,6 +158,21 @@ class TestTmc5160Acceleration:
         amax = rps2_to_amax_tmc5160(1.0, **self.PARAMS)
         expected = round(51200 * (2**41) / (16_000_000 ** 2))
         assert amax == expected
+
+    def test_conversion_uses_configured_microstep_resolution(self):
+        amax = rps2_to_amax_tmc5160(
+            1.0,
+            **self.PARAMS,
+            microsteps_per_fullstep=16,
+        )
+        expected = round(200 * 16 * (2**41) / (16_000_000 ** 2))
+
+        assert amax == expected
+        assert amax_to_rps2_tmc5160(
+            amax,
+            **self.PARAMS,
+            microsteps_per_fullstep=16,
+        ) == pytest.approx(1.0, rel=2e-2)
 
 
 # --------------------------------------------------------------------- #

@@ -103,22 +103,20 @@ def cs_to_mA_rms(
 #
 # Datasheet formula:
 #     v [Hz, microsteps/s] = VMAX * f_clk / 2^24
-# With 256 usteps/fullstep and N full-steps/rev:
-#     v [rot/s] = VMAX * f_clk / (2^24 * 256 * N)
-# -> VMAX = v_rot_s * 256 * N * 2^24 / f_clk
-# Note: microsteps/s is always measured at the native 256-microstep
-# resolution, independent of MRES. This is why we use 256 and not the
-# current step_mode multiplier.
+# With USC configured microsteps/fullstep and N full-steps/rev:
+#     v [rot/s] = VMAX * f_clk / (2^24 * USC * N)
+# -> VMAX = v_rot_s * USC * N * 2^24 / f_clk
 
-_TMC5160_USTEPS_NATIVE = 256
+_DEFAULT_MICROSTEPS_PER_FULLSTEP = 256
 
 def rps_to_vmax_tmc5160(
     rps: float,
     full_steps_per_rev: int,
     clock_hz: float,
+    microsteps_per_fullstep: int = _DEFAULT_MICROSTEPS_PER_FULLSTEP,
 ) -> int:
     """Convert rev/s to TMC5160 VMAX register value."""
-    ustep_per_s = rps * _TMC5160_USTEPS_NATIVE * full_steps_per_rev
+    ustep_per_s = rps * microsteps_per_fullstep * full_steps_per_rev
     vmax = ustep_per_s * (1 << 24) / clock_hz
     return int(round(vmax))
 
@@ -127,10 +125,11 @@ def vmax_to_rps_tmc5160(
     vmax: int,
     full_steps_per_rev: int,
     clock_hz: float,
+    microsteps_per_fullstep: int = _DEFAULT_MICROSTEPS_PER_FULLSTEP,
 ) -> float:
     """Inverse of :func:`rps_to_vmax_tmc5160`."""
     ustep_per_s = vmax * clock_hz / (1 << 24)
-    return ustep_per_s / (_TMC5160_USTEPS_NATIVE * full_steps_per_rev)
+    return ustep_per_s / (microsteps_per_fullstep * full_steps_per_rev)
 
 
 # --------------------------------------------------------------------------- #
@@ -138,15 +137,16 @@ def vmax_to_rps_tmc5160(
 # --------------------------------------------------------------------------- #
 #
 # Datasheet: a [usteps/s^2] = AMAX * f_clk^2 / (2^41)
-# -> AMAX = a_rot_s2 * 256 * N * 2^41 / f_clk^2
+# -> AMAX = a_rot_s2 * USC * N * 2^41 / f_clk^2
 
 def rps2_to_amax_tmc5160(
     rps2: float,
     full_steps_per_rev: int,
     clock_hz: float,
+    microsteps_per_fullstep: int = _DEFAULT_MICROSTEPS_PER_FULLSTEP,
 ) -> int:
     """Convert rev/s² to TMC5160 AMAX register value."""
-    ustep_per_s2 = rps2 * _TMC5160_USTEPS_NATIVE * full_steps_per_rev
+    ustep_per_s2 = rps2 * microsteps_per_fullstep * full_steps_per_rev
     amax = ustep_per_s2 * (1 << 41) / (clock_hz ** 2)
     return int(round(amax))
 
@@ -155,10 +155,11 @@ def amax_to_rps2_tmc5160(
     amax: int,
     full_steps_per_rev: int,
     clock_hz: float,
+    microsteps_per_fullstep: int = _DEFAULT_MICROSTEPS_PER_FULLSTEP,
 ) -> float:
     """Inverse of :func:`rps2_to_amax_tmc5160`."""
     ustep_per_s2 = amax * (clock_hz ** 2) / (1 << 41)
-    return ustep_per_s2 / (_TMC5160_USTEPS_NATIVE * full_steps_per_rev)
+    return ustep_per_s2 / (microsteps_per_fullstep * full_steps_per_rev)
 
 
 # --------------------------------------------------------------------------- #
