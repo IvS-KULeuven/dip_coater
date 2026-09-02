@@ -11,15 +11,15 @@ class ConfigLoader:
         :param driver_type: Driver type name, such as ``TMC2209``.
         :return: Imported driver-specific configuration module.
         """
+        module_name = f"dip_coater.config.config_{driver_type.lower()}"
         try:
-            config_module = importlib.import_module(
-                f"dip_coater.config.config_{driver_type.lower()}"
-            )
-            return config_module
-        except ImportError as e:
+            return importlib.import_module(module_name)
+        except ModuleNotFoundError as error:
+            if error.name != module_name:
+                raise
             raise ValueError(
                 f"No configuration found for driver type: '{driver_type}'"
-            ) from e
+            ) from error
 
 
 class Config:
