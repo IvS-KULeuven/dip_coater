@@ -391,6 +391,11 @@ def main():
     run_app(app_state)
 
 
-if __name__ == "__main__":
+def run() -> None:
+    """Configure the platform event loop and start the CLI application."""
     configure_event_loop_policy()
     main()
+
+
+if __name__ == "__main__":
+    run()

@@ -36,7 +36,7 @@ rpi = [
 ]
 
 [project.scripts]
-dip-coater = "dip_coater.app:main"
+dip-coater = "dip_coater.app:run"
 
 [project.urls]
 Repository = "https://github.com/IvS-KULeuven/dip_coater"

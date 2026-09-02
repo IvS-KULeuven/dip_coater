@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -68,3 +69,22 @@ def test_run_app_cleans_up_when_textual_app_raises(monkeypatch):
         app_module.run_app(app_state)
 
     assert controller.cleanup_calls == 1
+
+
+def test_installed_cli_configures_event_loop_before_main(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        app_module, "configure_event_loop_policy", lambda: calls.append("policy")
+    )
+    monkeypatch.setattr(app_module, "main", lambda: calls.append("main"))
+
+    app_module.run()
+
+    assert calls == ["policy", "main"]
+
+
+def test_project_script_uses_event_loop_configuring_entrypoint():
+    pyproject = Path(__file__).parents[2] / "pyproject.toml"
+
+    with pyproject.open(encoding="utf-8") as project_file:
+        assert 'dip-coater = "dip_coater.app:run"' in project_file.read()
