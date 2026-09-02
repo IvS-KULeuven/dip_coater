@@ -169,13 +169,52 @@ def configure_event_loop_policy() -> None:
 
 def run_app(app_state) -> None:
     """Run the Textual application and always clean up motor resources."""
-    app = DipCoaterApp(app_state)
-    suffix = " (dummy)" if app_state.config.USE_DUMMY_DRIVER else ""
-    app.title = f"Dip Coater v{__version__}{suffix}"
     try:
+        app = DipCoaterApp(app_state)
+        suffix = " (dummy)" if app_state.config.USE_DUMMY_DRIVER else ""
+        app.title = f"Dip Coater v{__version__}{suffix}"
         app.run()
-    finally:
+    except BaseException:
+        try:
+            app_state.motion_controller.cleanup()
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "Motor cleanup also failed while handling an application error."
+            )
+        raise
+    else:
         app_state.motion_controller.cleanup()
+
+
+def _cleanup_failed_startup(app_state) -> None:
+    """Best-effort cleanup that never masks the startup failure."""
+    controller = getattr(app_state, "motion_controller", None)
+    if controller is not None:
+        try:
+            controller.cleanup()
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "Controller cleanup also failed during startup rollback."
+            )
+        return
+
+    driver = getattr(app_state, "motor_driver", None)
+    if driver is not None:
+        try:
+            driver.cleanup()
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "Driver cleanup also failed during startup rollback."
+            )
+
+    gpio = getattr(app_state, "gpio", None)
+    if gpio is not None and getattr(driver, "GPIO", None) is not gpio:
+        try:
+            gpio.cleanup()
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "GPIO cleanup also failed during startup rollback."
+            )
 
 
 def main():
@@ -357,51 +396,59 @@ def main():
     app_state.config.USE_DUMMY_DRIVER = args.use_dummy_driver
     app_state.session_log = SessionLog(args.session_log_file)
 
-    # Build the motor driver
-    app_state.motor_logger_handler = TempLoggerHandler()
-    logging_format = logging.Formatter(
-        "%(asctime)s - %(levelname)s - %(message)s", "%Y%m%d %H:%M:%S"
-    )
-    log_level = driver_spec.log_level_from_name(args.log_level)
-    driver = driver_spec.driver_factory(
-        app_state=app_state,
-        log_level=log_level,
-        log_handlers=[app_state.motor_logger_handler],
-        log_formatter=logging_format,
-        interface_type=args.interface,
-        port=args.port,
-    )
-    app_state.motor_driver = driver
-    app_state.motion_controller = MotionController(
-        driver,
-        app_state.setup_profile,
-        gpio=app_state.gpio,
-        session_log=app_state.session_log,
-    )
-    app_state.session_log.write(
-        "session_started",
-        version=__version__,
-        driver=args.driver.value,
-        setup=app_state.setup_profile.key.value,
-        setup_label=app_state.setup_profile.label,
-        dummy_driver=args.use_dummy_driver,
-        interface=args.interface,
-        port=args.port,
-        log_level=args.log_level,
-        home_direction=app_state.setup_profile.home_direction.value,
-        invert_direction=app_state.setup_profile.invert_motor_direction,
-        mm_per_revolution=app_state.setup_profile.mechanical_setup.mm_per_revolution,
-        gearbox_ratio=app_state.setup_profile.mechanical_setup.gearbox_ratio,
-        steps_per_revolution=(
-            app_state.setup_profile.mechanical_setup.steps_per_revolution
-        ),
-    )
+    try:
+        # Build the motor driver and finish runtime initialization before
+        # transferring resource ownership to run_app().
+        app_state.motor_logger_handler = TempLoggerHandler()
+        logging_format = logging.Formatter(
+            "%(asctime)s - %(levelname)s - %(message)s", "%Y%m%d %H:%M:%S"
+        )
+        log_level = driver_spec.log_level_from_name(args.log_level)
+        driver = driver_spec.driver_factory(
+            app_state=app_state,
+            log_level=log_level,
+            log_handlers=[app_state.motor_logger_handler],
+            log_formatter=logging_format,
+            interface_type=args.interface,
+            port=args.port,
+        )
+        app_state.motor_driver = driver
+        app_state.motion_controller = MotionController(
+            driver,
+            app_state.setup_profile,
+            gpio=app_state.gpio,
+            session_log=app_state.session_log,
+        )
+        app_state.session_log.write(
+            "session_started",
+            version=__version__,
+            driver=args.driver.value,
+            setup=app_state.setup_profile.key.value,
+            setup_label=app_state.setup_profile.label,
+            dummy_driver=args.use_dummy_driver,
+            interface=args.interface,
+            port=args.port,
+            log_level=args.log_level,
+            home_direction=app_state.setup_profile.home_direction.value,
+            invert_direction=app_state.setup_profile.invert_motor_direction,
+            mm_per_revolution=(
+                app_state.setup_profile.mechanical_setup.mm_per_revolution
+            ),
+            gearbox_ratio=app_state.setup_profile.mechanical_setup.gearbox_ratio,
+            steps_per_revolution=(
+                app_state.setup_profile.mechanical_setup.steps_per_revolution
+            ),
+        )
 
-    # Build and start the application
-    print(
-        f"Starting Dip Coater v{__version__}, driver: {args.driver}, "
-        f"setup: {app_state.setup_profile.label}, log level: {log_level}"
-    )
+        print(
+            f"Starting Dip Coater v{__version__}, driver: {args.driver}, "
+            f"setup: {app_state.setup_profile.label}, log level: {log_level}"
+        )
+    except BaseException:
+        _cleanup_failed_startup(app_state)
+        raise
+
+    # run_app owns all initialized resources from this point onward.
     run_app(app_state)
 
 
