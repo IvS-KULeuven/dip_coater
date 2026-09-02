@@ -116,8 +116,14 @@ class DipCoaterApp(App):
         self.theme = toggled_textual_theme(self.current_theme)
 
     def action_request_quit(self) -> None:
-        self.app_state.motion_controller.cleanup()
-        self.app.exit()
+        try:
+            self.app_state.motion_controller.cleanup()
+        finally:
+            self.exit()
+
+    def action_quit(self) -> None:
+        """Route Textual's inherited quit action through motor cleanup."""
+        self.action_request_quit()
 
     def action_show_help(self) -> None:
         self.push_screen(HelpScreen())
@@ -156,6 +162,17 @@ def configure_event_loop_policy() -> None:
         )
         return
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
+
+def run_app(app_state) -> None:
+    """Run the Textual application and always clean up motor resources."""
+    app = DipCoaterApp(app_state)
+    suffix = " (dummy)" if app_state.config.USE_DUMMY_DRIVER else ""
+    app.title = f"Dip Coater v{__version__}{suffix}"
+    try:
+        app.run()
+    finally:
+        app_state.motion_controller.cleanup()
 
 
 def main():
@@ -371,10 +388,7 @@ def main():
         f"Starting Dip Coater v{__version__}, driver: {args.driver}, "
         f"setup: {app_state.setup_profile.label}, log level: {log_level}"
     )
-    app = DipCoaterApp(app_state)
-    suffix = " (dummy)" if app_state.config.USE_DUMMY_DRIVER else ""
-    app.title = f"Dip Coater v{__version__}{suffix}"
-    app.run()
+    run_app(app_state)
 
 
 if __name__ == "__main__":
