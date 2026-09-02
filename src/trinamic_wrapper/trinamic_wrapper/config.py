@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, IntEnum
+import math
 
 
 class Direction(IntEnum):
@@ -94,9 +95,40 @@ class MotorConfig:
     vfs_high_sens: float = 0.180  # TMC5160 high-sens (VS=1)
 
     def __post_init__(self) -> None:
-        if self.full_steps_per_rev <= 0:
-            raise ValueError("full_steps_per_rev must be positive")
-        if self.sense_resistor_ohms <= 0:
-            raise ValueError("sense_resistor_ohms must be positive")
-        if self.clock_hz <= 0:
-            raise ValueError("clock_hz must be positive")
+        if (
+            isinstance(self.full_steps_per_rev, bool)
+            or not isinstance(self.full_steps_per_rev, int)
+            or self.full_steps_per_rev <= 0
+        ):
+            raise ValueError("full_steps_per_rev must be a positive integer")
+
+        for field_name in (
+            "sense_resistor_ohms",
+            "clock_hz",
+            "vfs_standard",
+            "vfs_high_sens",
+        ):
+            value = getattr(self, field_name)
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                or value <= 0
+            ):
+                raise ValueError(f"{field_name} must be a finite positive number")
+
+        if not isinstance(self.vsense_high_sensitivity, bool):
+            raise ValueError("vsense_high_sensitivity must be a boolean")
+        if not isinstance(self.default_microsteps, StepMode):
+            raise ValueError("default_microsteps must be a StepMode")
+
+        current_limit = self.max_current_mA_limit
+        if current_limit is not None and (
+            isinstance(current_limit, bool)
+            or not isinstance(current_limit, (int, float))
+            or not math.isfinite(current_limit)
+            or current_limit < 0
+        ):
+            raise ValueError(
+                "max_current_mA_limit must be a finite non-negative number or None"
+            )

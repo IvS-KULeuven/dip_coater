@@ -145,6 +145,34 @@ class TestConfigValidation:
         with pytest.raises(ValueError):
             MotorConfig(clock_hz=0)
 
+    @pytest.mark.parametrize(
+        ("overrides", "field_name"),
+        [
+            ({"full_steps_per_rev": True}, "full_steps_per_rev"),
+            ({"full_steps_per_rev": 200.5}, "full_steps_per_rev"),
+            ({"sense_resistor_ohms": float("nan")}, "sense_resistor_ohms"),
+            ({"sense_resistor_ohms": float("inf")}, "sense_resistor_ohms"),
+            ({"clock_hz": float("nan")}, "clock_hz"),
+            ({"clock_hz": float("inf")}, "clock_hz"),
+            ({"vsense_high_sensitivity": 1}, "vsense_high_sensitivity"),
+            ({"default_microsteps": 16}, "default_microsteps"),
+            ({"max_current_mA_limit": True}, "max_current_mA_limit"),
+            ({"max_current_mA_limit": -1.0}, "max_current_mA_limit"),
+            ({"max_current_mA_limit": float("nan")}, "max_current_mA_limit"),
+            ({"max_current_mA_limit": float("inf")}, "max_current_mA_limit"),
+            ({"vfs_standard": 0.0}, "vfs_standard"),
+            ({"vfs_high_sens": float("nan")}, "vfs_high_sens"),
+        ],
+    )
+    def test_invalid_physical_configuration_is_rejected(
+        self, overrides, field_name
+    ):
+        with pytest.raises(ValueError, match=field_name):
+            MotorConfig(**overrides)
+
+    def test_none_disables_current_soft_limit(self):
+        assert MotorConfig(max_current_mA_limit=None).max_current_mA_limit is None
+
     def test_microsteps_per_fullstep_from_stepmode(self):
         assert StepMode.FULLSTEP.microsteps_per_fullstep == 1
         assert StepMode.USTEP_2.microsteps_per_fullstep == 2
