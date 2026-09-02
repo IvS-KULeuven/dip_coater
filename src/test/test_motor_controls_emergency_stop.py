@@ -32,6 +32,8 @@ class FakeMotionController:
         self.wait_cancelled = False
         self.wait_error = None
         self.wait_result = None
+        self.stop_error = None
+        self.disable_error = None
 
     def move_up(self, distance_mm, speed_mm_s, acceleration_mm_s2):
         self.move = (distance_mm, speed_mm_s, acceleration_mm_s2)
@@ -62,9 +64,13 @@ class FakeMotionController:
 
     def stop_motor(self):
         self.stopped = True
+        if self.stop_error is not None:
+            raise self.stop_error
 
     def disable_motor(self):
         self.disabled = True
+        if self.disable_error is not None:
+            raise self.disable_error
 
     def is_homing_found(self):
         return True
@@ -156,6 +162,28 @@ async def test_stop_and_disable_button_cancels_active_motion_wait():
     assert app_state.motion_controller.disabled is True
     assert app_state.motion_controller.wait_cancelled is True
     assert app_state.motor_state == "disabled"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failing_action", ["stop", "disable"])
+async def test_emergency_stop_attempts_every_action_after_driver_failure(
+    failing_action,
+):
+    app_state = FakeAppState()
+    app_state.motor_state = "moving"
+    error = RuntimeError(f"{failing_action} failed")
+    if failing_action == "stop":
+        app_state.motion_controller.stop_error = error
+    else:
+        app_state.motion_controller.disable_error = error
+    app = EmergencyStopHarness(app_state)
+
+    async with app.run_test():
+        await app_state.motor_controls.disable_motor_action()
+
+    assert app_state.motion_controller.stopped is True
+    assert app_state.motion_controller.disabled is True
+    assert app_state.motor_state == "fault"
 
 
 @pytest.mark.asyncio
@@ -270,6 +298,20 @@ async def test_abnormal_motion_stop_leaves_motor_disabled():
 
     assert app_state.motion_controller.disabled is True
     assert app_state.motor_state == "disabled"
+
+
+@pytest.mark.asyncio
+async def test_abnormal_stop_reports_fault_when_shutdown_fails():
+    app_state = FakeAppState()
+    app_state.motion_controller.disable_error = RuntimeError("disable failed")
+    app = EmergencyStopHarness(app_state)
+
+    async with app.run_test():
+        app_state.motor_controls.disable_after_abnormal_stop()
+
+    assert app_state.motion_controller.stopped is True
+    assert app_state.motion_controller.disabled is True
+    assert app_state.motor_state == "fault"
 
 
 @pytest.mark.asyncio

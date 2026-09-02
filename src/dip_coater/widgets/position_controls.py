@@ -148,7 +148,7 @@ class PositionControls(Static):
         except ValueError as e:
             log.write(f"[red]{e}[/]")
         except asyncio.CancelledError:
-            if self.app_state.motor_state == "disabled":
+            if self.app_state.motor_state in ("disabled", "fault"):
                 log.write("[dark_orange]-> Movement aborted.[/]")
                 return
             raise
