@@ -3,7 +3,7 @@
 This page describes the physical setups at a high level. There are two main machine families:
 
 - the small dip coater, usually controlled with a Raspberry Pi and `TMC2209`
-- the big dip coater, usually controlled with `TMC2660` or `TMC5160` hardware
+- the big dip coater, controlled with `TMC5160` hardware in the documented setup
 
 The exact wiring can differ between machines, so check the actual machine before powering anything.
 
@@ -71,7 +71,7 @@ The small dip coater uses a BIGTREETECH TMC2209 1.3 stepper motor driver connect
 
 ## Big Dip Coater
 
-The big dip coater uses the `large` setup profile and is intended for the larger machine geometry. It is typically controlled with `TMC2660` or `TMC5160` hardware through PyTrinamic-backed communication.
+The big dip coater uses the `large` setup profile and is intended for the larger machine geometry. The documented configuration uses TMC5160 hardware through TMCL communication.
 
 ![Big lift overview](https://raw.githubusercontent.com/IvS-KULeuven/dip_coater/develop/images/big_lift/big-lift.jpeg)
 
@@ -94,9 +94,14 @@ On macOS, the port may look like:
 Examples:
 
 ```bash
-dip-coater --driver TMC2660 --setup large --interface usb_tmcl --port /dev/ttyACM0
+dip-coater --driver TMC5160 --setup large --interface usb_tmcl --port /dev/ttyACM0
 dip-coater --driver TMC5160 --setup large --interface usb_tmcl --port /dev/tty.usbmodemTMCEVAL1
 ```
+
+TMC2660 cannot read the `large` profile's driver-reference limit switches.
+The application therefore rejects real TMC2660 hardware with this profile.
+TMC2660 can still be simulated in dummy mode or used with a separately verified
+GPIO-backed profile; do not substitute it in the wiring described below.
 
 The big dip coater may not use the same wiring, limit switches, motor current, travel range, or direction as the small dip coater. Use the machine-specific setup profile and hardware notes for the exact machine.
 

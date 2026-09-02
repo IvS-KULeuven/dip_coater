@@ -31,7 +31,10 @@ from dip_coater.widgets.tabs.diagnostics_tab import DiagnosticsTab
 from dip_coater import __version__
 
 from dip_coater.motor_driver.motor_driver_interface import AvailableMotorDrivers
-from dip_coater.motor_driver.driver_registry import get_driver_spec
+from dip_coater.motor_driver.driver_registry import (
+    get_driver_spec,
+    validate_driver_setup_compatibility,
+)
 from dip_coater.services import MotionController
 from dip_coater.setup_profiles import (
     create_custom_profile,
@@ -333,6 +336,11 @@ def main():
     else:
         setup_profile = base_profile
     setup_profile = driver_spec.adjust_setup_profile(setup_profile)
+    validate_driver_setup_compatibility(
+        args.driver,
+        setup_profile,
+        use_dummy_driver=args.use_dummy_driver,
+    )
 
     # Build the application state
     app_state = AppState(

@@ -41,15 +41,21 @@ dip-coater --driver TMC5160 --interface usb_tmcl --port /dev/ttyACM0
 Machine setup is selected separately from the motor driver. The bundled setup profiles are:
 
 - `small`: Raspberry Pi GPIO limit switches, usually used with `TMC2209`
-- `large`: Landungsbruecke/TMC5160 reference switches, usually used with `TMC2660` or `TMC5160`
+- `large`: Landungsbruecke/TMC5160 reference switches, used with `TMC5160`
 
 Examples:
 
 ```bash
 dip-coater --setup small
 dip-coater --setup large
-dip-coater --driver TMC2209 --setup large
+dip-coater --driver TMC5160 --setup large
 ```
+
+TMC2660 cannot read the `large` profile's driver-reference limit switches.
+The application rejects that combination on real hardware so motion cannot run
+without its configured end stops. TMC2660 remains available in dummy mode, or
+with a machine profile whose safety switches are GPIO-backed and whose
+mechanical values have been verified for that machine.
 
 ## Run Without Hardware
 

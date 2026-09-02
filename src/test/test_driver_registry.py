@@ -13,6 +13,7 @@ from dip_coater.setup_profiles.machine_profile import (
     AvailableMachineSetups,
     MachineProfile,
 )
+from dip_coater.setup_profiles.registry import get_machine_profile
 from trinamic_wrapper import StepMode
 
 
@@ -310,3 +311,30 @@ def test_tmc5160_setup_adjustment_normalizes_direction_without_mutating_input():
     assert profile.invert_motor_direction is True
     assert adjusted.invert_motor_direction is False
     assert adjusted is not profile
+
+
+def test_real_tmc2660_rejects_driver_reference_limit_switches():
+    profile = get_machine_profile(AvailableMachineSetups.LARGE_COATER)
+
+    with pytest.raises(ValueError, match="cannot read driver-reference"):
+        _driver_registry.validate_driver_setup_compatibility(
+            _driver_registry.AvailableMotorDrivers.TMC2660,
+            profile,
+            use_dummy_driver=False,
+        )
+
+
+def test_tmc2660_compatibility_allows_dummy_and_gpio_profiles():
+    large_profile = get_machine_profile(AvailableMachineSetups.LARGE_COATER)
+    small_profile = get_machine_profile(AvailableMachineSetups.SMALL_COATER)
+
+    _driver_registry.validate_driver_setup_compatibility(
+        _driver_registry.AvailableMotorDrivers.TMC2660,
+        large_profile,
+        use_dummy_driver=True,
+    )
+    _driver_registry.validate_driver_setup_compatibility(
+        _driver_registry.AvailableMotorDrivers.TMC2660,
+        small_profile,
+        use_dummy_driver=False,
+    )

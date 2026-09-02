@@ -93,6 +93,20 @@ def test_python_examples_docs_reference_example_scripts():
     assert "--real-hardware" in examples_docs
 
 
+def test_hardware_docs_do_not_claim_tmc2660_supports_large_reference_switches():
+    root = Path(__file__).parents[2]
+    run_docs = (root / "docs" / "run-the-app.md").read_text()
+    hardware_docs = (root / "docs" / "hardware-setup.md").read_text()
+    examples_docs = (root / "docs" / "python-examples.md").read_text()
+
+    for content in (run_docs, hardware_docs, examples_docs):
+        assert "TMC2660 cannot read the `large` profile's driver-reference" in content
+
+    assert (
+        "tmc2660_example.py --real-hardware --port interactive" not in examples_docs
+    )
+
+
 def test_python_api_docs_are_configured_for_docstring_reference():
     root = Path(__file__).parents[2]
     pyproject = (root / "pyproject.toml").read_text()

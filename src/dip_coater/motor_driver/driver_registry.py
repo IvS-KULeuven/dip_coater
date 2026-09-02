@@ -67,6 +67,8 @@ class MotorDriverSpec:
     :param create_advanced_settings: Callable that creates the advanced-settings widget.
     :param create_advanced_status: Callable that creates the advanced-status widget.
     :param adjust_setup_profile: Callable that normalizes a selected machine profile.
+    :param supports_driver_reference_switches: Whether the backend can read
+        reference inputs wired directly to the motor driver.
     """
 
     driver_type: AvailableMotorDrivers
@@ -80,6 +82,7 @@ class MotorDriverSpec:
     adjust_setup_profile: Callable[[MachineProfile], MachineProfile] = (
         lambda profile: profile
     )
+    supports_driver_reference_switches: bool = False
 
 
 def _normalize_tmc5160_setup_profile(profile: MachineProfile) -> MachineProfile:
@@ -283,6 +286,7 @@ _SPECS = {
             app_state, *args, **kwargs
         ),
         adjust_setup_profile=_normalize_tmc5160_setup_profile,
+        supports_driver_reference_switches=True,
     ),
 }
 
@@ -299,3 +303,35 @@ def get_driver_spec(driver_type: AvailableMotorDrivers | str) -> MotorDriverSpec
         return _SPECS[driver_type]
     except KeyError as exc:
         raise ValueError(f"Unsupported driver type: '{driver_type}'") from exc
+
+
+def validate_driver_setup_compatibility(
+    driver_type: AvailableMotorDrivers | str,
+    setup_profile: MachineProfile,
+    *,
+    use_dummy_driver: bool,
+) -> None:
+    """Reject hardware configurations whose safety inputs cannot be read.
+
+    Dummy drivers are allowed for UI and motion simulation because they do not
+    energize physical hardware.
+
+    :param driver_type: Selected motor driver.
+    :param setup_profile: Selected machine and limit-switch profile.
+    :param use_dummy_driver: Whether this run uses simulated hardware.
+    :raises ValueError: If real hardware cannot read the configured switches.
+    """
+    spec = get_driver_spec(driver_type)
+    switches = setup_profile.limit_switches
+    if (
+        not use_dummy_driver
+        and switches is not None
+        and switches.uses_driver_reference
+        and not spec.supports_driver_reference_switches
+    ):
+        raise ValueError(
+            f"{spec.driver_type.value} cannot read driver-reference limit switches "
+            f"required by the '{setup_profile.key.value}' setup. Use TMC5160 for "
+            "this setup, select a verified GPIO-backed setup, or use "
+            "--use-dummy-driver for simulation."
+        )

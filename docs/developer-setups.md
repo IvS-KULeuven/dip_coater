@@ -156,6 +156,12 @@ DEFAULT_SETUP_BY_DRIVER = {
 }
 ```
 
+The TMC2660 mapping preserves the historical default for dummy simulations.
+Before hardware is opened, compatibility validation rejects any real driver
+that cannot read the selected profile's driver-reference switches. In
+particular, real TMC2660 hardware cannot use the bundled `large` profile; use a
+verified GPIO-backed profile or TMC5160 hardware.
+
 ## Add a New Setup
 
 1. Add a new enum value to `AvailableMachineSetups`.

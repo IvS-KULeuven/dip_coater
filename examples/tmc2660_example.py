@@ -10,10 +10,9 @@ What this script shows:
 Safe dummy run:
     uv run python examples/tmc2660_example.py
 
-Real hardware run:
-    uv run python examples/tmc2660_example.py --real-hardware --port interactive
-
-Use the port that matches your Landungsbruecke/TMC2660 connection.
+The bundled ``large`` profile uses TMC5160 reference inputs. The legacy
+TMC2660 backend cannot read those switches, so ``--real-hardware`` is rejected
+until a verified GPIO-backed profile is selected in code.
 """
 
 from __future__ import annotations
@@ -24,7 +23,10 @@ import logging
 
 from dip_coater.app_state import AppState
 from dip_coater.logging.motor_logger import TempLoggerHandler
-from dip_coater.motor_driver.driver_registry import get_driver_spec
+from dip_coater.motor_driver.driver_registry import (
+    get_driver_spec,
+    validate_driver_setup_compatibility,
+)
 from dip_coater.motor_driver.motor_driver_interface import AvailableMotorDrivers
 from dip_coater.services import MotionController
 from dip_coater.setup_profiles import get_machine_profile
@@ -47,6 +49,11 @@ def build_controller(
     """Create a motion controller for the TMC2660 large-coater setup."""
     driver_spec = get_driver_spec(DRIVER)
     setup_profile = driver_spec.adjust_setup_profile(get_machine_profile(SETUP))
+    validate_driver_setup_compatibility(
+        DRIVER,
+        setup_profile,
+        use_dummy_driver=use_dummy_driver,
+    )
 
     app_state = AppState(
         DRIVER,
