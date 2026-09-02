@@ -1,4 +1,5 @@
 import asyncio
+import math
 import time
 from collections.abc import Callable
 
@@ -192,6 +193,11 @@ class MotionController:
         :param speed_mm_s: Speed in millimeters per second.
         :param acceleration_mm_s2: Optional acceleration in millimeters per second squared.
         """
+        self._require_positive_finite("distance_mm", distance_mm)
+        self._require_positive_finite("speed_mm_s", speed_mm_s)
+        self._require_positive_finite(
+            "acceleration_mm_s2", acceleration_mm_s2, allow_none=True
+        )
         self._raise_if_limit_switch_triggered(HomeDirection.UP)
         self._raise_if_relative_move_outside_travel(HomeDirection.UP, distance_mm)
         self._last_motion_timeout_s = self._estimate_motion_timeout_s(
@@ -225,6 +231,11 @@ class MotionController:
         :param speed_mm_s: Speed in millimeters per second.
         :param acceleration_mm_s2: Optional acceleration in millimeters per second squared.
         """
+        self._require_positive_finite("distance_mm", distance_mm)
+        self._require_positive_finite("speed_mm_s", speed_mm_s)
+        self._require_positive_finite(
+            "acceleration_mm_s2", acceleration_mm_s2, allow_none=True
+        )
         self._raise_if_limit_switch_triggered(HomeDirection.DOWN)
         self._raise_if_relative_move_outside_travel(HomeDirection.DOWN, distance_mm)
         self._last_motion_timeout_s = self._estimate_motion_timeout_s(
@@ -260,6 +271,12 @@ class MotionController:
         :param speed_mm_s: Optional speed in millimeters per second.
         :param acceleration_mm_s2: Optional acceleration in millimeters per second squared.
         """
+        if not math.isfinite(position_mm):
+            raise ValueError("position_mm must be finite")
+        self._require_positive_finite("speed_mm_s", speed_mm_s, allow_none=True)
+        self._require_positive_finite(
+            "acceleration_mm_s2", acceleration_mm_s2, allow_none=True
+        )
         self._raise_if_position_outside_travel(position_mm)
         current_position_mm = self.get_current_position_mm()
         travel_distance_mm = (
@@ -298,6 +315,7 @@ class MotionController:
         :param home_direction: Direction to home toward, or ``None`` to use the profile default.
         :return: ``True`` when the home reference was found.
         """
+        self._require_positive_finite("speed_mm_s", speed_mm_s)
         if not self.supports_homing:
             raise ValueError(
                 "The current driver/setup combination does not support homing."
@@ -335,6 +353,7 @@ class MotionController:
         :param home_direction: Direction to home toward, or ``None`` to use the profile default.
         :return: ``True`` when the home reference was found.
         """
+        self._require_positive_finite("speed_mm_s", speed_mm_s)
         if not self.supports_homing:
             raise ValueError(
                 "The current driver/setup combination does not support homing."
@@ -708,6 +727,15 @@ class MotionController:
             f"{self.machine_profile.min_position_mm:.1f}.."
             f"{self.machine_profile.max_position_mm:.1f} mm."
         )
+
+    @staticmethod
+    def _require_positive_finite(
+        name: str, value: float | None, *, allow_none: bool = False
+    ) -> None:
+        if value is None and allow_none:
+            return
+        if value is None or not math.isfinite(value) or value <= 0:
+            raise ValueError(f"{name} must be finite and positive")
 
     @staticmethod
     def _estimate_motion_timeout_s(

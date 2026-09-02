@@ -390,6 +390,83 @@ def test_motion_controller_rejects_relative_move_that_would_exceed_profile_bound
     assert driver.moves == []
 
 
+@pytest.mark.parametrize("method_name", ["move_up", "move_down"])
+@pytest.mark.parametrize("distance_mm", [0.0, -1.0, float("nan"), float("inf")])
+def test_motion_controller_rejects_nonpositive_or_nonfinite_distance(
+    method_name, distance_mm
+):
+    profile = get_machine_profile(AvailableMachineSetups.SMALL_COATER)
+    driver = FakeDriver()
+    controller = MotionController(driver, profile)
+
+    with pytest.raises(ValueError, match="distance_mm must be finite and positive"):
+        getattr(controller, method_name)(distance_mm, 1.0)
+
+    assert driver.moves == []
+
+
+@pytest.mark.parametrize("speed_mm_s", [0.0, -1.0, float("nan"), float("inf")])
+def test_motion_controller_rejects_nonpositive_or_nonfinite_speed(speed_mm_s):
+    profile = get_machine_profile(AvailableMachineSetups.SMALL_COATER)
+    driver = FakeDriver()
+    controller = MotionController(driver, profile)
+
+    with pytest.raises(ValueError, match="speed_mm_s must be finite and positive"):
+        controller.move_up(1.0, speed_mm_s)
+
+    assert driver.moves == []
+
+
+@pytest.mark.parametrize("acceleration", [0.0, -1.0, float("nan"), float("inf")])
+def test_motion_controller_rejects_invalid_optional_acceleration(acceleration):
+    profile = get_machine_profile(AvailableMachineSetups.SMALL_COATER)
+    driver = FakeDriver()
+    controller = MotionController(driver, profile)
+
+    with pytest.raises(
+        ValueError, match="acceleration_mm_s2 must be finite and positive"
+    ):
+        controller.move_up(1.0, 1.0, acceleration)
+
+    assert driver.moves == []
+
+
+@pytest.mark.parametrize(
+    ("position_mm", "speed_mm_s"),
+    [(float("nan"), 1.0), (float("inf"), 1.0), (1.0, 0.0)],
+)
+def test_motion_controller_validates_absolute_motion_inputs(
+    position_mm, speed_mm_s
+):
+    profile = get_machine_profile(AvailableMachineSetups.SMALL_COATER)
+    driver = FakeDriver()
+    controller = MotionController(driver, profile)
+
+    with pytest.raises(ValueError, match="must be finite"):
+        controller.move_to_position(position_mm, speed_mm_s)
+
+    assert driver.last_run_to_position is None
+
+
+@pytest.mark.parametrize("speed_mm_s", [0.0, -1.0, float("nan"), float("inf")])
+def test_motion_controller_rejects_invalid_homing_speed(speed_mm_s):
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchPair(
+            up_pin=11, down_pin=12, up_nc=True, down_nc=True
+        ),
+    )
+    driver = FakeDriver()
+    controller = MotionController(driver, profile, gpio=FakeGPIO())
+
+    with pytest.raises(ValueError, match="speed_mm_s must be finite and positive"):
+        controller.home(speed_mm_s)
+
+    assert driver.last_home is None
+
+
 @pytest.mark.asyncio
 async def test_motion_controller_times_out_wait_and_stops_motor():
     profile = MachineProfile(
