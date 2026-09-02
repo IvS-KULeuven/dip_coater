@@ -49,6 +49,7 @@ class BaseStepperMotor(ABC):
         self._desired_speed_rps: float = 1.0
         self._step_mode: StepMode = config.default_microsteps
         self._enabled: bool = False
+        self._enabled_toff_raw: int = 3
         self._chopper_mode: int = 0
         self._stallguard_enabled: bool = True
         self._stallguard_threshold: int = 0
@@ -74,18 +75,35 @@ class BaseStepperMotor(ABC):
     # ------------------------------------------------------------------ #
 
     def enable(self) -> None:
-        # Restore configured currents. On both chips, setting a run current
-        # of 0 is effectively "disabled", so we re-apply the cached value.
+        # Restore the configured currents before enabling the driver output.
         self._set_run_current_raw(self._cached_run_current_raw)
         self._set_standstill_current_raw(self._cached_standstill_raw)
+        self._set_driver_output_enabled(True)
         self._enabled = True
 
     def disable(self) -> None:
         # Stop first so we don't leave the chip pulsing while de-energised.
         self.stop()
+        self._set_driver_output_enabled(False)
         self._set_run_current_raw(0)
         self._set_standstill_current_raw(0)
         self._enabled = False
+
+    def _set_driver_output_enabled(self, enabled: bool) -> None:
+        """Control the chopper output independently from its current scale."""
+        toff_parameter = getattr(self._motor.AP, "TOff", None)
+        if toff_parameter is None:
+            return
+        if enabled:
+            self._motor.set_axis_parameter(
+                toff_parameter, self._enabled_toff_raw
+            )
+            return
+
+        current_toff = self._motor.get_axis_parameter(toff_parameter)
+        if current_toff > 0:
+            self._enabled_toff_raw = current_toff
+        self._motor.set_axis_parameter(toff_parameter, 0)
 
     @property
     def is_enabled(self) -> bool:

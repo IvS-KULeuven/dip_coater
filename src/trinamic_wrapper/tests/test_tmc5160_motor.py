@@ -97,15 +97,30 @@ class TestCurrent:
     def test_disable_zeros_current_axis_parameters(self, setup):
         motor, conn, board = setup
         motor.enable()
+        assert conn.get_ap(board.motors[0].AP.TOff) > 0
         motor.set_run_current_mA(1000)
         motor.set_standstill_current_mA(200)
         conn.calls.clear()
 
         motor.disable()
-        # After disable, MaxCurrent and StandbyCurrent should both be 0
+        # TOff=0 is the chip-level output disable. CS=0 alone still means
+        # 1/32 full-scale current on the TMC5160.
+        assert conn.get_ap(board.motors[0].AP.TOff) == 0
         assert conn.get_ap(board.motors[0].AP.MaxCurrent) == 0
         assert conn.get_ap(board.motors[0].AP.StandbyCurrent) == 0
         assert not motor.is_enabled
+
+    def test_enable_restores_last_nonzero_chopper_off_time(self, setup):
+        motor, conn, board = setup
+        ap = board.motors[0].AP
+        motor.enable()
+        conn.set_axis_parameter(ap.TOff, 0, 7, 1)
+
+        motor.disable()
+        assert conn.get_ap(ap.TOff) == 0
+        motor.enable()
+
+        assert conn.get_ap(ap.TOff) == 7
 
     def test_current_set_while_disabled_is_cached_not_written(self, setup):
         motor, conn, board = setup
