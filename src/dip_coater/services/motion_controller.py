@@ -379,6 +379,7 @@ class MotionController:
                 )
         except BaseException:
             self._best_effort_stop()
+            self._best_effort_clear_homing_reference()
             raise
         self.session_log.write(
             "homing_completed",
@@ -427,6 +428,7 @@ class MotionController:
                 )
         except BaseException:
             self._best_effort_stop()
+            self._best_effort_clear_homing_reference()
             raise
         self.session_log.write(
             "homing_completed",
@@ -552,7 +554,7 @@ class MotionController:
             self._move_motor_in_direction(
                 opposite_direction, _REFERENCE_HOMING_BACKOFF_MM, backoff_speed
             )
-            await self.motor_driver.wait_for_motor_done_async()
+            await self._wait_for_reference_backoff_async(backoff_speed)
             if self.read_limit_switch(home_direction):
                 raise ValueError(
                     "Home switch still triggered after backing off; "
@@ -590,12 +592,30 @@ class MotionController:
         self._move_motor_in_direction(
             opposite_direction, _REFERENCE_HOMING_BACKOFF_MM, backoff_speed
         )
-        await self.motor_driver.wait_for_motor_done_async()
+        await self._wait_for_reference_backoff_async(backoff_speed)
         return True
+
+    async def _wait_for_reference_backoff_async(self, speed_mm_s: float) -> None:
+        timeout_s = self._estimate_motion_timeout_s(
+            _REFERENCE_HOMING_BACKOFF_MM,
+            speed_mm_s,
+        )
+        result = await self.wait_for_motor_done_async(timeout_s=timeout_s)
+        if isinstance(result, str) and result.startswith("motion timed out"):
+            raise TimeoutError(
+                "Reference-switch homing backoff timed out after "
+                f"{timeout_s:g}s"
+            )
 
     def _best_effort_stop(self) -> None:
         try:
             self.stop_motor()
+        except Exception:
+            pass
+
+    def _best_effort_clear_homing_reference(self) -> None:
+        try:
+            self._clear_homing_reference()
         except Exception:
             pass
 

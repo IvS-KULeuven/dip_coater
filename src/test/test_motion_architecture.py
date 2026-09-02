@@ -1058,6 +1058,83 @@ async def test_reference_homing_cancellation_stops_initial_backoff():
     assert driver.homed is False
 
 
+@pytest.mark.asyncio
+async def test_reference_homing_initial_backoff_has_a_motion_timeout(monkeypatch):
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
+        home_direction=HomeDirection.UP,
+    )
+    driver = FakeReferenceSwitchDriver()
+    driver.left_endstop = False
+    driver.right_endstop = True
+    controller = MotionController(driver, profile)
+    monkeypatch.setattr(
+        controller,
+        "_estimate_motion_timeout_s",
+        lambda *_args: 0.01,
+    )
+
+    with pytest.raises(TimeoutError, match="homing backoff timed out"):
+        await asyncio.wait_for(controller.home_async(2.0), timeout=0.2)
+
+    assert driver.stopped is True
+    assert driver.disabled is True
+    assert driver.homed is False
+
+
+@pytest.mark.asyncio
+async def test_reference_homing_final_backoff_timeout_invalidates_home(monkeypatch):
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
+        home_direction=HomeDirection.UP,
+        homing_max_distance_mm=40.0,
+    )
+    driver = HomingReferenceSwitchDriver(HomeDirection.UP)
+    controller = MotionController(driver, profile)
+    monkeypatch.setattr(
+        controller,
+        "_estimate_motion_timeout_s",
+        lambda *_args: 0.01,
+    )
+
+    with pytest.raises(TimeoutError, match="homing backoff timed out"):
+        await asyncio.wait_for(controller.home_async(2.0), timeout=0.2)
+
+    assert driver.stopped is True
+    assert driver.disabled is True
+    assert driver.homed is False
+
+
+def test_reference_homing_final_backoff_fault_invalidates_home():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
+        home_direction=HomeDirection.UP,
+        homing_max_distance_mm=40.0,
+    )
+
+    class FaultingFinalBackoffDriver(HomingReferenceSwitchDriver):
+        def wait_for_motor_done(self):
+            raise RuntimeError("final backoff failed")
+
+    driver = FaultingFinalBackoffDriver(HomeDirection.UP)
+    controller = MotionController(driver, profile)
+
+    with pytest.raises(RuntimeError, match="final backoff failed"):
+        controller.home(2.0)
+
+    assert driver.stopped is True
+    assert driver.homed is False
+
+
 def test_motion_controller_refuses_homing_when_opposite_switch_is_triggered():
     profile = MachineProfile(
         key=AvailableMachineSetups.CUSTOM,
