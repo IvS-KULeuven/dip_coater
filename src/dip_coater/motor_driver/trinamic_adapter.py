@@ -42,6 +42,7 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
         is_dummy: bool = False,
         close: Callable[[], None] | None = None,
         logger: logging.Logger | None = None,
+        log_handlers: list[Any] | None = None,
     ) -> None:
         super().__init__(mechanical_setup)
         self._motor = motor
@@ -51,7 +52,7 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
         self._logger = logger or logging.getLogger(
             f"{__name__}.{type(self).__name__}"
         )
-        self._log_handlers: list[Any] = []
+        self._log_handlers = list(log_handlers or [])
         self._configured_speed_rps: float | None = None
         self._configured_accel_rpss: float | None = None
         self._target_position_rot: float | None = None
@@ -266,17 +267,18 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
         self._logger.info(f"Log level set to {level_name}")
 
     def add_log_handler(self, handler):
-        self._log_handlers.append(handler)
         add_handler = getattr(self._logger, "addHandler", None)
         if add_handler is not None:
             add_handler(handler)
+        if handler not in self._log_handlers:
+            self._log_handlers.append(handler)
 
     def remove_log_handler(self, handler):
-        if handler in self._log_handlers:
-            self._log_handlers.remove(handler)
         remove_handler = getattr(self._logger, "removeHandler", None)
         if remove_handler is not None:
             remove_handler(handler)
+        if handler in self._log_handlers:
+            self._log_handlers.remove(handler)
 
     def cleanup(self):
         first_error: Exception | None = None
@@ -292,7 +294,17 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
             except Exception as error:
                 if first_error is None:
                     first_error = error
-        self._logger.info("Motor driver cleaned up")
+        try:
+            self._logger.info("Motor driver cleaned up")
+        except Exception as error:
+            if first_error is None:
+                first_error = error
+        for handler in tuple(self._log_handlers):
+            try:
+                self.remove_log_handler(handler)
+            except Exception as error:
+                if first_error is None:
+                    first_error = error
         if first_error is not None:
             raise first_error
 

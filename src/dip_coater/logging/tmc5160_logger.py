@@ -48,9 +48,9 @@ class TMC5160Logger:
         if handlers is None:
             handlers = [logging.StreamHandler()]
 
+        self._handlers = []
         for handler in handlers:
-            handler.setFormatter(self.formatter)
-            self.logger.addHandler(handler)
+            self.add_handler(handler)
 
         self.logger.propagate = True
 
@@ -65,9 +65,18 @@ class TMC5160Logger:
             formatter = self.formatter
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
+        if handler not in self._handlers:
+            self._handlers.append(handler)
 
     def remove_handler(self, handler):
         self.logger.removeHandler(handler)
+        if handler in self._handlers:
+            self._handlers.remove(handler)
+
+    def remove_all_handlers(self):
+        """Remove handlers installed through this wrapper."""
+        for handler in tuple(self._handlers):
+            self.remove_handler(handler)
 
     @staticmethod
     def _add_logging_level(level_name: str, level_num: int, method_name: str = None):

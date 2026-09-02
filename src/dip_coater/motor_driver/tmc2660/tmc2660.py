@@ -683,6 +683,15 @@ class MotorDriverTMC2660(MotorDriver):
                 if first_error is None:
                     first_error = exc
 
+        if first_error is None:
+            try:
+                self.logger.log("Motor driver cleaned up", TMC2660LogLevel.INFO)
+            except Exception as exc:
+                first_error = exc
+        try:
+            self.logger.remove_all_handlers()
+        except Exception as exc:
+            if first_error is None:
+                first_error = exc
         if first_error is not None:
             raise first_error
-        self.logger.log("Motor driver cleaned up", TMC2660LogLevel.INFO)

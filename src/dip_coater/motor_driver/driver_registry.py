@@ -1,5 +1,6 @@
 from contextlib import ExitStack
 from dataclasses import dataclass
+import logging
 from typing import Any, Callable
 
 from TMC_2209._TMC_2209_logger import Loglevel
@@ -105,18 +106,26 @@ def _create_tmc2209_driver(
     interface_type="usb_tmcl",
     port="interactive",
 ) -> MotorDriver:
-    return MotorDriverTMC2209(
-        app_state,
-        step_mode=app_state.config.STEP_MODES[app_state.config.DEFAULT_STEP_MODE],
-        current_mA=app_state.config.DEFAULT_CURRENT,
-        current_standstill_mA=app_state.config.DEFAULT_CURRENT_STANDSTILL,
-        invert_direction=app_state.setup_profile.invert_motor_direction,
-        interpolation=app_state.config.USE_INTERPOLATION,
-        spread_cycle=app_state.config.USE_SPREAD_CYCLE,
-        loglevel=log_level,
-        log_handlers=log_handlers,
-        log_formatter=log_formatter,
-    )
+    with ExitStack() as failed_startup_cleanup:
+        failed_startup_cleanup.callback(
+            _detach_log_handlers,
+            "TMC2209",
+            log_handlers,
+        )
+        driver = MotorDriverTMC2209(
+            app_state,
+            step_mode=app_state.config.STEP_MODES[app_state.config.DEFAULT_STEP_MODE],
+            current_mA=app_state.config.DEFAULT_CURRENT,
+            current_standstill_mA=app_state.config.DEFAULT_CURRENT_STANDSTILL,
+            invert_direction=app_state.setup_profile.invert_motor_direction,
+            interpolation=app_state.config.USE_INTERPOLATION,
+            spread_cycle=app_state.config.USE_SPREAD_CYCLE,
+            loglevel=log_level,
+            log_handlers=log_handlers,
+            log_formatter=log_formatter,
+        )
+        failed_startup_cleanup.pop_all()
+        return driver
 
 
 def _create_tmc2660_driver(
@@ -131,21 +140,35 @@ def _create_tmc2660_driver(
     if app_state.config.USE_DUMMY_DRIVER:
         interface_type = "dummy_tmcl"
         port = None
-    return MotorDriverTMC2660(
-        app_state,
-        interface_type=interface_type,
-        port=port,
-        step_mode=app_state.config.STEP_MODES[app_state.config.DEFAULT_STEP_MODE],
-        current_mA=app_state.config.DEFAULT_CURRENT,
-        current_standstill_mA=app_state.config.DEFAULT_CURRENT_STANDSTILL,
-        invert_direction=app_state.setup_profile.invert_motor_direction,
-        chopper_mode=app_state.config.DEFAULT_CHOPPER_MODE,
-        vsense_full_scale=app_state.config.VSENSE_FULL_SCALE,
-        step_dir_source=app_state.config.DEFAULT_STEP_DIR_SOURCE,
-        loglevel=log_level,
-        log_handlers=log_handlers,
-        log_formatter=log_formatter,
-    )
+    with ExitStack() as failed_startup_cleanup:
+        failed_startup_cleanup.callback(
+            _detach_log_handlers,
+            "TMC2660",
+            log_handlers,
+        )
+        driver = MotorDriverTMC2660(
+            app_state,
+            interface_type=interface_type,
+            port=port,
+            step_mode=app_state.config.STEP_MODES[app_state.config.DEFAULT_STEP_MODE],
+            current_mA=app_state.config.DEFAULT_CURRENT,
+            current_standstill_mA=app_state.config.DEFAULT_CURRENT_STANDSTILL,
+            invert_direction=app_state.setup_profile.invert_motor_direction,
+            chopper_mode=app_state.config.DEFAULT_CHOPPER_MODE,
+            vsense_full_scale=app_state.config.VSENSE_FULL_SCALE,
+            step_dir_source=app_state.config.DEFAULT_STEP_DIR_SOURCE,
+            loglevel=log_level,
+            log_handlers=log_handlers,
+            log_formatter=log_formatter,
+        )
+        failed_startup_cleanup.pop_all()
+        return driver
+
+
+def _detach_log_handlers(logger_name: str, handlers: list | None) -> None:
+    logger = logging.getLogger(logger_name)
+    for handler in handlers or ():
+        logger.removeHandler(handler)
 
 
 def _create_tmc5160_driver(
@@ -166,14 +189,19 @@ def _create_tmc5160_driver(
         default_microsteps=step_mode,
         max_current_mA_limit=app_state.config.MAX_CURRENT,
     )
-    logger = TMC5160Logger(
+    logger_owner = TMC5160Logger(
         loglevel=log_level,
         handlers=log_handlers,
         formatter=log_formatter,
-    ).logger
+    )
+    logger = logger_owner.logger
 
     connection = None
     with ExitStack() as failed_startup_cleanup:
+        failed_startup_cleanup.callback(
+            _close_after_failed_startup,
+            logger_owner.remove_all_handlers,
+        )
         if app_state.config.USE_DUMMY_DRIVER:
             motor = DummyStepperMotor(config)
         else:
@@ -199,6 +227,7 @@ def _create_tmc5160_driver(
             is_dummy=app_state.config.USE_DUMMY_DRIVER,
             close=connection.close if connection is not None else None,
             logger=logger,
+            log_handlers=log_handlers,
         )
         adapter.set_chopper_mode(
             getattr(app_state.config, "DEFAULT_CHOPPER_MODE", "SpreadCycle")

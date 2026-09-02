@@ -51,9 +51,9 @@ class TMC2660Logger:
         if handlers is None:
             handlers = [logging.StreamHandler()]
 
+        self._handlers = []
         for handler in handlers:
-            handler.setFormatter(self.formatter)
-            self.logger.addHandler(handler)
+            self.add_handler(handler)
 
         self.logger.propagate = True
 
@@ -74,15 +74,19 @@ class TMC2660Logger:
             formatter = self.formatter
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
+        if handler not in self._handlers:
+            self._handlers.append(handler)
 
     def remove_handler(self, handler):
         """Remove a handler from the logger"""
         self.logger.removeHandler(handler)
+        if handler in self._handlers:
+            self._handlers.remove(handler)
 
     def remove_all_handlers(self):
-        """Remove all handlers from the logger"""
-        for handler in self.logger.handlers:
-            self.logger.removeHandler(handler)
+        """Remove handlers installed through this wrapper."""
+        for handler in tuple(self._handlers):
+            self.remove_handler(handler)
 
     def set_formatter(self, formatter, handlers=None):
         """Set a new formatter for the log messages"""

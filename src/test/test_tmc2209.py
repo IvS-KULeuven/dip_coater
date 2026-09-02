@@ -1,3 +1,4 @@
+import logging
 import threading
 import math
 from types import SimpleNamespace
@@ -105,8 +106,15 @@ def test_limit_switch_bindings_are_isolated_per_driver_instance():
 
 def test_cleanup_stops_worker_before_disabling_and_releasing_gpio():
     calls = []
+    handler = logging.NullHandler()
 
     class CleanupTMC:
+        tmc_logger = SimpleNamespace(
+            remove_handler=lambda removed: calls.append(
+                ("remove_handler", removed)
+            )
+        )
+
         def stop(self, mode):
             calls.append(("stop", mode))
 
@@ -123,6 +131,7 @@ def test_cleanup_stops_worker_before_disabling_and_releasing_gpio():
     driver = MotorDriverTMC2209.__new__(MotorDriverTMC2209)
     driver.tmc = CleanupTMC()
     driver.GPIO = CleanupGPIO()
+    driver._log_handlers = [handler]
 
     driver.cleanup()
 
@@ -131,8 +140,10 @@ def test_cleanup_stops_worker_before_disabling_and_releasing_gpio():
         "join",
         "enabled",
         "gpio_cleanup",
+        "remove_handler",
     ]
     assert calls[2] == ("enabled", False)
+    assert calls[-1] == ("remove_handler", handler)
 
 
 def test_cleanup_attempts_every_step_and_preserves_first_error():

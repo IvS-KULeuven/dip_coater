@@ -42,6 +42,7 @@ class MotorDriverTMC2209(MotorDriver):
         # Stores each limit-switch pin and its electrical trigger edge.
         self.limit_switch_bindings = {}
         self._configured_speed_rps = None
+        self._log_handlers = list(log_handlers or [])
 
         # Get the appropriate GPIO instance
         self.GPIO = app_state.gpio
@@ -530,9 +531,13 @@ class MotorDriverTMC2209(MotorDriver):
 
     def add_log_handler(self, handler):
         self.tmc.tmc_logger.add_handler(handler)
+        if handler not in self._log_handlers:
+            self._log_handlers.append(handler)
 
     def remove_log_handler(self, handler):
         self.tmc.tmc_logger.remove_handler(handler)
+        if handler in self._log_handlers:
+            self._log_handlers.remove(handler)
 
     def cleanup(self):
         """ Clean up the motor driver for shutdown"""
@@ -545,6 +550,13 @@ class MotorDriverTMC2209(MotorDriver):
         ):
             try:
                 cleanup_step()
+            except Exception as error:
+                if first_error is None:
+                    first_error = error
+
+        for handler in tuple(getattr(self, "_log_handlers", ())):
+            try:
+                self.remove_log_handler(handler)
             except Exception as error:
                 if first_error is None:
                     first_error = error

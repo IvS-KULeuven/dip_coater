@@ -382,6 +382,26 @@ def test_adapter_cleanup_disables_motor_and_closes_connection():
     assert closed["value"] is True
 
 
+def test_adapter_cleanup_detaches_owned_log_handlers():
+    motor = FakeStepperMotor()
+    logger = logging.getLogger(f"{__name__}.owned-handler")
+    handler = logging.NullHandler()
+    logger.addHandler(handler)
+    adapter = TrinamicWrapperMotorAdapter(
+        motor,
+        MechanicalSetup(mm_per_revolution=4.0),
+        logger=logger,
+        log_handlers=[handler],
+    )
+
+    try:
+        adapter.cleanup()
+
+        assert handler not in logger.handlers
+    finally:
+        logger.removeHandler(handler)
+
+
 def test_adapter_cleanup_preserves_disable_error_when_close_also_fails(
     monkeypatch,
 ):

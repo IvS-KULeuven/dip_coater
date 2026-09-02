@@ -347,11 +347,14 @@ def test_tmc2660_cleanup_stops_before_disabling_and_closing():
     driver.stop_motor = lambda: calls.append("stop")
     driver.disable_motor = lambda: calls.append("disable")
     driver.interface = SimpleNamespace(close=lambda: calls.append("close"))
-    driver.logger = SimpleNamespace(log=lambda *args: calls.append("log"))
+    driver.logger = SimpleNamespace(
+        log=lambda *args: calls.append("log"),
+        remove_all_handlers=lambda: calls.append("remove_handlers"),
+    )
 
     driver.cleanup()
 
-    assert calls == ["stop", "disable", "close", "log"]
+    assert calls == ["stop", "disable", "close", "log", "remove_handlers"]
 
 
 def test_tmc2660_cleanup_attempts_every_step_after_stop_failure():
@@ -365,12 +368,15 @@ def test_tmc2660_cleanup_attempts_every_step_after_stop_failure():
     driver.stop_motor = fail_stop
     driver.disable_motor = lambda: calls.append("disable")
     driver.interface = SimpleNamespace(close=lambda: calls.append("close"))
-    driver.logger = SimpleNamespace(log=lambda *args: calls.append("log"))
+    driver.logger = SimpleNamespace(
+        log=lambda *args: calls.append("log"),
+        remove_all_handlers=lambda: calls.append("remove_handlers"),
+    )
 
     with pytest.raises(RuntimeError, match="stop failed"):
         driver.cleanup()
 
-    assert calls == ["stop", "disable", "close"]
+    assert calls == ["stop", "disable", "close", "remove_handlers"]
 
 
 def test_tmc2660_closes_real_interface_when_board_initialization_fails(

@@ -1,4 +1,5 @@
 import importlib
+import logging
 import sys
 import types
 from types import SimpleNamespace
@@ -162,8 +163,12 @@ def _make_app_state():
         DEFAULT_CURRENT_STANDSTILL=70,
         DEFAULT_ACCELERATION=10,
         USE_INTERPOLATION=True,
+        USE_SPREAD_CYCLE=False,
         DEFAULT_RSENSE=75,
         MAX_CURRENT=4000,
+        DEFAULT_CHOPPER_MODE="SpreadCycle",
+        VSENSE_FULL_SCALE=object(),
+        DEFAULT_STEP_DIR_SOURCE=object(),
     )
     return SimpleNamespace(
         config=config,
@@ -330,6 +335,80 @@ def test_create_tmc5160_driver_closes_connection_after_configuration_failure(
         )
 
     assert fake_conn.closed is True
+
+
+def test_tmc5160_startup_failure_detaches_owned_log_handlers(monkeypatch):
+    app_state = _make_app_state()
+    app_state.setup_profile = _driver_registry.get_driver_spec(
+        "TMC5160"
+    ).adjust_setup_profile(app_state.setup_profile)
+    handler = logging.NullHandler()
+    logger = logging.getLogger("TMC5160")
+
+    class FaultingMotor(FakeMotor):
+        def set_run_current_mA(self, current_mA):
+            raise RuntimeError("current configuration failed")
+
+    monkeypatch.setattr(
+        "dip_coater.motor_driver.driver_registry.open_connection",
+        lambda **_kwargs: SimpleNamespace(connect=FakeConn),
+    )
+    monkeypatch.setattr(
+        "dip_coater.motor_driver.driver_registry.create_motor",
+        lambda *_args, **_kwargs: FaultingMotor(),
+    )
+
+    try:
+        with pytest.raises(RuntimeError, match="current configuration failed"):
+            _create_tmc5160_driver(
+                app_state,
+                log_level=TMC5160LogLevel.INFO,
+                log_handlers=[handler],
+                log_formatter=None,
+                interface_type="usb_tmcl",
+                port="/dev/tty.test",
+            )
+
+        assert handler not in logger.handlers
+    finally:
+        logger.removeHandler(handler)
+
+
+@pytest.mark.parametrize(
+    ("factory_name", "driver_type_name", "logger_name"),
+    [
+        ("_create_tmc2209_driver", "MotorDriverTMC2209", "TMC2209"),
+        ("_create_tmc2660_driver", "MotorDriverTMC2660", "TMC2660"),
+    ],
+)
+def test_legacy_startup_failure_detaches_owned_log_handlers(
+    monkeypatch,
+    factory_name,
+    driver_type_name,
+    logger_name,
+):
+    app_state = _make_app_state()
+    handler = logging.NullHandler()
+    logger = logging.getLogger(logger_name)
+
+    def fail_constructor(*_args, **_kwargs):
+        logger.addHandler(handler)
+        raise RuntimeError("driver construction failed")
+
+    monkeypatch.setattr(_driver_registry, driver_type_name, fail_constructor)
+
+    try:
+        with pytest.raises(RuntimeError, match="driver construction failed"):
+            getattr(_driver_registry, factory_name)(
+                app_state,
+                log_level=TMC5160LogLevel.INFO,
+                log_handlers=[handler],
+                log_formatter=None,
+            )
+
+        assert handler not in logger.handlers
+    finally:
+        logger.removeHandler(handler)
 
 
 def test_create_tmc5160_dummy_driver_uses_wrapper_adapter(monkeypatch):
