@@ -484,8 +484,14 @@ class MotorDriverTMC2209(MotorDriver):
 
     def cleanup(self):
         """ Clean up the motor driver for shutdown"""
-        self.disable_motor()
-        self.GPIO.cleanup()
+        try:
+            self.stop_motor()
+            self.wait_for_motor_done()
+        finally:
+            try:
+                self.disable_motor()
+            finally:
+                self.GPIO.cleanup()
         del self.tmc
 
 

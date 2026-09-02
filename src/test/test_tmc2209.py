@@ -99,3 +99,35 @@ def test_limit_switch_bindings_are_isolated_per_driver_instance():
 
     assert first.limit_switch_bindings == {1: GpioEdge.RISING}
     assert second.limit_switch_bindings == {}
+
+
+def test_cleanup_stops_worker_before_disabling_and_releasing_gpio():
+    calls = []
+
+    class CleanupTMC:
+        def stop(self, mode):
+            calls.append(("stop", mode))
+
+        def wait_for_movement_finished_threaded(self):
+            calls.append(("join",))
+
+        def set_motor_enabled(self, enabled):
+            calls.append(("enabled", enabled))
+
+    class CleanupGPIO:
+        def cleanup(self):
+            calls.append(("gpio_cleanup",))
+
+    driver = MotorDriverTMC2209.__new__(MotorDriverTMC2209)
+    driver.tmc = CleanupTMC()
+    driver.GPIO = CleanupGPIO()
+
+    driver.cleanup()
+
+    assert [call[0] for call in calls] == [
+        "stop",
+        "join",
+        "enabled",
+        "gpio_cleanup",
+    ]
+    assert calls[2] == ("enabled", False)
