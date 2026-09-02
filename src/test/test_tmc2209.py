@@ -134,6 +134,42 @@ def test_cleanup_stops_worker_before_disabling_and_releasing_gpio():
     assert calls[2] == ("enabled", False)
 
 
+def test_cleanup_attempts_every_step_and_preserves_first_error():
+    calls = []
+
+    class FaultingCleanupTMC:
+        def stop(self, mode):
+            calls.append(("stop", mode))
+            raise RuntimeError("stop failed")
+
+        def wait_for_movement_finished_threaded(self):
+            calls.append(("join",))
+            raise RuntimeError("join failed")
+
+        def set_motor_enabled(self, enabled):
+            calls.append(("enabled", enabled))
+            raise RuntimeError("disable failed")
+
+    class FaultingCleanupGPIO:
+        def cleanup(self):
+            calls.append(("gpio_cleanup",))
+            raise RuntimeError("gpio cleanup failed")
+
+    driver = MotorDriverTMC2209.__new__(MotorDriverTMC2209)
+    driver.tmc = FaultingCleanupTMC()
+    driver.GPIO = FaultingCleanupGPIO()
+
+    with pytest.raises(RuntimeError, match="stop failed"):
+        driver.cleanup()
+
+    assert [call[0] for call in calls] == [
+        "stop",
+        "join",
+        "enabled",
+        "gpio_cleanup",
+    ]
+
+
 def test_configured_speed_can_be_read_for_timeout_estimates():
     driver = MotorDriverTMC2209.__new__(MotorDriverTMC2209)
     driver.mechanical_setup = MechanicalSetup(mm_per_revolution=4.0)

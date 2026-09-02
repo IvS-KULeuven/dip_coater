@@ -493,15 +493,21 @@ class MotorDriverTMC2209(MotorDriver):
 
     def cleanup(self):
         """ Clean up the motor driver for shutdown"""
-        try:
-            self.stop_motor()
-            self.wait_for_motor_done()
-        finally:
+        first_error = None
+        for cleanup_step in (
+            self.stop_motor,
+            self.wait_for_motor_done,
+            self.disable_motor,
+            self.GPIO.cleanup,
+        ):
             try:
-                self.disable_motor()
-            finally:
-                self.GPIO.cleanup()
-        del self.tmc
+                cleanup_step()
+            except Exception as error:
+                if first_error is None:
+                    first_error = error
+
+        if first_error is not None:
+            raise first_error
 
 
 if __name__ == "__main__":
