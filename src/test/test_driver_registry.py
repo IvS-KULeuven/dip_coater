@@ -39,6 +39,9 @@ if "dip_coater.motor_driver.tmc2209" not in sys.modules:
 
 _driver_registry = importlib.import_module("dip_coater.motor_driver.driver_registry")
 _create_tmc5160_driver = _driver_registry._create_tmc5160_driver
+_prepare_tmc5160_motor_for_startup = (
+    _driver_registry._prepare_tmc5160_motor_for_startup
+)
 
 
 class FakeConn:
@@ -256,6 +259,42 @@ def test_create_tmc5160_driver_uses_trinamic_wrapper_adapter(monkeypatch):
     driver.cleanup()
     assert fake_motor.disabled is True
     assert fake_conn.closed is True
+
+
+def test_tmc5160_startup_attempts_all_safety_actions_after_stop_failure():
+    calls = []
+
+    class FaultingStartupMotor:
+        def stop(self):
+            calls.append("stop")
+            raise RuntimeError("stop failed")
+
+        def disable(self):
+            calls.append("disable")
+
+        def enable_reference_stops(self, *, left, right):
+            calls.append(("reference_stops", left, right))
+
+        def get_actual_position_rot(self):
+            calls.append("position")
+            return 0.0
+
+        def get_actual_speed_rps(self):
+            calls.append("speed")
+            return 0.0
+
+    logger = SimpleNamespace(error=lambda _message: None)
+
+    with pytest.raises(RuntimeError, match="startup initialization failed"):
+        _prepare_tmc5160_motor_for_startup(FaultingStartupMotor(), logger)
+
+    assert calls == [
+        "stop",
+        "disable",
+        ("reference_stops", False, False),
+        "position",
+        "speed",
+    ]
 
 
 def test_create_tmc5160_dummy_driver_uses_wrapper_adapter(monkeypatch):
