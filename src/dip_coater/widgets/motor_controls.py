@@ -271,6 +271,9 @@ class MotorControls(Static):
         log.write(f"[cyan]Starting limit switch homing ({speed=} mm/s)...[/]")
         self.set_motor_state("homing")
         await asyncio.sleep(0.1)
+        if self.app_state.motor_state != "homing":
+            log.write("[dark_orange]-> Homing aborted before starting.[/]")
+            return
         home_direction = (
             None
             if home_up is None

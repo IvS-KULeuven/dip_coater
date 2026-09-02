@@ -25,6 +25,7 @@ class FakeMotionController:
 
     def __init__(self):
         self.wait_started = asyncio.Event()
+        self.home_started = asyncio.Event()
         self.stopped = False
         self.disabled = False
         self.wait_cancelled = False
@@ -45,6 +46,10 @@ class FakeMotionController:
             self.wait_cancelled = True
             raise
 
+    async def home_async(self, speed_mm_s, home_direction=None):
+        self.home_started.set()
+        await asyncio.Event().wait()
+
     def stop_motor(self):
         self.stopped = True
 
@@ -54,6 +59,9 @@ class FakeMotionController:
 
 class FakeAdvancedSettings:
     def get_acceleration(self):
+        return 1.0
+
+    def get_homing_speed(self):
         return 1.0
 
 
@@ -157,6 +165,30 @@ async def test_stop_during_motion_preflight_prevents_command_submission(method_n
         await asyncio.wait_for(move_task, 1.0)
 
     assert not hasattr(app_state.motion_controller, "move")
+    assert app_state.motion_controller.stopped is True
+    assert app_state.motion_controller.disabled is True
+    assert app_state.motor_state == "disabled"
+
+
+@pytest.mark.asyncio
+async def test_stop_during_homing_preflight_prevents_homing_command():
+    app_state = FakeAppState()
+    app = EmergencyStopHarness(app_state)
+
+    async with app.run_test():
+        app_state.motor_controls.set_homing_found = lambda value: None
+        homing_task = asyncio.create_task(app_state.motor_controls.perform_homing())
+        while app_state.motor_state != "homing":
+            await asyncio.sleep(0)
+
+        await app_state.motor_controls.disable_motor_action()
+        try:
+            await asyncio.sleep(0.15)
+            assert app_state.motion_controller.home_started.is_set() is False
+        finally:
+            homing_task.cancel()
+            await asyncio.gather(homing_task, return_exceptions=True)
+
     assert app_state.motion_controller.stopped is True
     assert app_state.motion_controller.disabled is True
     assert app_state.motor_state == "disabled"
