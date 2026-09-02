@@ -611,6 +611,21 @@ def test_motion_controller_rejects_nonpositive_or_nonfinite_distance(
     assert driver.moves == []
 
 
+@pytest.mark.parametrize("method_name", ["move_up", "move_down"])
+@pytest.mark.parametrize("distance_mm", [True, "1"])
+def test_motion_controller_rejects_malformed_distance_without_driver_calls(
+    method_name, distance_mm
+):
+    profile = get_machine_profile(AvailableMachineSetups.SMALL_COATER)
+    driver = FakeDriver()
+    controller = MotionController(driver, profile)
+
+    with pytest.raises(ValueError, match="distance_mm must be finite and positive"):
+        getattr(controller, method_name)(distance_mm, 1.0)
+
+    assert driver.moves == []
+
+
 @pytest.mark.parametrize("speed_mm_s", [0.0, -1.0, float("nan"), float("inf")])
 def test_motion_controller_rejects_nonpositive_or_nonfinite_speed(speed_mm_s):
     profile = get_machine_profile(AvailableMachineSetups.SMALL_COATER)
@@ -652,6 +667,68 @@ def test_motion_controller_validates_absolute_motion_inputs(
         controller.move_to_position(position_mm, speed_mm_s)
 
     assert driver.last_run_to_position is None
+
+
+@pytest.mark.parametrize("position_mm", [True, "1"])
+def test_motion_controller_rejects_malformed_absolute_positions(position_mm):
+    profile = get_machine_profile(AvailableMachineSetups.SMALL_COATER)
+    driver = FakeDriver()
+    controller = MotionController(driver, profile)
+
+    with pytest.raises(ValueError, match="position_mm must be finite"):
+        controller.move_to_position(position_mm, 1.0)
+
+    assert driver.last_run_to_position is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("timeout_s", [-1.0, float("nan"), True, "1"])
+async def test_motion_controller_rejects_invalid_wait_timeout_before_waiting(
+    timeout_s,
+):
+    profile = get_machine_profile(AvailableMachineSetups.SMALL_COATER)
+
+    class CountingWaitDriver(FakeDriver):
+        def __init__(self):
+            super().__init__()
+            self.wait_calls = 0
+
+        async def wait_for_motor_done_async(self):
+            self.wait_calls += 1
+
+    driver = CountingWaitDriver()
+    controller = MotionController(driver, profile)
+
+    with pytest.raises(ValueError, match="timeout_s must be finite and non-negative"):
+        await controller.wait_for_motor_done_async(timeout_s=timeout_s)
+
+    assert driver.wait_calls == 0
+
+
+@pytest.mark.asyncio
+async def test_motion_controller_rejects_invalid_active_limit_direction():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
+    )
+
+    class CountingWaitDriver(FakeReferenceSwitchDriver):
+        def __init__(self):
+            super().__init__()
+            self.wait_calls = 0
+
+        async def wait_for_motor_done_async(self):
+            self.wait_calls += 1
+
+    driver = CountingWaitDriver()
+    controller = MotionController(driver, profile)
+
+    with pytest.raises(ValueError, match="HomeDirection"):
+        await controller.wait_for_motor_done_async(active_limit_direction="up")
+
+    assert driver.wait_calls == 0
 
 
 @pytest.mark.parametrize("speed_mm_s", [0.0, -1.0, float("nan"), float("inf")])
@@ -962,6 +1039,32 @@ def test_failed_rehome_invalidates_previous_home_reference():
     assert driver.cleared_homing is True
     assert driver.homed is False
     assert driver.moves == []
+
+
+def test_invalid_homing_direction_preserves_existing_home_reference():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
+    )
+    driver = FakeReferenceSwitchDriver()
+    driver.homed = True
+    controller = MotionController(driver, profile)
+
+    with pytest.raises(ValueError, match="HomeDirection"):
+        controller.home(1.0, home_direction="up")
+
+    assert driver.cleared_homing is False
+    assert driver.homed is True
+    assert driver.moves == []
+
+
+def test_limit_switch_selection_requires_direction_enum():
+    switches = LimitSwitchSetup.tmc5160_reference()
+
+    with pytest.raises(ValueError, match="HomeDirection"):
+        switches.switch_for("up")
 
 
 def test_motion_controller_backs_off_home_switch_before_homing():

@@ -132,6 +132,10 @@ class MotionController:
         :return: Driver-specific completion result or a status string.
         """
         timeout_s = self._last_motion_timeout_s if timeout_s is None else timeout_s
+        if timeout_s is not None:
+            self._require_nonnegative_finite("timeout_s", timeout_s)
+        if active_limit_direction is not None:
+            self._require_home_direction(active_limit_direction)
         try:
             if active_limit_direction is None or not self.supports_limit_switches:
                 return await self._wait_for_driver_done_with_timeout(timeout_s)
@@ -301,7 +305,7 @@ class MotionController:
         :param speed_mm_s: Optional speed in millimeters per second.
         :param acceleration_mm_s2: Optional acceleration in millimeters per second squared.
         """
-        if not math.isfinite(position_mm):
+        if not self._is_finite_number(position_mm):
             raise ValueError("position_mm must be finite")
         self._require_positive_finite("speed_mm_s", speed_mm_s, allow_none=True)
         self._require_positive_finite(
@@ -349,13 +353,14 @@ class MotionController:
         :return: ``True`` when the home reference was found.
         """
         self._require_positive_finite("speed_mm_s", speed_mm_s)
+        if home_direction is None:
+            home_direction = self.machine_profile.home_direction
+        self._require_home_direction(home_direction)
         if not self.supports_homing:
             raise ValueError(
                 "The current driver/setup combination does not support homing."
             )
         self._clear_homing_reference()
-        if home_direction is None:
-            home_direction = self.machine_profile.home_direction
         self.session_log.write(
             "homing_requested",
             direction=home_direction.value,
@@ -388,13 +393,14 @@ class MotionController:
         :return: ``True`` when the home reference was found.
         """
         self._require_positive_finite("speed_mm_s", speed_mm_s)
+        if home_direction is None:
+            home_direction = self.machine_profile.home_direction
+        self._require_home_direction(home_direction)
         if not self.supports_homing:
             raise ValueError(
                 "The current driver/setup combination does not support homing."
             )
         self._clear_homing_reference()
-        if home_direction is None:
-            home_direction = self.machine_profile.home_direction
         self.session_log.write(
             "homing_requested",
             direction=home_direction.value,
@@ -800,8 +806,27 @@ class MotionController:
     ) -> None:
         if value is None and allow_none:
             return
-        if value is None or not math.isfinite(value) or value <= 0:
+        if not MotionController._is_finite_number(value) or value <= 0:
             raise ValueError(f"{name} must be finite and positive")
+
+    @staticmethod
+    def _require_nonnegative_finite(name: str, value: float) -> None:
+        if not MotionController._is_finite_number(value) or value < 0:
+            raise ValueError(f"{name} must be finite and non-negative")
+
+    @staticmethod
+    def _is_finite_number(value) -> bool:
+        if isinstance(value, bool):
+            return False
+        try:
+            return math.isfinite(value)
+        except (TypeError, ValueError):
+            return False
+
+    @staticmethod
+    def _require_home_direction(direction: HomeDirection) -> None:
+        if not isinstance(direction, HomeDirection):
+            raise ValueError("direction must be a HomeDirection")
 
     @staticmethod
     def _estimate_motion_timeout_s(
@@ -830,7 +855,7 @@ class MotionController:
         speed_mm_s = abs(
             self.machine_profile.mechanical_setup.rps_to_mm_s(speed_rps)
         )
-        if not math.isfinite(speed_mm_s) or speed_mm_s <= 0:
+        if not self._is_finite_number(speed_mm_s) or speed_mm_s <= 0:
             return None
         return speed_mm_s
 

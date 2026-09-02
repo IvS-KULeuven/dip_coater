@@ -237,6 +237,8 @@ class LimitSwitchSetup:
         :param direction: Direction whose limit switch should be returned.
         :return: Configured switch for that direction.
         """
+        if not isinstance(direction, HomeDirection):
+            raise ValueError("direction must be a HomeDirection")
         return self.up if direction == HomeDirection.UP else self.down
 
 
