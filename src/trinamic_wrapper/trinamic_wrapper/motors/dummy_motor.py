@@ -125,7 +125,7 @@ class DummyStepperMotor:
         if not isinstance(direction, Direction):
             raise ValueError("direction must be a Direction")
         self._update_motion_state()
-        delta_rot = abs(revolutions) * int(direction)
+        delta_rot = revolutions * int(direction)
         duration_s = self._duration_for_revolutions(abs(delta_rot))
         if duration_s <= 0:
             self._position_rot += delta_rot

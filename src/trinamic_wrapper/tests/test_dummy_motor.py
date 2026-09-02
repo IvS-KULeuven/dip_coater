@@ -113,3 +113,11 @@ def test_dummy_motor_slower_speed_takes_longer(monkeypatch):
 
     clock.advance(2.0)
     assert motor.wait_until_reached(timeout_s=0.0) is True
+
+
+def test_dummy_motor_preserves_signed_relative_revolutions():
+    motor = DummyStepperMotor()
+
+    motor.rotate_by(-1.0, direction=Direction.CW)
+
+    assert motor.get_actual_position_rot() == pytest.approx(-1.0)
