@@ -1,5 +1,7 @@
 from types import SimpleNamespace
 
+import pytest
+
 from dip_coater.utils.SettingChanged import SettingChanged
 from dip_coater.widgets.advanced.advanced_settings_base import (
     COMMON_ADVANCED_GROUP_TITLE,
@@ -49,6 +51,44 @@ def test_advanced_setting_events_are_ignored_during_motion():
     AdvancedSettingsTab.on_setting_changed(tab, SettingChanged("current", 500))
 
     assert calls == []
+
+
+def test_advanced_setting_driver_failure_uses_motion_fault_handler():
+    updates = []
+    faults = []
+    failure = RuntimeError("register write failed")
+
+    def fail_current(_value):
+        raise failure
+
+    app_state = SimpleNamespace(
+        motor_state="enabled",
+        motor_driver=SimpleNamespace(set_current=fail_current),
+        status_advanced=SimpleNamespace(
+            update_current=lambda value: updates.append(value)
+        ),
+        motor_controls=SimpleNamespace(
+            handle_motion_fault=lambda error, operation: faults.append(
+                (error, operation)
+            )
+        ),
+    )
+    tab = SimpleNamespace(app_state=app_state)
+
+    AdvancedSettingsTab.on_setting_changed(tab, SettingChanged("current", 500))
+
+    assert faults == [(failure, "Update current setting")]
+    assert updates == []
+
+
+def test_unknown_advanced_setting_remains_a_programming_error():
+    app_state = SimpleNamespace(motor_state="enabled")
+    tab = SimpleNamespace(app_state=app_state)
+
+    with pytest.raises(ValueError, match="Unsupported setting"):
+        AdvancedSettingsTab.on_setting_changed(
+            tab, SettingChanged("unknown", 1)
+        )
 
 
 def test_step_mode_changes_are_ignored_during_motion():

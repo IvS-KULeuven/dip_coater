@@ -6,6 +6,29 @@ from dip_coater.utils.SettingChanged import SettingChanged
 from dip_coater.motor_driver.driver_registry import get_driver_spec
 
 
+_SUPPORTED_SETTING_NAMES = frozenset({
+    "acceleration",
+    "current",
+    "current_standstill",
+    "invert_direction",
+    "interpolation",
+    "chopper_mode",
+    "stealthchop_enabled",
+    "stealthchop_threshold",
+    "spread_cycle",
+    "stallguard_enabled",
+    "stallguard_filter_enabled",
+    "stallguard_threshold",
+    "coolstep_enabled",
+    "coolstep_threshold",
+    "threshold_speed",
+    "threshold_speed_enabled",
+    "homing_revs",
+    "homing_threshold",
+    "homing_speed",
+})
+
+
 class AdvancedSettingsTab(TabPane):
     def __init__(self, app_state):
         super().__init__("Advanced", id="advanced-tab")
@@ -32,6 +55,16 @@ class AdvancedSettingsTab(TabPane):
     def on_setting_changed(self, event: SettingChanged):
         if self.app_state.motor_state in ("moving", "homing"):
             return
+        if event.setting_name not in _SUPPORTED_SETTING_NAMES:
+            raise ValueError(f"Unsupported setting: '{event.setting_name}'")
+        try:
+            AdvancedSettingsTab._apply_setting(self, event)
+        except Exception as error:
+            self.app_state.motor_controls.handle_motion_fault(
+                error, f"Update {event.setting_name} setting"
+            )
+
+    def _apply_setting(self, event: SettingChanged) -> None:
         match event.setting_name:
             case "acceleration":
                 self.app_state.motor_driver.set_acceleration(event.value)
@@ -96,5 +129,3 @@ class AdvancedSettingsTab(TabPane):
                 self.app_state.status_advanced.update_homing_threshold(event.value)
             case "homing_speed":
                 self.app_state.status_advanced.update_homing_speed(event.value)
-            case _:
-                raise ValueError(f"Unsupported setting: '{event.setting_name}'")
