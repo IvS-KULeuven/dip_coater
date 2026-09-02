@@ -3,6 +3,7 @@ import logging
 import pytest
 
 from dip_coater.mechanical.mechanical_setup import MechanicalSetup
+from dip_coater.motor_driver import trinamic_adapter
 from dip_coater.motor_driver.trinamic_adapter import TrinamicWrapperMotorAdapter
 from trinamic_wrapper import Direction, StepMode
 
@@ -302,6 +303,19 @@ def test_adapter_sync_wait_polls_until_reached():
 
     assert motor.position_sequence == []
     assert motor.speed_sequence == []
+
+
+def test_adapter_sync_wait_sleeps_between_status_polls(monkeypatch):
+    adapter = make_adapter()
+    reached = iter((False, False, True))
+    sleep_calls = []
+    adapter._is_target_reached = lambda: next(reached)
+    adapter._finalize_completed_move = lambda: True
+    monkeypatch.setattr(trinamic_adapter.time, "sleep", sleep_calls.append)
+
+    adapter._wait_for_target_reached()
+
+    assert sleep_calls == [0.05, 0.05]
 
 
 @pytest.mark.asyncio

@@ -23,6 +23,7 @@ _MICROSTEPS_TO_STEP_MODE = {
     128: StepMode.USTEP_128,
     256: StepMode.USTEP_256,
 }
+_MOTION_POLL_INTERVAL_S = 0.05
 
 
 class TrinamicWrapperMotorAdapter(MotorDriver):
@@ -116,7 +117,7 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
             if self._is_target_reached():
                 if await self._finalize_completed_move_async():
                     break
-            await asyncio.sleep(0.05)
+            await asyncio.sleep(_MOTION_POLL_INTERVAL_S)
         self._target_position_rot = None
         self._logger.info("Motor done")
 
@@ -415,6 +416,7 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
             if self._is_target_reached():
                 if self._finalize_completed_move():
                     break
+            time.sleep(_MOTION_POLL_INTERVAL_S)
         self._target_position_rot = None
 
     def _is_target_reached(self) -> bool:
@@ -487,7 +489,7 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
             return True
         self._hold_completed_move_position()
         for _ in range(4):
-            time.sleep(0.05)
+            time.sleep(_MOTION_POLL_INTERVAL_S)
             if not self._completed_move_is_stable():
                 return False
         return True
@@ -497,7 +499,7 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
             return True
         self._hold_completed_move_position()
         for _ in range(4):
-            await asyncio.sleep(0.05)
+            await asyncio.sleep(_MOTION_POLL_INTERVAL_S)
             if not self._completed_move_is_stable():
                 return False
         return True
