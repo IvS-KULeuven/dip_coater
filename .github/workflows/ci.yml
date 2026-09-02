@@ -88,6 +88,9 @@ jobs:
       - name: Run Ruff
         run: uv run ruff check .
 
+      - name: Run gradual type checks
+        run: uv run mypy
+
       - name: Build documentation
         run: uv run --extra docs mkdocs build --strict
 

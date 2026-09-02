@@ -2,6 +2,7 @@ import asyncio
 import math
 import time
 from collections.abc import Callable
+from typing import cast
 
 from dip_coater.gpio import GpioEdge, GpioMode, GpioPUD, GpioState
 from dip_coater.logging.session_log import NullSessionLog
@@ -169,6 +170,7 @@ class MotionController:
                     self._record_limit_switch_stop(active_limit_direction)
                     return f"{active_limit_direction.value} limit switch triggered"
                 if deadline is not None and loop.time() >= deadline:
+                    assert timeout_s is not None
                     return await self._timeout_wait_task(wait_task, timeout_s)
                 await asyncio.sleep(0.05)
             result = await wait_task
@@ -447,13 +449,19 @@ class MotionController:
             else -self.machine_profile.homing_max_distance_mm
         )
         switches = self.machine_profile.limit_switches
-        return self.motor_driver.do_limit_switch_homing(
-            switches.up_pin,
-            switches.down_pin,
-            distance,
-            speed_mm_s,
-            switches.up_nc,
-            switches.down_nc,
+        assert switches is not None
+        assert switches.up_pin is not None
+        assert switches.down_pin is not None
+        return cast(
+            bool,
+            self.motor_driver.do_limit_switch_homing(
+                switches.up_pin,
+                switches.down_pin,
+                distance,
+                speed_mm_s,
+                switches.up_nc,
+                switches.down_nc,
+            ),
         )
 
     def _home_via_driver_reference(
@@ -656,7 +664,7 @@ class MotionController:
 
         :return: ``True`` when homing has completed successfully.
         """
-        return self.motor_driver.is_homing_found()
+        return cast(bool, self.motor_driver.is_homing_found())
 
     def cleanup(self):
         """Stop motion, disable power, and release resources exactly once."""
@@ -696,8 +704,10 @@ class MotionController:
         if not self.supports_gpio_limit_switches:
             return
         switches = self.machine_profile.limit_switches
+        assert switches is not None
         for switch in (switches.up, switches.down):
             if switch.source == LimitSwitchSource.GPIO:
+                assert switch.pin is not None
                 self._setup_limit_switch_io(switch.pin)
 
     def _setup_limit_switch_io(self, pin: int):
@@ -710,9 +720,12 @@ class MotionController:
         ):
             return
         switches = self.machine_profile.limit_switches
+        assert switches is not None
         if switches.up.source == LimitSwitchSource.GPIO:
+            assert switches.up_pin is not None
             self.motor_driver.bind_limit_switch(switches.up_pin, NC=switches.up_nc)
         if switches.down.source == LimitSwitchSource.GPIO:
+            assert switches.down_pin is not None
             self.motor_driver.bind_limit_switch(
                 switches.down_pin, NC=switches.down_nc
             )
@@ -760,14 +773,16 @@ class MotionController:
                 if direction == HomeDirection.UP
                 else self.motor_driver.get_right_endstop()
             )
-            triggered = switch.is_triggered(raw_state)
+            triggered = cast(bool, switch.is_triggered(cast(bool, raw_state)))
             if not triggered:
                 self._reenable_driver_reference_stop(direction)
             return triggered
         if switch.source == LimitSwitchSource.GPIO:
             if not self.supports_gpio_limit_switches:
                 return False
-            return switch.is_triggered(self.gpio.input(switch.pin) == GpioState.HIGH)
+            assert switch.pin is not None
+            raw_state = self.gpio.input(switch.pin) == GpioState.HIGH
+            return cast(bool, switch.is_triggered(cast(bool, raw_state)))
         return False
 
     def disable_driver_reference_stop_until_clear(
@@ -836,8 +851,10 @@ class MotionController:
     def _require_positive_finite(
         name: str, value: float | None, *, allow_none: bool = False
     ) -> None:
-        if value is None and allow_none:
-            return
+        if value is None:
+            if allow_none:
+                return
+            raise ValueError(f"{name} must be finite and positive")
         if not MotionController._is_finite_number(value) or value <= 0:
             raise ValueError(f"{name} must be finite and positive")
 

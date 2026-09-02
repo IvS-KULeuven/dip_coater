@@ -241,11 +241,10 @@ class MechanicalSetup:
         :param acceleration_mm_s2: Linear acceleration in millimeters per second squared.
         :return: Rotations per minute per minute, or ``None`` for a falsey input.
         """
-        return (
-            None
-            if not acceleration_mm_s2
-            else self.mm_s2_to_rpss(acceleration_mm_s2) * 3600
-        )
+        if not acceleration_mm_s2:
+            return None
+        acceleration_rpss = self.mm_s2_to_rpss(acceleration_mm_s2)
+        return None if acceleration_rpss is None else acceleration_rpss * 3600
 
     def rpmm_to_mm_s2(self, rpmm: float | None) -> float | None:
         """Convert rotations per minute per minute to linear acceleration.

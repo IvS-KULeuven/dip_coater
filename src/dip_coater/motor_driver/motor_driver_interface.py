@@ -48,7 +48,7 @@ class MotorDriver(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def rotate(self, revs: float, rps: float, rpss: float = None):
+    def rotate(self, revs: float, rps: float, rpss: float | None = None):
         """Rotate clock-wise (viewed from the top of the motor axle)
 
         :param revs: number of revolutions to turn (> 0 = clock-wise, < 0 = counter-clock-wise)
@@ -63,7 +63,7 @@ class MotorDriver(ABC):
         self,
         distance_mm: float,
         speed_mm_s: float,
-        acceleration_mm_s2: float = None,
+        acceleration_mm_s2: float | None = None,
         *args,
         **kwargs,
     ):
@@ -80,7 +80,7 @@ class MotorDriver(ABC):
         self,
         distance_mm: float,
         speed_mm_s: float,
-        acceleration_mm_s2: float = None,
+        acceleration_mm_s2: float | None = None,
         *args,
         **kwargs,
     ):
@@ -126,8 +126,8 @@ class MotorDriver(ABC):
     def run_to_position(
         self,
         position_mm: float,
-        speed_mm_s: float = None,
-        acceleration_mm_s2: float = None,
+        speed_mm_s: float | None = None,
+        acceleration_mm_s2: float | None = None,
         homed_up: bool = True,
     ):
         """Move to an absolute position in the homed coordinate system.
@@ -157,7 +157,7 @@ class MotorDriver(ABC):
         """
         raise NotImplementedError()
 
-    def set_speed(self, speed_mm_s: float):
+    def set_speed(self, speed_mm_s: float | None):
         """Set the motor speed.
 
         :param speed_mm_s: The speed in mm/s
@@ -175,7 +175,7 @@ class MotorDriver(ABC):
         """
         raise NotImplementedError()
 
-    def set_acceleration(self, acceleration_mm_s2: float):
+    def set_acceleration(self, acceleration_mm_s2: float | None):
         """Set the motor acceleration.
 
         :param acceleration_mm_s2: The acceleration/deceleration to use for the movement in mm/s^2
@@ -183,7 +183,8 @@ class MotorDriver(ABC):
         if acceleration_mm_s2 is None:
             return
         rpss = self.mechanical_setup.mm_s2_to_rpss(acceleration_mm_s2)
-        self.set_acceleration_rpss(rpss)
+        if rpss is not None:
+            self.set_acceleration_rpss(rpss)
 
     @abstractmethod
     def set_microsteps(self, microsteps: int):

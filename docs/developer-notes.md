@@ -34,6 +34,20 @@ These are full application tests but never access physical hardware. They use
 the same `initialize_runtime()` construction path as the command-line entry
 point.
 
+## Gradual typing
+
+Run the current static-analysis scope with:
+
+```bash
+uv run mypy
+```
+
+The `[tool.mypy]` `files` list in `pyproject.toml` deliberately starts with the
+mechanical model, machine profiles, driver interface, and motion service. New
+code in those boundaries must keep the check green. Expand the list one module
+at a time, fixing that module's errors in the same commit; do not silence whole
+packages to make the scope appear larger.
+
 Run hardware tests only when the correct hardware is connected.
 
 The main CI workflow runs the non-hardware suite on the minimum supported
