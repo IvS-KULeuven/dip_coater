@@ -111,6 +111,29 @@ class MotorControls(Static):
         if self._motion_wait_task is not None and not self._motion_wait_task.done():
             self._motion_wait_task.cancel()
 
+    def _stop_and_disable_safely(self) -> None:
+        for safety_action in (
+            self.app_state.motion_controller.stop_motor,
+            self.app_state.motion_controller.disable_motor,
+        ):
+            try:
+                safety_action()
+            except Exception:
+                pass
+
+    def handle_motion_fault(self, error: Exception, operation: str) -> None:
+        """Put the UI and motor into a fail-safe state after a driver error."""
+        self._stop_and_disable_safely()
+        self.set_motor_state("fault")
+        self.app.query_one("#logger", RichLog).write(
+            f"[red]{operation} failed; motor stopped and disabled: {error}[/]"
+        )
+
+    def disable_after_abnormal_stop(self) -> None:
+        """Keep UI state aligned with a fail-safe stopped motor."""
+        self._stop_and_disable_safely()
+        self.set_motor_state("disabled")
+
     def start_motion_action(self, coroutine) -> None:
         if self._motion_action_task is not None and not self._motion_action_task.done():
             coroutine.close()
@@ -158,9 +181,10 @@ class MotorControls(Static):
                     return
                 if is_normal_motor_stop(stop):
                     log.write("[green]-> Finished moving up.[/]")
+                    self.set_motor_state("enabled")
                 else:
                     log.write(f"[red]-> Stopped moving up: {stop}.[/]")
-                self.set_motor_state("enabled")
+                    self.disable_after_abnormal_stop()
             except ValueError as e:
                 log.write(f"[red]{e}[/]")
                 if self.app_state.motor_state != "disabled":
@@ -170,6 +194,8 @@ class MotorControls(Static):
                     log.write("[dark_orange]-> Movement aborted.[/]")
                     return
                 raise
+            except Exception as e:
+                self.handle_motion_fault(e, "Move up")
         else:
             log.write("[red]Cannot move up while the motor is disabled.[/]")
 
@@ -206,9 +232,10 @@ class MotorControls(Static):
                     return
                 if is_normal_motor_stop(stop):
                     log.write("[green]-> Finished moving down.[/]")
+                    self.set_motor_state("enabled")
                 else:
                     log.write(f"[red]-> Stopped moving down: {stop}.[/]")
-                self.set_motor_state("enabled")
+                    self.disable_after_abnormal_stop()
             except ValueError as e:
                 log.write(f"[red]{e}[/]")
                 if self.app_state.motor_state != "disabled":
@@ -218,6 +245,8 @@ class MotorControls(Static):
                     log.write("[dark_orange]-> Movement aborted.[/]")
                     return
                 raise
+            except Exception as e:
+                self.handle_motion_fault(e, "Move down")
         else:
             log.write("[red]Cannot move down while the motor is disabled.[/]")
 
@@ -297,9 +326,12 @@ class MotorControls(Static):
             self.set_homing_found(False)
         except ValueError as e:
             log.write(f"[red]{e}[/]")
+        except Exception as e:
+            self.set_homing_found(False)
+            self.handle_motion_fault(e, "Homing")
         finally:
             self._homing_task = None
-        if self.app_state.motor_state != "disabled":
+        if self.app_state.motor_state == "homing":
             self.set_motor_state("enabled")
 
     def set_homing_found(self, homing_found: bool):

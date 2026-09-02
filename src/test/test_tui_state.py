@@ -96,6 +96,19 @@ class FakeAppState:
     def __init__(self):
         self.motor_state = "enabled"
         self.motor_controls = FakeMotorControls()
+        self.motion_controller = FakeFaultController()
+
+
+class FakeFaultController:
+    def __init__(self):
+        self.stopped = False
+        self.disabled = False
+
+    def stop_motor(self):
+        self.stopped = True
+
+    def disable_motor(self):
+        self.disabled = True
 
 
 def test_status_polling_fault_sets_fault_state_and_message_once():
@@ -107,3 +120,5 @@ def test_status_polling_fault_sets_fault_state_and_message_once():
     assert app_state.motor_state == "fault"
     assert status.status_error == "Status polling failed: driver not responding"
     assert app_state.motor_controls.updated is True
+    assert app_state.motion_controller.stopped is True
+    assert app_state.motion_controller.disabled is True

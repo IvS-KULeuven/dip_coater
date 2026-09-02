@@ -30,6 +30,8 @@ class FakeMotionController:
         self.stopped = False
         self.disabled = False
         self.wait_cancelled = False
+        self.wait_error = None
+        self.wait_result = None
 
     def move_up(self, distance_mm, speed_mm_s, acceleration_mm_s2):
         self.move = (distance_mm, speed_mm_s, acceleration_mm_s2)
@@ -42,6 +44,10 @@ class FakeMotionController:
 
     async def wait_for_motor_done_async(self, active_limit_direction=None):
         self.wait_started.set()
+        if self.wait_error is not None:
+            raise self.wait_error
+        if self.wait_result is not None:
+            return self.wait_result
         if self.disabled:
             return None
         try:
@@ -234,5 +240,32 @@ async def test_stop_during_absolute_move_preflight_prevents_command_submission()
 
     assert not hasattr(app_state.motion_controller, "move")
     assert app_state.motion_controller.stopped is True
+    assert app_state.motion_controller.disabled is True
+    assert app_state.motor_state == "disabled"
+
+
+@pytest.mark.asyncio
+async def test_motion_wait_error_stops_disables_and_sets_fault_state():
+    app_state = FakeAppState()
+    app_state.motion_controller.wait_error = RuntimeError("serial link lost")
+    app = EmergencyStopHarness(app_state)
+
+    async with app.run_test():
+        await app_state.motor_controls.move_up(10.0, 2.0, 1.0)
+
+    assert app_state.motion_controller.stopped is True
+    assert app_state.motion_controller.disabled is True
+    assert app_state.motor_state == "fault"
+
+
+@pytest.mark.asyncio
+async def test_abnormal_motion_stop_leaves_motor_disabled():
+    app_state = FakeAppState()
+    app_state.motion_controller.wait_result = "motion timed out after 10s"
+    app = EmergencyStopHarness(app_state)
+
+    async with app.run_test():
+        await app_state.motor_controls.move_up(10.0, 2.0, 1.0)
+
     assert app_state.motion_controller.disabled is True
     assert app_state.motor_state == "disabled"

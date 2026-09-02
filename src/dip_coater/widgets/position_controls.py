@@ -144,6 +144,7 @@ class PositionControls(Static):
                 log.write("[green]-> Finished moving to position.[/]")
             else:
                 log.write(f"[red]-> Stopped moving to position: {stop}.[/]")
+                self.app_state.motor_controls.disable_after_abnormal_stop()
         except ValueError as e:
             log.write(f"[red]{e}[/]")
         except asyncio.CancelledError:
@@ -151,8 +152,10 @@ class PositionControls(Static):
                 log.write("[dark_orange]-> Movement aborted.[/]")
                 return
             raise
+        except Exception as e:
+            self.app_state.motor_controls.handle_motion_fault(e, "Position move")
         finally:
-            if self.app_state.motor_state != "disabled":
+            if self.app_state.motor_state == "moving":
                 self.app_state.motor_controls.set_motor_state("enabled")
 
     def set_position(self, position: float):

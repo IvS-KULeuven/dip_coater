@@ -130,6 +130,13 @@ class Status(Static):
     def record_polling_error(self, error: Exception):
         message = f"Status polling failed: {error}"
         self.status_error = message
+        controller = getattr(self.app_state, "motion_controller", None)
+        if controller is not None:
+            for safety_action in (controller.stop_motor, controller.disable_motor):
+                try:
+                    safety_action()
+                except Exception:
+                    pass
         self.app_state.motor_state = "fault"
         if self.is_mounted:
             self.update_motor_state("fault")
