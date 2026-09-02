@@ -366,12 +366,20 @@ class MotionController:
             direction=home_direction.value,
             speed_mm_s=speed_mm_s,
         )
-        if self.supports_gpio_limit_switches and hasattr(
-            self.motor_driver, "do_limit_switch_homing"
-        ):
-            homing_found = self._home_via_gpio_switches(speed_mm_s, home_direction)
-        else:
-            homing_found = self._home_via_driver_reference(speed_mm_s, home_direction)
+        try:
+            if self.supports_gpio_limit_switches and hasattr(
+                self.motor_driver, "do_limit_switch_homing"
+            ):
+                homing_found = self._home_via_gpio_switches(
+                    speed_mm_s, home_direction
+                )
+            else:
+                homing_found = self._home_via_driver_reference(
+                    speed_mm_s, home_direction
+                )
+        except BaseException:
+            self._best_effort_stop()
+            raise
         self.session_log.write(
             "homing_completed",
             direction=home_direction.value,
@@ -406,16 +414,20 @@ class MotionController:
             direction=home_direction.value,
             speed_mm_s=speed_mm_s,
         )
-        if self.supports_gpio_limit_switches and hasattr(
-            self.motor_driver, "do_limit_switch_homing"
-        ):
-            homing_found = await asyncio.to_thread(
-                self._home_via_gpio_switches, speed_mm_s, home_direction
-            )
-        else:
-            homing_found = await self._home_via_driver_reference_async(
-                speed_mm_s, home_direction
-            )
+        try:
+            if self.supports_gpio_limit_switches and hasattr(
+                self.motor_driver, "do_limit_switch_homing"
+            ):
+                homing_found = await asyncio.to_thread(
+                    self._home_via_gpio_switches, speed_mm_s, home_direction
+                )
+            else:
+                homing_found = await self._home_via_driver_reference_async(
+                    speed_mm_s, home_direction
+                )
+        except BaseException:
+            self._best_effort_stop()
+            raise
         self.session_log.write(
             "homing_completed",
             direction=home_direction.value,

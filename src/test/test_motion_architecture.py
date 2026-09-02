@@ -1,4 +1,6 @@
 import asyncio
+import threading
+import time
 
 import pytest
 
@@ -748,6 +750,60 @@ def test_motion_controller_rejects_invalid_homing_speed(speed_mm_s):
         controller.home(speed_mm_s)
 
     assert driver.last_home is None
+
+
+def test_gpio_homing_fault_stops_motor():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchPair(up_pin=11, down_pin=12),
+    )
+
+    class FaultingHomingDriver(FakeDriver):
+        def do_limit_switch_homing(self, *_args, **_kwargs):
+            raise RuntimeError("GPIO homing failed")
+
+    driver = FaultingHomingDriver()
+    controller = MotionController(driver, profile, gpio=FakeGPIO())
+
+    with pytest.raises(RuntimeError, match="GPIO homing failed"):
+        controller.home(1.0)
+
+    assert driver.stopped is True
+
+
+@pytest.mark.asyncio
+async def test_gpio_homing_cancellation_stops_worker_motion():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchPair(up_pin=11, down_pin=12),
+    )
+
+    class BlockingHomingDriver(FakeDriver):
+        def __init__(self):
+            super().__init__()
+            self.homing_started = threading.Event()
+
+        def do_limit_switch_homing(self, *_args, **_kwargs):
+            self.homing_started.set()
+            deadline = time.monotonic() + 1.0
+            while not self.stopped and time.monotonic() < deadline:
+                time.sleep(0.005)
+            return False
+
+    driver = BlockingHomingDriver()
+    controller = MotionController(driver, profile, gpio=FakeGPIO())
+    homing_task = asyncio.create_task(controller.home_async(1.0))
+    await asyncio.to_thread(driver.homing_started.wait, 0.5)
+
+    homing_task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await homing_task
+
+    assert driver.stopped is True
 
 
 @pytest.mark.asyncio
