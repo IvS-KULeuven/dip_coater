@@ -95,8 +95,8 @@ def create_custom_profile(
     """Create a custom profile by overriding a base profile.
 
     :param base_profile: Existing profile to copy defaults from.
-    :param mm_per_revolution: Replacement travel per motor revolution, or ``None``.
-    :param gearbox_ratio: Replacement gearbox ratio, or ``None``.
+    :param mm_per_revolution: Replacement travel per lift-drive revolution, or ``None``.
+    :param gearbox_ratio: Replacement motor revolutions per lift-drive revolution, or ``None``.
     :param steps_per_revolution: Replacement full steps per motor revolution, or ``None``.
     :param invert_motor_direction: Replacement direction-inversion flag, or ``None``.
     :param home_direction: Replacement home direction, or ``None``.

@@ -55,3 +55,32 @@ def test_acceleration_revolution_conversion_matches_step_conversion(geared_setup
     assert geared_setup.rpss_to_mm_s2(rpss_via_steps) == pytest.approx(
         acceleration_mm_s2
     )
+
+
+@pytest.mark.parametrize(
+    ("overrides", "field_name"),
+    [
+        ({"mm_per_revolution": 0.0}, "mm_per_revolution"),
+        ({"mm_per_revolution": -1.0}, "mm_per_revolution"),
+        ({"mm_per_revolution": float("nan")}, "mm_per_revolution"),
+        ({"mm_per_revolution": float("inf")}, "mm_per_revolution"),
+        ({"gearbox_ratio": 0.0}, "gearbox_ratio"),
+        ({"gearbox_ratio": -1.0}, "gearbox_ratio"),
+        ({"gearbox_ratio": float("nan")}, "gearbox_ratio"),
+        ({"steps_per_revolution": 0}, "steps_per_revolution"),
+        ({"steps_per_revolution": -200}, "steps_per_revolution"),
+        ({"steps_per_revolution": 200.5}, "steps_per_revolution"),
+    ],
+)
+def test_mechanical_setup_rejects_invalid_conversion_constants(
+    overrides, field_name
+):
+    values = {
+        "mm_per_revolution": 4.0,
+        "gearbox_ratio": 1.0,
+        "steps_per_revolution": 200,
+    }
+    values.update(overrides)
+
+    with pytest.raises(ValueError, match=field_name):
+        MechanicalSetup(**values)

@@ -250,7 +250,10 @@ def main():
         default=float(os.environ["DIP_COATER_MM_PER_REVOLUTION"])
         if "DIP_COATER_MM_PER_REVOLUTION" in os.environ
         else None,
-        help="Distance in mm the platform moves for one full revolution (env: DIP_COATER_MM_PER_REVOLUTION)",
+        help=(
+            "Distance in mm the platform moves for one lift-drive revolution "
+            "(env: DIP_COATER_MM_PER_REVOLUTION)"
+        ),
     )
     parser.add_argument(
         "--gearbox-ratio",
@@ -258,7 +261,10 @@ def main():
         default=float(os.environ["DIP_COATER_GEARBOX_RATIO"])
         if "DIP_COATER_GEARBOX_RATIO" in os.environ
         else None,
-        help="Gearbox ratio, if any (env: DIP_COATER_GEARBOX_RATIO)",
+        help=(
+            "Motor revolutions per lift-drive revolution "
+            "(env: DIP_COATER_GEARBOX_RATIO)"
+        ),
     )
     parser.add_argument(
         "--steps-per-rev",

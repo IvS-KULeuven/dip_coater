@@ -43,6 +43,12 @@ MechanicalSetup(
 )
 ```
 
+`mm_per_revolution` is travel per revolution of the lift's driven mechanism;
+`gearbox_ratio` is motor revolutions per lift-drive revolution. All conversion
+constants must be finite and positive, and `steps_per_revolution` must be a
+positive integer. Invalid command-line overrides are rejected before a motor
+connection is opened.
+
 ## Limit Switches
 
 Limit switches are configured with a `LimitSwitchSetup`. Each setup has one `up` switch and one `down` switch.

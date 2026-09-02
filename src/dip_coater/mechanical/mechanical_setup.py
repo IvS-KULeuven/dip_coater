@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import math
 
 
 @dataclass
@@ -13,6 +14,24 @@ class MechanicalSetup:
     mm_per_revolution: float
     gearbox_ratio: float = 1.0
     steps_per_revolution: int = 200  # This is typical for many stepper motors
+
+    def __post_init__(self) -> None:
+        """Validate constants before they can affect hardware motion."""
+        for field_name in ("mm_per_revolution", "gearbox_ratio"):
+            value = getattr(self, field_name)
+            try:
+                valid = math.isfinite(value) and value > 0
+            except TypeError:
+                valid = False
+            if not valid:
+                raise ValueError(f"{field_name} must be a finite positive number")
+
+        if (
+            isinstance(self.steps_per_revolution, bool)
+            or not isinstance(self.steps_per_revolution, int)
+            or self.steps_per_revolution <= 0
+        ):
+            raise ValueError("steps_per_revolution must be a positive integer")
 
     # ------------ Calculation methods ------------
 
