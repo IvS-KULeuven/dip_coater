@@ -94,3 +94,73 @@ def test_tmc2660_applies_selected_vsense_during_initialization():
 
     assert driver.get_vsense_full_scale() == 1
     assert driver.vsense_fs is VSenseFullScale.VSENSE_FULL_SCALE_165mV
+
+
+@pytest.mark.parametrize(
+    ("invert_direction", "homed_up", "expected_position_mm"),
+    [
+        (False, False, 4.0),
+        (False, True, -4.0),
+        (True, False, -4.0),
+        (True, True, 4.0),
+    ],
+)
+def test_tmc2660_position_uses_inversion_and_home_direction(
+    invert_direction, homed_up, expected_position_mm
+):
+    driver = make_driver(step_mode=8, invert_direction=invert_direction)
+    driver.homing_found = True
+    driver.dummy_values[driver.motor.AP.ActualPosition] = 1600
+
+    assert driver.get_current_position_mm(homed_up) == pytest.approx(
+        expected_position_mm
+    )
+
+
+@pytest.mark.parametrize(
+    ("invert_direction", "homed_up", "expected_target_steps"),
+    [
+        (False, False, 1600),
+        (False, True, -1600),
+        (True, False, -1600),
+        (True, True, 1600),
+    ],
+)
+def test_tmc2660_absolute_target_uses_inversion_and_home_direction(
+    invert_direction, homed_up, expected_target_steps
+):
+    driver = make_driver(step_mode=8, invert_direction=invert_direction)
+    driver.homing_found = True
+    targets = []
+    driver.motor.move_to = targets.append
+
+    driver.run_to_position(4.0, homed_up=homed_up)
+
+    assert targets == [expected_target_steps]
+
+
+def test_tmc2660_reads_actual_position_as_signed():
+    calls = []
+
+    class FakeEvalBoard:
+        def get_axis_parameter(self, parameter, axis, signed=False):
+            calls.append((parameter, axis, signed))
+            return -1
+
+    driver = MotorDriverTMC2660.__new__(MotorDriverTMC2660)
+    driver.eval_board = FakeEvalBoard()
+    driver.motor = SimpleNamespace(
+        AP=SimpleNamespace(ActualPosition="actual-position")
+    )
+    driver.axis = 0
+
+    assert driver.get_actual_position() == -1
+    assert calls == [("actual-position", 0, True)]
+
+
+def test_tmc2660_absolute_position_requires_manual_home_reference():
+    driver = make_driver(step_mode=8)
+
+    assert driver.get_current_position_mm() is None
+    with pytest.raises(ValueError, match="not homed"):
+        driver.run_to_position(4.0)

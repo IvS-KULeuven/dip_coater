@@ -56,7 +56,7 @@ class DummyEvalBoard:
         self._dummy_values = dummy_values
         self.motors = [DummyMotor(self._dummy_values)]
 
-    def get_axis_parameter(self, parameter, axis):
+    def get_axis_parameter(self, parameter, axis, signed=False):
         _update_motion_state(self._dummy_values)
         return self._dummy_values.get(parameter, 0)
 

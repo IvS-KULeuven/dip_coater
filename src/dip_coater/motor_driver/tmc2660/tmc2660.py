@@ -132,6 +132,7 @@ class MotorDriverTMC2660(MotorDriver):
             self.motor = self.eval_board.motors[self.axis]
         self.vsense_fs = vsense_full_scale
         self.rsense = 100  # Sense resistor value in mOhm
+        self.homing_found = False
 
         # Set up motor driver parameters
         self.stallguard_threshold = stallguard_threshold
@@ -216,8 +217,11 @@ class MotorDriverTMC2660(MotorDriver):
         self.logger.log("Motor stopped", TMC2660LogLevel.INFO)
 
     def get_current_position_mm(self, homed_up: bool = True):
+        if not self.homing_found:
+            return None
         pos = self.get_actual_position()
-        return self.mechanical_setup.steps_to_mm(pos, self.microsteps)
+        raw_position_mm = self.mechanical_setup.steps_to_mm(pos, self.microsteps)
+        return raw_position_mm * self._invert_sign() * self._home_sign(homed_up)
 
     def run_to_position(
         self,
@@ -226,9 +230,16 @@ class MotorDriverTMC2660(MotorDriver):
         acceleration_mm_s2: float = None,
         homed_up: bool = True,
     ):
+        if not self.homing_found:
+            raise ValueError("The motor is not homed.")
         self.set_speed(speed_mm_s)
         self.set_acceleration(acceleration_mm_s2)
-        steps = self.mechanical_setup.mm_to_steps(position_mm, self.microsteps)
+        raw_position_mm = (
+            position_mm * self._invert_sign() * self._home_sign(homed_up)
+        )
+        steps = self.mechanical_setup.mm_to_steps(
+            raw_position_mm, self.microsteps
+        )
         self.motor.move_to(steps)
 
     def is_target_reached(self):
@@ -246,7 +257,21 @@ class MotorDriverTMC2660(MotorDriver):
         self.logger.log("Motor done", TMC2660LogLevel.INFO)
 
     def is_homing_found(self):
-        return False
+        return self.homing_found
+
+    def mark_homed(self):
+        self._set_axis_parameter(self.motor.AP.ActualPosition, 0)
+        self.homing_found = True
+
+    def clear_homing(self):
+        self.homing_found = False
+
+    def _invert_sign(self) -> int:
+        return -1 if self.direction_inverted else 1
+
+    @staticmethod
+    def _home_sign(homed_up: bool) -> int:
+        return -1 if homed_up else 1
 
     # --------------- MOTOR CONFIGURATION ---------------
 
@@ -479,7 +504,9 @@ class MotorDriverTMC2660(MotorDriver):
     # --------------- HELPER METHODS ---------------
 
     def get_actual_position(self):
-        return self.eval_board.get_axis_parameter(self.motor.AP.ActualPosition, self.axis)
+        return self.eval_board.get_axis_parameter(
+            self.motor.AP.ActualPosition, self.axis, signed=True
+        )
 
     def microstep_idx_to_steps(self, idx: int) -> int:
         """Convert microstep index (0, 1, 2, 3...) to actual number of microsteps (1, 2, 4, 8...)."""
