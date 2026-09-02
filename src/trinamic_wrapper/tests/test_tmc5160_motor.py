@@ -110,6 +110,52 @@ class TestCurrent:
         assert conn.get_ap(board.motors[0].AP.StandbyCurrent) == 0
         assert not motor.is_enabled
 
+    def test_disable_attempts_output_shutdown_after_stop_failure(
+        self, setup, monkeypatch
+    ):
+        motor, conn, board = setup
+        motor.set_run_current_mA(1000)
+        motor.set_standstill_current_mA(200)
+        motor.enable()
+
+        def fail_stop(*_args, **_kwargs):
+            raise RuntimeError("stop failed")
+
+        monkeypatch.setattr(conn, "stop", fail_stop)
+
+        with pytest.raises(RuntimeError, match="stop failed"):
+            motor.disable()
+
+        ap = board.motors[0].AP
+        assert conn.get_ap(ap.TOff) == 0
+        assert conn.get_ap(ap.MaxCurrent) == 0
+        assert conn.get_ap(ap.StandbyCurrent) == 0
+        assert not motor.is_enabled
+
+    def test_disable_attempts_current_shutdown_after_output_failure(
+        self, setup, monkeypatch
+    ):
+        motor, conn, board = setup
+        motor.set_run_current_mA(1000)
+        motor.set_standstill_current_mA(200)
+        motor.enable()
+        ap = board.motors[0].AP
+        original_set_axis_parameter = conn.set_axis_parameter
+
+        def fail_output_disable(ap_type, axis, value, module_id):
+            if ap_type == ap.TOff and value == 0:
+                raise RuntimeError("output disable failed")
+            original_set_axis_parameter(ap_type, axis, value, module_id)
+
+        monkeypatch.setattr(conn, "set_axis_parameter", fail_output_disable)
+
+        with pytest.raises(RuntimeError, match="output disable failed"):
+            motor.disable()
+
+        assert conn.get_ap(ap.MaxCurrent) == 0
+        assert conn.get_ap(ap.StandbyCurrent) == 0
+        assert not motor.is_enabled
+
     def test_enable_restores_last_nonzero_chopper_off_time(self, setup):
         motor, conn, board = setup
         ap = board.motors[0].AP

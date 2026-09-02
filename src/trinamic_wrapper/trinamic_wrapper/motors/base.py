@@ -82,12 +82,26 @@ class BaseStepperMotor(ABC):
         self._enabled = True
 
     def disable(self) -> None:
-        # Stop first so we don't leave the chip pulsing while de-energised.
-        self.stop()
-        self._set_driver_output_enabled(False)
-        self._set_run_current_raw(0)
-        self._set_standstill_current_raw(0)
+        # Each shutdown action is worth attempting even when communication
+        # failed during an earlier one. In particular, a failed stop command
+        # must not prevent us from trying to de-energise the driver output.
+        first_error: Exception | None = None
+        shutdown_actions = (
+            self.stop,
+            lambda: self._set_driver_output_enabled(False),
+            lambda: self._set_run_current_raw(0),
+            lambda: self._set_standstill_current_raw(0),
+        )
+        for action in shutdown_actions:
+            try:
+                action()
+            except Exception as error:
+                if first_error is None:
+                    first_error = error
+
         self._enabled = False
+        if first_error is not None:
+            raise first_error
 
     def _set_driver_output_enabled(self, enabled: bool) -> None:
         """Control the chopper output independently from its current scale."""
