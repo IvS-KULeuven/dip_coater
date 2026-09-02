@@ -106,6 +106,137 @@ def test_real_tmc2660_writes_physical_microstep_count_to_eval_firmware():
     assert driver.get_microsteps() == 16
 
 
+def test_tmc2660_microstep_cache_changes_only_after_verified_write():
+    driver = MotorDriverTMC2660.__new__(MotorDriverTMC2660)
+    driver.microsteps = 8
+    driver.is_dummy = False
+    driver.motor = SimpleNamespace(
+        AP=SimpleNamespace(MicrostepResolution="microsteps")
+    )
+    driver.logger = SimpleNamespace(log=lambda *args: None)
+
+    def fail_write(_parameter, _value):
+        raise RuntimeError("microstep write failed")
+
+    driver._set_axis_parameter = fail_write
+
+    with pytest.raises(RuntimeError, match="microstep write failed"):
+        driver.set_microsteps(16)
+
+    assert driver.microsteps == 8
+
+
+@pytest.mark.parametrize(
+    ("method_name", "value", "field_name"),
+    [
+        ("set_stallguard_threshold", -65, "threshold"),
+        ("set_stallguard_threshold", 64, "threshold"),
+        ("set_stallguard_threshold", 1.5, "threshold"),
+        ("set_stallguard_threshold", True, "threshold"),
+        ("set_coolstep_threshold", -1, "threshold"),
+        ("set_coolstep_threshold", 16, "threshold"),
+        ("set_coolstep_threshold", 1.5, "threshold"),
+        ("set_coolstep_threshold", True, "threshold"),
+    ],
+)
+def test_tmc2660_rejects_invalid_advanced_thresholds(
+    method_name, value, field_name
+):
+    driver = make_driver()
+
+    with pytest.raises(ValueError, match=field_name):
+        getattr(driver, method_name)(value)
+
+
+@pytest.mark.parametrize(
+    "method_name",
+    [
+        "invert_direction",
+        "set_interpolation",
+        "set_stallguard_enabled",
+        "set_stallguard_filter_enabled",
+        "set_coolstep_enabled",
+    ],
+)
+def test_tmc2660_advanced_switches_require_booleans(method_name):
+    driver = make_driver()
+
+    with pytest.raises(ValueError, match="boolean"):
+        getattr(driver, method_name)(1)
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "field_name"),
+    [
+        ({"hysteresis_start": 9}, "hysteresis_start"),
+        ({"hysteresis_end": 16}, "hysteresis_end"),
+        ({"blank_time": 4}, "blank_time"),
+        ({"off_time": True}, "off_time"),
+    ],
+)
+def test_tmc2660_rejects_invalid_chopper_configuration(kwargs, field_name):
+    driver = make_driver()
+    valid = {
+        "hysteresis_start": 1,
+        "hysteresis_end": 1,
+        "blank_time": 1,
+        "off_time": 1,
+    }
+    valid.update(kwargs)
+
+    with pytest.raises(ValueError, match=field_name):
+        driver.configure_chopper_mode_advanced_settings(**valid)
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "field_name"),
+    [
+        ({"min_current": 2}, "min_current"),
+        ({"current_down_step": 4}, "current_down_step"),
+        ({"current_up_step": 1.5}, "current_up_step"),
+        ({"hysteresis": 16}, "hysteresis"),
+        ({"threshold_speed": True}, "threshold_speed"),
+    ],
+)
+def test_tmc2660_rejects_invalid_coolstep_configuration(kwargs, field_name):
+    driver = make_driver()
+    valid = {
+        "min_current": 1,
+        "current_down_step": 1,
+        "current_up_step": 1,
+        "hysteresis": 1,
+        "threshold_speed": 1,
+    }
+    valid.update(kwargs)
+
+    with pytest.raises(ValueError, match=field_name):
+        driver.configure_coolstep(**valid)
+
+
+@pytest.mark.parametrize(
+    ("method_name", "cache_name", "initial_value", "new_value"),
+    [
+        ("set_stallguard_threshold", "stallguard_threshold", 2, 3),
+        ("set_coolstep_threshold", "coolstep_threshold", 4, 5),
+    ],
+)
+def test_tmc2660_threshold_cache_changes_only_after_successful_write(
+    method_name, cache_name, initial_value, new_value
+):
+    driver = make_driver()
+    setattr(driver, cache_name, initial_value)
+
+    def fail_write(_parameter, _value):
+        raise RuntimeError("register write failed")
+
+    driver._set_axis_parameter = fail_write
+
+    with pytest.raises(RuntimeError, match="register write failed"):
+        getattr(driver, method_name)(new_value)
+
+    assert getattr(driver, cache_name) == initial_value
+
+
 def test_tmc2660_vsense_enum_exposes_scalar_register_values():
     assert VSenseFullScale.VSENSE_FULL_SCALE_305mV.value == 0
     assert VSenseFullScale.VSENSE_FULL_SCALE_165mV.value == 1

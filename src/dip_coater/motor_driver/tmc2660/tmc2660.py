@@ -30,6 +30,23 @@ from dip_coater.motor_driver.tmc2660.tmc2660_dummy import (
 _TARGET_POLL_INTERVAL_S = 0.1
 
 
+def _require_bool(name: str, value: bool) -> None:
+    if not isinstance(value, bool):
+        raise ValueError(f"{name} must be a boolean")
+
+
+def _require_int_range(
+    name: str,
+    value: int,
+    minimum: int,
+    maximum: int,
+) -> None:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{name} must be an integer")
+    if not minimum <= value <= maximum:
+        raise ValueError(f"{name} must be in [{minimum}, {maximum}]")
+
+
 class VSenseFullScale(Enum):
     """
     VSense full scale values for the TMC2660.
@@ -189,8 +206,8 @@ class MotorDriverTMC2660(MotorDriver):
         self.homing_found = False
 
         # Set up motor driver parameters
-        self.stallguard_threshold = stallguard_threshold
-        self.coolstep_threshold = coolstep_threshold
+        self.stallguard_threshold = 0
+        self.coolstep_threshold = 0
 
         # Set up dummy driver interface
         if self.is_dummy:
@@ -216,10 +233,10 @@ class MotorDriverTMC2660(MotorDriver):
         self.invert_direction(invert_direction)
         self.set_current(current_mA)
         self.set_current_standstill(current_standstill_mA)
-        self.set_stallguard_enabled(stallguard_enabled)
         self.set_stallguard_threshold(stallguard_threshold)
-        self.set_coolstep_enabled(coolstep_enabled)
+        self.set_stallguard_enabled(stallguard_enabled)
         self.set_coolstep_threshold(coolstep_threshold)
+        self.set_coolstep_enabled(coolstep_enabled)
 
     # --------------- MOTOR CONTROL ---------------
 
@@ -243,6 +260,7 @@ class MotorDriverTMC2660(MotorDriver):
         return self._get_global_parameter(self.lb.GP.DriversEnable, self.bank)
 
     def invert_direction(self, invert_direction: bool = False):
+        _require_bool("invert_direction", invert_direction)
         self.direction_inverted = invert_direction
         self.logger.log(f"Direction inverted: {invert_direction}", TMC2660LogLevel.INFO)
 
@@ -331,7 +349,6 @@ class MotorDriverTMC2660(MotorDriver):
 
     def set_microsteps(self, microsteps: int):
         microstep_index = self.verify_microsteps(microsteps)
-        self.microsteps = microsteps
         # EvalSystem SAP 140 accepts 1, 2, ..., 256, but GAP 140 on the
         # TMC2660 reports log2(microsteps). Store the readback form only in
         # the dummy backend so it reproduces that asymmetric firmware API.
@@ -341,10 +358,11 @@ class MotorDriverTMC2660(MotorDriver):
         )
 
         verify_microsteps = self.get_microsteps()
-        if self.microsteps != verify_microsteps:
+        if microsteps != verify_microsteps:
             msg = f"Set microsteps {microsteps} does not match read back value {verify_microsteps}"
             self.logger.log(msg, TMC2660LogLevel.ERROR)
             raise ValueError(msg)
+        self.microsteps = microsteps
         self.logger.log(f"Microsteps set to {microsteps}", TMC2660LogLevel.INFO)
 
     def get_microsteps(self) -> int:
@@ -356,8 +374,8 @@ class MotorDriverTMC2660(MotorDriver):
             msg = f"Invalid VSense full scale value: {vsense_full_scale}. Must be 0 or 1."
             self.logger.log(msg, TMC2660LogLevel.ERROR)
             raise ValueError(msg)
-        self.vsense_fs = vsense_full_scale
         self._set_axis_parameter(self.motor.AP.VSense, vsense_full_scale.value)
+        self.vsense_fs = vsense_full_scale
 
     def get_vsense_full_scale(self) -> int:
         return self._get_axis_parameter(self.motor.AP.VSense, self.axis)
@@ -464,6 +482,10 @@ class MotorDriverTMC2660(MotorDriver):
         :param blank_time: Blank time (0 to 3)
         :param off_time: Off time (0 to 15)
         """
+        _require_int_range("hysteresis_start", hysteresis_start, 0, 8)
+        _require_int_range("hysteresis_end", hysteresis_end, 0, 15)
+        _require_int_range("blank_time", blank_time, 0, 3)
+        _require_int_range("off_time", off_time, 0, 15)
         self._set_axis_parameter(self.motor.AP.ChopperHysteresisStart, hysteresis_start)
         self._set_axis_parameter(self.motor.AP.ChopperHysteresisEnd, hysteresis_end)
         self._set_axis_parameter(self.motor.AP.ChopperBlankTime, blank_time)
@@ -479,6 +501,7 @@ class MotorDriverTMC2660(MotorDriver):
          interpolated to 256 microsteps. This brings smooth motor operation of high-resolution microstepping to
          applications originally designed for coarser stepping and reduces pulse bandwidth.
         """
+        _require_bool("enable", enable)
         self._set_axis_parameter(self.motor.AP.Intpol, 1 if enable else 0)
         self.logger.log(f"Interpolation {'enabled' if enable else 'disabled'}", TMC2660LogLevel.INFO)
 
@@ -488,6 +511,7 @@ class MotorDriverTMC2660(MotorDriver):
 
         :param enable: Enable or disable StallGuard2. If enabled, the StallGuard2 feature will be active.
         """
+        _require_bool("enable", enable)
         self._set_axis_parameter(self.motor.AP.SG2Threshold, self.stallguard_threshold if enable else 0)
         self.logger.log(f"StallGuard2 {'enabled' if enable else 'disabled'}", TMC2660LogLevel.INFO)
 
@@ -499,6 +523,7 @@ class MotorDriverTMC2660(MotorDriver):
                     True:   Filtered mode, updated once for each four fullsteps to compensate for variation in motor
                             construction, highest accuracy.
         """
+        _require_bool("enable", enable)
         self._set_axis_parameter(self.motor.AP.SG2FilterEnable, 1 if enable else 0)
         self.logger.log(f"StallGuard2 filter {'enabled' if enable else 'disabled'}", TMC2660LogLevel.INFO)
 
@@ -508,8 +533,9 @@ class MotorDriverTMC2660(MotorDriver):
         :param threshold: StallGuard2 threshold (-64 to 63). A lower value results in a higher sensitivity and requires
         less torque to indicate a stall. Values below -10 are not recommended.
         """
-        self.stallguard_threshold = threshold
+        _require_int_range("threshold", threshold, -64, 63)
         self._set_axis_parameter(self.motor.AP.SG2Threshold, threshold)
+        self.stallguard_threshold = threshold
         self.logger.log(f"StallGuard2 threshold set to {threshold}", TMC2660LogLevel.INFO)
 
     def get_stallguard_result(self) -> int:
@@ -532,6 +558,11 @@ class MotorDriverTMC2660(MotorDriver):
         :param hysteresis: Hysteresis (0 to 15)
         :param threshold_speed: Threshold speed [pps]
         """
+        _require_int_range("min_current", min_current, 0, 1)
+        _require_int_range("current_down_step", current_down_step, 0, 3)
+        _require_int_range("current_up_step", current_up_step, 0, 3)
+        _require_int_range("hysteresis", hysteresis, 0, 15)
+        _require_int_range("threshold_speed", threshold_speed, 0, (1 << 31) - 1)
         self._set_axis_parameter(self.motor.AP.SEIMIN, min_current)
         self._set_axis_parameter(self.motor.AP.SECDS, current_down_step)
         self._set_axis_parameter(self.motor.AP.SECUS, current_up_step)
@@ -541,6 +572,7 @@ class MotorDriverTMC2660(MotorDriver):
 
     def set_coolstep_enabled(self, enable: bool):
         """Enable or disable CoolStep feature."""
+        _require_bool("enable", enable)
         self._set_axis_parameter(self.motor.AP.smartEnergyThresholdSpeed, self.coolstep_threshold if enable else 0)
         self.logger.log(f"CoolStep {'enabled' if enable else 'disabled'}", TMC2660LogLevel.INFO)
 
@@ -550,8 +582,9 @@ class MotorDriverTMC2660(MotorDriver):
         :param threshold: CoolStep threshold (0 to 15). The CoolStep feature is enabled when the actual speed is below
         this threshold.
         """
-        self.coolstep_threshold = threshold
+        _require_int_range("threshold", threshold, 0, 15)
         self._set_axis_parameter(self.motor.AP.smartEnergyThresholdSpeed, threshold)
+        self.coolstep_threshold = threshold
         self.logger.log(f"CoolStep threshold set to {threshold}", TMC2660LogLevel.INFO)
 
     def get_coolstep_current(self) -> int:
