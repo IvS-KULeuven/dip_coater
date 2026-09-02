@@ -112,9 +112,13 @@ class MotionController:
 
         :return: Driver-specific completion result.
         """
-        result = self.motor_driver.wait_for_motor_done()
-        self._record_motion_completed(result)
-        return result
+        try:
+            result = self.motor_driver.wait_for_motor_done()
+            self._record_motion_completed(result)
+            return result
+        except Exception as error:
+            self._handle_motion_fault(error)
+            raise
 
     async def wait_for_motor_done_async(
         self,
@@ -128,9 +132,21 @@ class MotionController:
         :return: Driver-specific completion result or a status string.
         """
         timeout_s = self._last_motion_timeout_s if timeout_s is None else timeout_s
-        if active_limit_direction is None or not self.supports_limit_switches:
-            return await self._wait_for_driver_done_with_timeout(timeout_s)
+        try:
+            if active_limit_direction is None or not self.supports_limit_switches:
+                return await self._wait_for_driver_done_with_timeout(timeout_s)
+            return await self._wait_for_driver_done_with_limit(
+                active_limit_direction, timeout_s
+            )
+        except Exception as error:
+            self._handle_motion_fault(error)
+            raise
 
+    async def _wait_for_driver_done_with_limit(
+        self,
+        active_limit_direction: HomeDirection,
+        timeout_s: float | None,
+    ):
         wait_task = asyncio.create_task(self.motor_driver.wait_for_motor_done_async())
         try:
             loop = asyncio.get_running_loop()
@@ -172,14 +188,28 @@ class MotionController:
             return await self._timeout_wait_task(wait_task, timeout_s)
 
     async def _timeout_wait_task(self, wait_task: asyncio.Task, timeout_s: float) -> str:
-        self.stop_motor()
-        self.session_log.write("motion_timeout", timeout_s=timeout_s)
+        self._stop_and_disable_after_fault()
         wait_task.cancel()
         try:
             await wait_task
         except asyncio.CancelledError:
             pass
+        self.session_log.write("motion_timeout", timeout_s=timeout_s)
         return f"motion timed out after {timeout_s:g}s"
+
+    def _handle_motion_fault(self, error: Exception) -> None:
+        self._stop_and_disable_after_fault()
+        try:
+            self.session_log.write("motion_fault", error=str(error))
+        except Exception:
+            pass
+
+    def _stop_and_disable_after_fault(self) -> None:
+        for safety_action in (self.stop_motor, self.disable_motor):
+            try:
+                safety_action()
+            except Exception:
+                pass
 
     def move_up(
         self,

@@ -331,6 +331,41 @@ async def test_motion_controller_records_motion_completion():
     assert session_log.events == [("motion_completed", {"result": None})]
 
 
+@pytest.mark.asyncio
+async def test_async_wait_fault_stops_and_disables_motor():
+    class FaultingWaitDriver(FakeDriver):
+        async def wait_for_motor_done_async(self):
+            raise RuntimeError("serial link lost")
+
+    profile = get_machine_profile(AvailableMachineSetups.SMALL_COATER)
+    driver = FaultingWaitDriver()
+    session_log = CapturingSessionLog()
+    controller = MotionController(driver, profile, session_log=session_log)
+
+    with pytest.raises(RuntimeError, match="serial link lost"):
+        await controller.wait_for_motor_done_async(timeout_s=1.0)
+
+    assert driver.stopped is True
+    assert driver.disabled is True
+    assert session_log.events == [("motion_fault", {"error": "serial link lost"})]
+
+
+def test_blocking_wait_fault_stops_and_disables_motor():
+    class FaultingWaitDriver(FakeDriver):
+        def wait_for_motor_done(self):
+            raise RuntimeError("driver stopped responding")
+
+    profile = get_machine_profile(AvailableMachineSetups.SMALL_COATER)
+    driver = FaultingWaitDriver()
+    controller = MotionController(driver, profile)
+
+    with pytest.raises(RuntimeError, match="driver stopped responding"):
+        controller.wait_for_motor_done()
+
+    assert driver.stopped is True
+    assert driver.disabled is True
+
+
 def test_motion_controller_does_not_retry_typeerror_from_standard_position_contract():
     profile = MachineProfile(
         key=AvailableMachineSetups.CUSTOM,
@@ -502,6 +537,7 @@ async def test_motion_controller_times_out_wait_and_stops_motor():
     result = await controller.wait_for_motor_done_async(timeout_s=0.02)
 
     assert driver.stopped is True
+    assert driver.disabled is True
     assert result == "motion timed out after 0.02s"
     assert session_log.events == [("motion_timeout", {"timeout_s": 0.02})]
 
