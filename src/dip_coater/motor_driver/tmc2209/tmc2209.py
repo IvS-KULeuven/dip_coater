@@ -276,13 +276,15 @@ class MotorDriverTMC2209(MotorDriver):
         # restore it afterwards
         spread_cycle = self.tmc.get_spreadcycle()
         speed_rpm = self.mechanical_setup.mm_s_to_rpm(speed_mm_s)
-        self.tmc.do_homing(
-            diag_pin=self.diag_pin,
-            revolutions=revolutions,
-            threshold=threshold,
-            speed_rpm=speed_rpm
-        )
-        self.tmc.set_spreadcycle(spread_cycle)
+        try:
+            self.tmc.do_homing(
+                diag_pin=self.diag_pin,
+                revolutions=revolutions,
+                threshold=threshold,
+                speed_rpm=speed_rpm
+            )
+        finally:
+            self.tmc.set_spreadcycle(spread_cycle)
 
     def get_current_position_mm(self, homed_up: bool = True):
         """ Get the current position of the motor in mm

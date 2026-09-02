@@ -179,3 +179,27 @@ def test_configured_speed_can_be_read_for_timeout_estimates():
     driver.set_speed_rps(0.5)
 
     assert driver.get_speed_rps() == pytest.approx(0.5)
+
+
+def test_stallguard_homing_restores_chopper_mode_after_failure():
+    restored_modes = []
+
+    class FaultingHomingTMC:
+        def get_spreadcycle(self):
+            return True
+
+        def do_homing(self, **_kwargs):
+            raise RuntimeError("homing failed")
+
+        def set_spreadcycle(self, enabled):
+            restored_modes.append(enabled)
+
+    driver = MotorDriverTMC2209.__new__(MotorDriverTMC2209)
+    driver.tmc = FaultingHomingTMC()
+    driver.mechanical_setup = MechanicalSetup(mm_per_revolution=4.0)
+    driver.diag_pin = 5
+
+    with pytest.raises(RuntimeError, match="homing failed"):
+        driver.do_stallguard_homing(speed_mm_s=2.0)
+
+    assert restored_modes == [True]
