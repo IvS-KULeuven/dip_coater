@@ -54,15 +54,20 @@ class FakeDriver:
         self.last_position_call = None
         self.cleaned = False
         self.stopped = False
+        self.disabled = False
+        self.shutdown_calls = []
 
     def enable_motor(self):
         return None
 
     def disable_motor(self):
+        self.disabled = True
+        self.shutdown_calls.append("disable")
         return None
 
     def stop_motor(self):
         self.stopped = True
+        self.shutdown_calls.append("stop")
         return None
 
     def wait_for_motor_done(self):
@@ -115,6 +120,7 @@ class FakeDriver:
 
     def cleanup(self):
         self.cleaned = True
+        self.shutdown_calls.append("cleanup")
 
 
 class PositionedFakeDriver(FakeDriver):
@@ -701,3 +707,36 @@ def test_large_profile_uses_landungsbruecke_reference_switches():
     assert profile.limit_switches.down.source == LimitSwitchSource.DRIVER_REFERENCE
     assert profile.limit_switches.up.polarity == LimitSwitchPolarity.ACTIVE_LOW
     assert profile.limit_switches.down.polarity == LimitSwitchPolarity.ACTIVE_LOW
+
+
+def test_motion_controller_cleanup_stops_disables_and_is_idempotent():
+    profile = get_machine_profile(AvailableMachineSetups.SMALL_COATER)
+    driver = FakeDriver()
+    gpio = FakeGPIO()
+    session_log = CapturingSessionLog()
+    controller = MotionController(driver, profile, gpio=gpio, session_log=session_log)
+
+    controller.cleanup()
+    controller.cleanup()
+
+    assert driver.shutdown_calls == ["stop", "disable", "cleanup"]
+    assert gpio.cleaned is True
+    assert [event for event, _fields in session_log.events] == ["session_cleanup"]
+
+
+def test_motion_controller_cleanup_attempts_all_safety_steps_after_stop_error():
+    class StopFailingDriver(FakeDriver):
+        def stop_motor(self):
+            super().stop_motor()
+            raise RuntimeError("stop failed")
+
+    profile = get_machine_profile(AvailableMachineSetups.SMALL_COATER)
+    driver = StopFailingDriver()
+    gpio = FakeGPIO()
+    controller = MotionController(driver, profile, gpio=gpio)
+
+    with pytest.raises(RuntimeError, match="stop failed"):
+        controller.cleanup()
+
+    assert driver.shutdown_calls == ["stop", "disable", "cleanup"]
+    assert gpio.cleaned is True

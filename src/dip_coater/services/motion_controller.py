@@ -45,6 +45,7 @@ class MotionController:
         self.session_log = session_log or NullSessionLog()
         self._disabled_driver_reference_stops: set[HomeDirection] = set()
         self._last_motion_timeout_s: float | None = None
+        self._cleanup_complete = False
 
     @property
     def supports_limit_switches(self) -> bool:
@@ -540,14 +541,37 @@ class MotionController:
         return self.motor_driver.is_homing_found()
 
     def cleanup(self):
-        """Release motor-driver and GPIO resources."""
-        self.session_log.write("session_cleanup")
-        self.motor_driver.cleanup()
+        """Stop motion, disable power, and release resources exactly once."""
+        if self._cleanup_complete:
+            return
+
+        first_error = None
+        cleanup_steps = [
+            self.stop_motor,
+            self.disable_motor,
+            self.motor_driver.cleanup,
+        ]
         if (
             self.gpio is not None
             and getattr(self.motor_driver, "GPIO", None) is not self.gpio
         ):
-            self.gpio.cleanup()
+            cleanup_steps.append(self.gpio.cleanup)
+
+        for cleanup_step in cleanup_steps:
+            try:
+                cleanup_step()
+            except Exception as exc:
+                if first_error is None:
+                    first_error = exc
+        try:
+            self.session_log.write("session_cleanup")
+        except Exception as exc:
+            if first_error is None:
+                first_error = exc
+
+        self._cleanup_complete = True
+        if first_error is not None:
+            raise first_error
 
     def setup_limit_switches_io(self):
         """Configure GPIO input pins for GPIO-backed limit switches."""
