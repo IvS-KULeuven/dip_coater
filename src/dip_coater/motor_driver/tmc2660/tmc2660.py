@@ -621,10 +621,24 @@ class MotorDriverTMC2660(MotorDriver):
         return self.vsense_fs.voltage
 
     def _convert_current_to_value(self, current_mA: float) -> int:
+        try:
+            valid_current = (
+                not isinstance(current_mA, bool) and math.isfinite(current_mA)
+            )
+        except (TypeError, ValueError):
+            valid_current = False
+        if not valid_current:
+            msg = "current_mA must be a finite number"
+            self.logger.log(msg, TMC2660LogLevel.ERROR)
+            raise ValueError(msg)
+
         vfs = self._get_vsense_full_scale_voltage()
         value = int((current_mA/1000 * 32 * self.rsense * 1.4142) / vfs) - 1         # 1.4142 = sqrt(2)
         if value < 0 or value > 31:
-            msg = f"Invalid current value: {current_mA}. Must be between 0 and 31."
+            msg = (
+                f"Current {current_mA} mA is outside the representable range "
+                "for the configured sense circuit."
+            )
             self.logger.log(msg, TMC2660LogLevel.ERROR)
             raise ValueError(msg)
         return value

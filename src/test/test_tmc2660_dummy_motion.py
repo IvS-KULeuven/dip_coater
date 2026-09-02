@@ -81,6 +81,21 @@ def test_tmc2660_dummy_matches_exponent_readback(microsteps, register_value):
     assert driver.get_microsteps() == microsteps
 
 
+@pytest.mark.parametrize(
+    "invalid_current",
+    [True, "1000", float("nan"), float("inf"), float("-inf")],
+)
+def test_tmc2660_rejects_malformed_current_without_writing(invalid_current):
+    driver = make_driver()
+    current_parameter = driver.motor.AP.MaxCurrent
+    original_value = driver.dummy_values[current_parameter]
+
+    with pytest.raises(ValueError, match="current_mA must be a finite number"):
+        driver.set_current(invalid_current)
+
+    assert driver.dummy_values[current_parameter] == original_value
+
+
 def test_real_tmc2660_writes_physical_microstep_count_to_eval_firmware():
     writes = []
 
