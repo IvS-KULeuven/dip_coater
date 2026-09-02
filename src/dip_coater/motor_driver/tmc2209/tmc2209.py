@@ -169,9 +169,9 @@ class MotorDriverTMC2209(MotorDriver):
         :return: The StopMode of the movement (StopMode.NO for normal stop, other StopMode for
                     early stop)
         """
-        while self.tmc.distance_to_go() > 0:
+        while self.tmc.distance_to_go() != 0:
             await asyncio.sleep(0.1)  # Check every 100ms
-        return self.tmc.wait_for_movement_finished_threaded()
+        return await asyncio.to_thread(self.tmc.wait_for_movement_finished_threaded)
 
     def do_limit_switch_homing(self, limit_switch_up_pin: int, limit_switch_down_pin: int,
                                distance_mm: float, speed_mm_s: float = 2,
