@@ -1,5 +1,7 @@
 import asyncio
 import inspect
+import threading
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -51,6 +53,39 @@ def test_coder_api_refuses_new_commands_after_stop_request():
         coder.move_up(1.0, 1.0)
 
     assert motor_controls.moves == []
+
+
+def test_coder_stop_interrupts_plain_python_loop_promptly():
+    coder = Coder(SimpleNamespace(motor_controls=FakeMotorControls()))
+    loop_started = threading.Event()
+    coder.loop_started = loop_started
+    coder.code = (
+        "import time\n"
+        "self.loop_started.set()\n"
+        "deadline = time.monotonic() + 1.0\n"
+        "while time.monotonic() < deadline:\n"
+        "    pass\n"
+    )
+    errors = []
+
+    def execute():
+        try:
+            coder.exec_code()
+        except BaseException as error:
+            errors.append(error)
+
+    worker = threading.Thread(target=execute, daemon=True)
+    worker.start()
+    assert loop_started.wait(timeout=0.5)
+
+    started_stopping = time.monotonic()
+    coder.request_stop()
+    worker.join(timeout=0.2)
+
+    assert not worker.is_alive()
+    assert time.monotonic() - started_stopping < 0.2
+    assert len(errors) == 1
+    assert isinstance(errors[0], CoderExecutionCancelled)
 
 
 def test_coder_move_to_position_allows_default_speed():

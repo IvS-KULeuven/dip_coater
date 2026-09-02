@@ -18,12 +18,12 @@ Use this for repeatable routines such as:
 ## Stopping a Script
 
 Press `STOP code` to request cancellation and disable the motor. The app stops
-the script between Coder API calls such as `move_down`, `move_up`, `sleep`, and
-`move_to_position`.
+the script between Python lines and while it waits for Coder API calls such as
+`move_down`, `move_up`, `sleep`, and `move_to_position`.
 
-`STOP code` cannot interrupt arbitrary Python while it is busy inside a loop
-that does not call the Coder API. Keep scripts simple and use short Coder API
-steps.
+Python cannot interrupt a long-running native-library call until that call
+returns. Keep scripts simple, prefer the Coder API, and avoid blocking external
+library calls.
 
 ## Basic Script
 

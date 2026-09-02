@@ -1,3 +1,7 @@
+Press `STOP code` to disable the motor and interrupt the script between Python
+lines or while it waits for a Coder API command. A long-running native-library
+call can only stop after that call returns.
+
 ```python
 self.enable_motor()         # Arm the motor
 self.disable_motor()        # Disarm the motor

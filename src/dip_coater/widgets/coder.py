@@ -1,5 +1,6 @@
 import asyncio
 import concurrent.futures
+import sys
 import time
 from importlib.util import find_spec
 from pathlib import Path
@@ -223,8 +224,18 @@ class Coder(Static):
     def exec_code(self):
         self._raise_if_stop_requested()
         namespace = {"self": self}
-        exec(self.code, namespace, namespace)
+        previous_trace = sys.gettrace()
+        sys.settrace(self._trace_execution)
+        try:
+            exec(self.code, namespace, namespace)
+        finally:
+            sys.settrace(previous_trace)
         self._raise_if_stop_requested()
+
+    def _trace_execution(self, _frame, event, _arg):
+        if event == "line":
+            self._raise_if_stop_requested()
+        return self._trace_execution
 
     def _set_execution_controls_running(self, running: bool) -> None:
         for button_id, disabled in (

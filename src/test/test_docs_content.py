@@ -35,7 +35,8 @@ def test_coder_docs_explain_trusted_scripts_and_stop_button():
 
     assert "trusted Python code" in coder_docs
     assert "STOP code" in coder_docs
-    assert "between Coder API calls" in coder_docs
+    assert "between Python lines" in coder_docs
+    assert "native-library call" in coder_docs
 
 
 def test_coder_examples_use_explicit_keyword_arguments():
