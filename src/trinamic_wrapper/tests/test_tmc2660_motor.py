@@ -150,9 +150,7 @@ class TestStepMode:
     def test_set_step_mode_writes_mres_ap(self, setup):
         motor, conn, board = setup
         motor.set_step_mode(StepMode.USTEP_8)
-        assert conn.get_ap(board.motors[0].AP.MicrostepResolution) == int(
-            StepMode.USTEP_8
-        )
+        assert conn.get_ap(board.motors[0].AP.MicrostepResolution) == 8
 
 
 class TestUnsupportedFeatures:

@@ -20,24 +20,23 @@ class Direction(IntEnum):
 class StepMode(IntEnum):
     """Microstepping resolution.
 
-    Value is the microstep-per-fullstep multiplier. The enum value matches
-    the TMCL ``MicrostepResolution`` axis parameter convention used by the
-    ADI firmware (0=full, 1=half, ..., 8=256).
+    The enum value is the microsteps-per-fullstep count accepted by the
+    EvalSystem firmware's ``MicrostepResolution`` axis parameter.
     """
-    FULLSTEP    = 0
-    USTEP_2     = 1
-    USTEP_4     = 2
-    USTEP_8     = 3
-    USTEP_16    = 4
-    USTEP_32    = 5
-    USTEP_64    = 6
-    USTEP_128   = 7
-    USTEP_256   = 8
+    FULLSTEP    = 1
+    USTEP_2     = 2
+    USTEP_4     = 4
+    USTEP_8     = 8
+    USTEP_16    = 16
+    USTEP_32    = 32
+    USTEP_64    = 64
+    USTEP_128   = 128
+    USTEP_256   = 256
 
     @property
     def microsteps_per_fullstep(self) -> int:
         """Actual microstep multiplier (1, 2, 4, …, 256)."""
-        return 1 << int(self.value)
+        return int(self.value)
 
 
 class RampMode(IntEnum):

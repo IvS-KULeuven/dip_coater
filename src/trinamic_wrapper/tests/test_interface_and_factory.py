@@ -150,3 +150,9 @@ class TestConfigValidation:
         assert StepMode.USTEP_2.microsteps_per_fullstep == 2
         assert StepMode.USTEP_16.microsteps_per_fullstep == 16
         assert StepMode.USTEP_256.microsteps_per_fullstep == 256
+
+    def test_stepmode_values_match_eval_firmware_axis_parameter(self):
+        assert int(StepMode.FULLSTEP) == 1
+        assert int(StepMode.USTEP_2) == 2
+        assert int(StepMode.USTEP_16) == 16
+        assert int(StepMode.USTEP_256) == 256

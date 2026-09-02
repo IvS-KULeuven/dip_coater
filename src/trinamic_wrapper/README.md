@@ -121,7 +121,7 @@ I_rms = (CS + 1)/32 · V_fs / (R_sense + R_offset) / √2
 
 The Landungsbruecke firmware used here takes `MaxCurrent` / `StandbyCurrent` as the 5-bit CS value directly for both supported eval boards.
 
-**TMC5160 velocity (rev/s ↔ VMAX)** — datasheet §6.3, with `motion_units_per_fullstep` matching the firmware's microstep-resolution code:
+**TMC5160 velocity (rev/s ↔ VMAX)** — datasheet §6.3, using the configured microsteps per full step:
 
 ```
 VMAX = rev/s · motion_units_per_fullstep · steps_per_rev · 2²⁴ / f_clk

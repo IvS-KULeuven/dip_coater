@@ -13,7 +13,7 @@ from typing import Any
 
 from pytrinamic.ic import TMC5160
 
-from ..config import MotorConfig, StepMode
+from ..config import MotorConfig
 from ..conversions import cs_to_mA_rms, mA_rms_to_cs
 from .base import BaseStepperMotor
 
@@ -95,28 +95,6 @@ class TMC5160Motor(BaseStepperMotor):
     # ------------------------------------------------------------------ #
     # Speed / accel
     # ------------------------------------------------------------------ #
-
-    _SUPPORTED_STEP_MODES = frozenset({
-        StepMode.USTEP_2,
-        StepMode.USTEP_4,
-        StepMode.USTEP_16,
-        StepMode.USTEP_256,
-    })
-
-    def set_step_mode(self, mode: StepMode) -> None:
-        if mode not in self._SUPPORTED_STEP_MODES:
-            supported = ", ".join(
-                m.name for m in sorted(self._SUPPORTED_STEP_MODES, key=int)
-            )
-            raise ValueError(
-                "TMC5160 eval firmware supports only these step modes on this "
-                f"setup: {supported}; got {mode.name}"
-            )
-        super().set_step_mode(mode)
-
-    def _motion_units_per_fullstep(self) -> int:
-        """Landungsbruecke firmware uses the MRES code (0..8), not 2**MRES."""
-        return max(1, int(self._step_mode))
 
     def _rps_to_raw_speed(self, rps: float) -> int:
         units_per_rev = (

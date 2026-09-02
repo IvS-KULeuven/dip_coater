@@ -142,10 +142,9 @@ class TestMotion:
     def test_set_speed_writes_vmax(self, setup):
         motor, conn, board = setup
         motor.set_speed_rps(1.0)
-        # Landungsbruecke motion scaling uses the MRES code (8 at USTEP_256),
-        # so 1 rot/s maps to ~1678 at the default step mode.
+        # 1 rot/s * 200 fullsteps * 256 microsteps * 2^24 / 16 MHz.
         value = conn.get_ap(board.motors[0].AP.MaxVelocity)
-        assert 1600 < value < 1800
+        assert 53_600 < value < 53_800
 
     def test_set_acceleration_writes_amax_dmax_d1(self, setup):
         motor, conn, board = setup
@@ -192,23 +191,22 @@ class TestMotion:
         motor.set_speed_rps(2.0)
         motor.rotate()  # no explicit speed
         (_a, v, _m) = [a for k, a in conn.calls if k == "rotate"][-1]
-        # 2 rot/s ~ 3355 with the firmware's MRES-code scaling.
-        assert 3300 < v < 3400
+        assert 107_300 < v < 107_500
 
     def test_rotate_by_sends_move_to_with_correct_absolute_target(self, setup):
         motor, conn, _ = setup
         motor.set_step_mode(StepMode.USTEP_256)
         motor.rotate_by(2.0, direction=Direction.CW)
-        # 2 rotations × 200 fullsteps × MRES-code 8 = 3200
+        # 2 rotations * 200 fullsteps * 256 microsteps = 102400.
         (axis, target, _mid) = conn.last("move_to")
         assert axis == 0
-        assert target == 3200
+        assert target == 102_400
 
     def test_rotate_by_negative_direction(self, setup):
         motor, conn, _ = setup
         motor.rotate_by(1.0, direction=Direction.CCW)
         (_axis, target, _mid) = conn.last("move_to")
-        assert target == -1600
+        assert target == -51_200
 
     def test_stop_sends_stop_command(self, setup):
         motor, conn, _ = setup
@@ -249,25 +247,27 @@ class TestStepMode:
         motor, conn, board = setup
         motor.set_step_mode(StepMode.USTEP_16)
         value = conn.get_ap(board.motors[0].AP.MicrostepResolution)
-        assert value == int(StepMode.USTEP_16)
+        assert value == 16
 
     def test_get_step_mode_returns_cached(self, setup):
         motor, *_ = setup
         motor.set_step_mode(StepMode.USTEP_16)
         assert motor.get_step_mode() == StepMode.USTEP_16
 
-    def test_unsupported_step_mode_rejected(self, setup):
-        motor, *_ = setup
-        with pytest.raises(ValueError, match="supports only these step modes"):
-            motor.set_step_mode(StepMode.USTEP_64)
+    def test_all_firmware_step_modes_are_supported(self, setup):
+        motor, conn, board = setup
+
+        for mode in StepMode:
+            motor.set_step_mode(mode)
+            assert conn.get_ap(board.motors[0].AP.MicrostepResolution) == int(mode)
 
     def test_step_mode_affects_rotate_by_usteps(self, setup):
         motor, conn, _ = setup
         motor.set_step_mode(StepMode.USTEP_16)
         motor.rotate_by(1.0)
         (_axis, target, _mid) = conn.last("move_to")
-        # 1 rev * 200 fullsteps * MRES-code 4 = 800
-        assert target == 800
+        # 1 rev * 200 fullsteps * 16 microsteps = 3200.
+        assert target == 3200
 
 
 class TestStealthChop:
@@ -413,7 +413,7 @@ class TestPosition:
 
     def test_get_actual_position_converts_to_revolutions(self, setup):
         motor, conn, board = setup
-        # inject a raw position value
-        conn.axis_parameters[(board.motors[0].AP.ActualPosition, 0)] = 1600
+        # One revolution at 200 full steps and 256 microsteps per full step.
+        conn.axis_parameters[(board.motors[0].AP.ActualPosition, 0)] = 51_200
         pos = motor.get_actual_position_rot()
         assert pos == pytest.approx(1.0)
