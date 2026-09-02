@@ -279,13 +279,22 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
             remove_handler(handler)
 
     def cleanup(self):
+        first_error: Exception | None = None
         try:
             self.disable_motor()
-        finally:
-            self._target_position_rot = None
-            if self._close is not None:
+        except Exception as error:
+            first_error = error
+
+        self._target_position_rot = None
+        if self._close is not None:
+            try:
                 self._close()
-            self._logger.info("Motor driver cleaned up")
+            except Exception as error:
+                if first_error is None:
+                    first_error = error
+        self._logger.info("Motor driver cleaned up")
+        if first_error is not None:
+            raise first_error
 
     def set_chopper_mode(self, mode):
         coerced = self._coerce_chopper_mode(mode)

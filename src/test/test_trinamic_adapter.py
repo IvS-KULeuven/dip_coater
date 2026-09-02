@@ -382,6 +382,29 @@ def test_adapter_cleanup_disables_motor_and_closes_connection():
     assert closed["value"] is True
 
 
+def test_adapter_cleanup_preserves_disable_error_when_close_also_fails(
+    monkeypatch,
+):
+    motor = FakeStepperMotor()
+    close_calls = []
+
+    def fail_disable():
+        raise RuntimeError("disable failed")
+
+    def fail_close():
+        close_calls.append(True)
+        raise RuntimeError("close failed")
+
+    monkeypatch.setattr(motor, "disable", fail_disable)
+    adapter = make_adapter(motor, close=fail_close)
+
+    with pytest.raises(RuntimeError, match="disable failed"):
+        adapter.cleanup()
+
+    assert close_calls == [True]
+    assert adapter._target_position_rot is None
+
+
 def test_adapter_step_mode_maps_to_wrapper_enum():
     motor = FakeStepperMotor()
     adapter = make_adapter(motor)
