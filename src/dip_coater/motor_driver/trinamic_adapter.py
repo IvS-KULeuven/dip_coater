@@ -138,6 +138,10 @@ class TrinamicWrapperMotorAdapter(MotorDriver):
         acceleration_mm_s2: float = None,
         homes_up: bool | None = None,
     ):
+        if homes_up is not None and not self._homing_found:
+            raise ValueError(
+                "The motor must be homed before absolute positioning."
+            )
         current_mm = self.get_current_position_mm(homes_up=homes_up)
         delta_position_mm = position_mm - current_mm
         if homes_up is None:

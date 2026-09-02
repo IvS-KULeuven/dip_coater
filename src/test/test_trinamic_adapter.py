@@ -212,6 +212,14 @@ def test_adapter_run_to_position_uses_relative_delta():
     assert adapter.get_current_position_mm() == pytest.approx(4.0)
 
 
+def test_adapter_homed_absolute_move_requires_home_reference():
+    motor = FakeStepperMotor()
+    adapter = make_adapter(motor)
+
+    with pytest.raises(ValueError, match="must be homed"):
+        adapter.run_to_position(4.0, 1.0, homes_up=True)
+
+
 def test_adapter_invert_direction_flips_motion():
     motor = FakeStepperMotor()
     adapter = make_adapter(motor, invert_direction=True)
@@ -243,6 +251,7 @@ def test_adapter_position_with_homes_up_inverted_motor_reads_positive_when_movin
 def test_adapter_run_to_position_honors_home_direction_with_inverted_motor():
     motor = FakeStepperMotor()
     adapter = make_adapter(motor, invert_direction=True)
+    adapter.mark_homed()
     # Pretend we're 5 mm above home (homes_down convention).
     adapter.move_up(5.0, 1.0)
     assert adapter.get_current_position_mm(homes_up=False) == pytest.approx(5.0)
