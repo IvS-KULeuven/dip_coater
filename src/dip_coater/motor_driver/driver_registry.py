@@ -1,3 +1,4 @@
+from contextlib import ExitStack
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -172,56 +173,74 @@ def _create_tmc5160_driver(
     ).logger
 
     connection = None
-    if app_state.config.USE_DUMMY_DRIVER:
-        motor = DummyStepperMotor(config)
-    else:
-        connection = open_connection(port=port, interface=interface_type).connect()
-        motor = create_motor(Chip.TMC5160, connection, config=config)
-    _prepare_tmc5160_motor_for_startup(motor, logger)
-    motor.set_run_current_mA(app_state.config.DEFAULT_CURRENT)
-    motor.set_standstill_current_mA(app_state.config.DEFAULT_CURRENT_STANDSTILL)
-    motor.set_step_mode(step_mode)
-    motor.set_acceleration_rps2(
-        setup.mm_s2_to_rpss(app_state.config.DEFAULT_ACCELERATION)
-    )
-    motor.set_interpolation(app_state.config.USE_INTERPOLATION)
-    adapter = TrinamicWrapperMotorAdapter(
-        motor,
-        setup,
-        invert_direction=app_state.setup_profile.invert_motor_direction,
-        is_dummy=app_state.config.USE_DUMMY_DRIVER,
-        close=connection.close if connection is not None else None,
-        logger=logger,
-    )
-    adapter.set_chopper_mode(
-        getattr(app_state.config, "DEFAULT_CHOPPER_MODE", "SpreadCycle")
-    )
-    adapter.set_stealthchop_threshold(
-        getattr(app_state.config, "DEFAULT_STEALTHCHOP_THRESHOLD_RPS", 0.0)
-    )
-    adapter.set_stealthchop_enabled(
-        getattr(app_state.config, "DEFAULT_STEALTHCHOP_ENABLED", False)
-    )
-    adapter.set_stallguard_threshold(
-        getattr(app_state.config, "DEFAULT_STALLGUARD_THRESHOLD", 0)
-    )
-    adapter.set_stallguard_enabled(
-        getattr(app_state.config, "DEFAULT_STALLGUARD_ENABLED", True)
-    )
-    adapter.set_stallguard_filter_enabled(
-        getattr(app_state.config, "DEFAULT_STALLGUARD_FILTER_ENABLED", True)
-    )
-    adapter.set_coolstep_threshold(
-        getattr(app_state.config, "DEFAULT_COOLSTEP_THRESHOLD", 0)
-    )
-    adapter.set_coolstep_enabled(
-        getattr(app_state.config, "DEFAULT_COOLSTEP_ENABLED", False)
-    )
-    adapter.enable_reference_stops(
-        left=getattr(app_state.config, "DEFAULT_REFERENCE_LEFT_STOP_ENABLED", True),
-        right=getattr(app_state.config, "DEFAULT_REFERENCE_RIGHT_STOP_ENABLED", True),
-    )
-    return adapter
+    with ExitStack() as failed_startup_cleanup:
+        if app_state.config.USE_DUMMY_DRIVER:
+            motor = DummyStepperMotor(config)
+        else:
+            connection = open_connection(
+                port=port, interface=interface_type
+            ).connect()
+            failed_startup_cleanup.callback(
+                _close_after_failed_startup, connection.close
+            )
+            motor = create_motor(Chip.TMC5160, connection, config=config)
+        _prepare_tmc5160_motor_for_startup(motor, logger)
+        motor.set_run_current_mA(app_state.config.DEFAULT_CURRENT)
+        motor.set_standstill_current_mA(app_state.config.DEFAULT_CURRENT_STANDSTILL)
+        motor.set_step_mode(step_mode)
+        motor.set_acceleration_rps2(
+            setup.mm_s2_to_rpss(app_state.config.DEFAULT_ACCELERATION)
+        )
+        motor.set_interpolation(app_state.config.USE_INTERPOLATION)
+        adapter = TrinamicWrapperMotorAdapter(
+            motor,
+            setup,
+            invert_direction=app_state.setup_profile.invert_motor_direction,
+            is_dummy=app_state.config.USE_DUMMY_DRIVER,
+            close=connection.close if connection is not None else None,
+            logger=logger,
+        )
+        adapter.set_chopper_mode(
+            getattr(app_state.config, "DEFAULT_CHOPPER_MODE", "SpreadCycle")
+        )
+        adapter.set_stealthchop_threshold(
+            getattr(app_state.config, "DEFAULT_STEALTHCHOP_THRESHOLD_RPS", 0.0)
+        )
+        adapter.set_stealthchop_enabled(
+            getattr(app_state.config, "DEFAULT_STEALTHCHOP_ENABLED", False)
+        )
+        adapter.set_stallguard_threshold(
+            getattr(app_state.config, "DEFAULT_STALLGUARD_THRESHOLD", 0)
+        )
+        adapter.set_stallguard_enabled(
+            getattr(app_state.config, "DEFAULT_STALLGUARD_ENABLED", True)
+        )
+        adapter.set_stallguard_filter_enabled(
+            getattr(app_state.config, "DEFAULT_STALLGUARD_FILTER_ENABLED", True)
+        )
+        adapter.set_coolstep_threshold(
+            getattr(app_state.config, "DEFAULT_COOLSTEP_THRESHOLD", 0)
+        )
+        adapter.set_coolstep_enabled(
+            getattr(app_state.config, "DEFAULT_COOLSTEP_ENABLED", False)
+        )
+        adapter.enable_reference_stops(
+            left=getattr(
+                app_state.config, "DEFAULT_REFERENCE_LEFT_STOP_ENABLED", True
+            ),
+            right=getattr(
+                app_state.config, "DEFAULT_REFERENCE_RIGHT_STOP_ENABLED", True
+            ),
+        )
+        failed_startup_cleanup.pop_all()
+        return adapter
+
+
+def _close_after_failed_startup(close: Callable[[], None]) -> None:
+    try:
+        close()
+    except Exception:
+        pass
 
 
 def _prepare_tmc5160_motor_for_startup(motor, logger) -> None:

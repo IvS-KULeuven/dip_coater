@@ -297,6 +297,41 @@ def test_tmc5160_startup_attempts_all_safety_actions_after_stop_failure():
     ]
 
 
+def test_create_tmc5160_driver_closes_connection_after_configuration_failure(
+    monkeypatch,
+):
+    app_state = _make_app_state()
+    app_state.setup_profile = _driver_registry.get_driver_spec(
+        "TMC5160"
+    ).adjust_setup_profile(app_state.setup_profile)
+    fake_conn = FakeConn()
+
+    class FaultingMotor(FakeMotor):
+        def set_run_current_mA(self, current_mA):
+            raise RuntimeError("current configuration failed")
+
+    monkeypatch.setattr(
+        "dip_coater.motor_driver.driver_registry.open_connection",
+        lambda **_kwargs: SimpleNamespace(connect=lambda: fake_conn),
+    )
+    monkeypatch.setattr(
+        "dip_coater.motor_driver.driver_registry.create_motor",
+        lambda *_args, **_kwargs: FaultingMotor(),
+    )
+
+    with pytest.raises(RuntimeError, match="current configuration failed"):
+        _create_tmc5160_driver(
+            app_state,
+            log_level=TMC5160LogLevel.INFO,
+            log_handlers=[],
+            log_formatter=None,
+            interface_type="usb_tmcl",
+            port="/dev/tty.test",
+        )
+
+    assert fake_conn.closed is True
+
+
 def test_create_tmc5160_dummy_driver_uses_wrapper_adapter(monkeypatch):
     app_state = _make_app_state()
     app_state.setup_profile = _driver_registry.get_driver_spec(
