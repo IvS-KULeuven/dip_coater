@@ -4,6 +4,7 @@ Move a motor back and forth using velocity and position mode of the TMC2660.
 import asyncio
 import logging
 import math
+import time
 from enum import Enum
 
 try:
@@ -24,6 +25,9 @@ from dip_coater.motor_driver.tmc2660.tmc2660_dummy import (
     DummyInterface,
     DummyLandungsbruecke,
 )
+
+
+_TARGET_POLL_INTERVAL_S = 0.1
 
 
 class VSenseFullScale(Enum):
@@ -248,12 +252,12 @@ class MotorDriverTMC2660(MotorDriver):
 
     def wait_for_motor_done(self):
         while not self.is_target_reached():
-            pass
+            time.sleep(_TARGET_POLL_INTERVAL_S)
         self.logger.log("Motor done", TMC2660LogLevel.INFO)
 
     async def wait_for_motor_done_async(self):
         while not self.is_target_reached():
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(_TARGET_POLL_INTERVAL_S)
         self.logger.log("Motor done", TMC2660LogLevel.INFO)
 
     def is_homing_found(self):

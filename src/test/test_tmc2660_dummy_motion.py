@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from dip_coater.mechanical.mechanical_setup import MechanicalSetup
+from dip_coater.motor_driver.tmc2660 import tmc2660
 from dip_coater.motor_driver.tmc2660 import tmc2660_dummy
 from dip_coater.motor_driver.tmc2660.tmc2660 import (
     MotorDriverTMC2660,
@@ -164,3 +165,21 @@ def test_tmc2660_absolute_position_requires_manual_home_reference():
     assert driver.get_current_position_mm() is None
     with pytest.raises(ValueError, match="not homed"):
         driver.run_to_position(4.0)
+
+
+def test_tmc2660_sync_wait_sleeps_between_status_polls(monkeypatch):
+    driver = MotorDriverTMC2660.__new__(MotorDriverTMC2660)
+    reached = iter((False, False, True))
+    sleep_calls = []
+    driver.is_target_reached = lambda: next(reached)
+    driver.logger = SimpleNamespace(log=lambda *args: None)
+    monkeypatch.setattr(
+        tmc2660,
+        "time",
+        SimpleNamespace(sleep=sleep_calls.append),
+        raising=False,
+    )
+
+    driver.wait_for_motor_done()
+
+    assert sleep_calls == [0.1, 0.1]
