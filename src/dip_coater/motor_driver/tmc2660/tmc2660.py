@@ -657,7 +657,7 @@ class MotorDriverTMC2660(MotorDriver):
 
     def _get_axis_parameter(self, parameter, axis):
         if self.is_dummy:
-            return self.dummy_values.get(parameter, 0)
+            return self.eval_board.get_axis_parameter(parameter, axis)
         return self.motor.get_axis_parameter(parameter, axis)
 
     def _set_axis_parameter(self, parameter, value):

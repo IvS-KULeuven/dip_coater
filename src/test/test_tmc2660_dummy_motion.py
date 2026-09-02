@@ -68,6 +68,20 @@ def test_tmc2660_dummy_move_by_duration_depends_on_steps_and_velocity(monkeypatc
     assert board.get_axis_parameter(DummyAxisParameters.ActualPosition, 0) == 200
 
 
+def test_tmc2660_driver_polling_advances_dummy_motion(monkeypatch):
+    clock = FakeClock()
+    monkeypatch.setattr(tmc2660_dummy, "time", clock, raising=False)
+    driver = make_driver(step_mode=16)
+
+    driver.rotate(1.0, rps=1.0, rpss=1.0)
+    assert driver.is_target_reached() is False
+
+    clock.advance(1.0)
+
+    assert driver.is_target_reached() is True
+    assert driver.get_actual_position() == 200 * 16
+
+
 @pytest.mark.parametrize(
     ("microsteps", "register_value"),
     [(1, 0), (2, 1), (16, 4), (256, 8)],
