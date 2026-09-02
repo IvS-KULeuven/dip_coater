@@ -13,7 +13,13 @@ def clamp(value, min_value, max_value):
 
 
 def validated_number_from_submission(event, previous_value, number_type=float):
-    """Return a validated numeric input value or restore its last good value."""
+    """Return a validated numeric input value or restore its last good value.
+
+    :param event: Textual input-submission event containing the validation result.
+    :param previous_value: Last accepted value restored after invalid input.
+    :param number_type: Callable used to convert the submitted text.
+    :return: Converted number, or ``None`` when validation or conversion fails.
+    """
     validation_result = getattr(event, "validation_result", None)
     if validation_result is None or not validation_result.is_valid:
         event.input.value = "" if previous_value is None else str(previous_value)
