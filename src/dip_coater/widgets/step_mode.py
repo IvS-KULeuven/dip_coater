@@ -33,6 +33,8 @@ class StepMode(Static):
         self.set_microsteps(step_mode, event.pressed.label)
 
     def set_microsteps(self, step_mode: int, step_mode_label):
+        if self.app_state.motor_state in ("moving", "homing"):
+            return
         self.step_mode = step_mode
         self.app_state.motor_driver.set_microsteps(self.step_mode)
         if self.app_state.config.STEP_MODE_WRITE_TO_LOG:

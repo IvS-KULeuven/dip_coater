@@ -30,6 +30,8 @@ class AdvancedSettingsTab(TabPane):
                 )
 
     def on_setting_changed(self, event: SettingChanged):
+        if self.app_state.motor_state in ("moving", "homing"):
+            return
         match event.setting_name:
             case "acceleration":
                 self.app_state.motor_driver.set_acceleration(event.value)

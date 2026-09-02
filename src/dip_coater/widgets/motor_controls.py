@@ -90,11 +90,28 @@ class MotorControls(Static):
     def set_motor_state(self, state: str):
         self.app_state.motor_state = state
         self.update_status_widgets()
+        self._set_motion_settings_locked(state in ("moving", "homing"))
         if self.app_state.motion_controller.supports_limit_switches:
             if state == "moving":
                 self.bind_limit_switches_to_motor()
             else:
                 self.bind_limit_switches_to_ui()
+
+    def _set_motion_settings_locked(self, locked: bool) -> None:
+        for attribute in (
+            "speed_controls",
+            "distance_controls",
+            "position_controls",
+            "advanced_settings",
+            "step_mode",
+        ):
+            control = getattr(self.app_state, attribute, None)
+            if control is not None:
+                control.disabled = locked
+        try:
+            self.app.query_one("#reset-to-defaults-btn", Button).disabled = locked
+        except Exception:
+            pass
 
     async def wait_for_motion_done(self, **kwargs):
         wait_task = asyncio.create_task(

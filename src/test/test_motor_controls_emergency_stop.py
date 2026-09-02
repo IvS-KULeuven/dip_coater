@@ -124,6 +124,7 @@ class EmergencyStopHarness(App):
         self.motor_controls = MotorControls(app_state)
         self.app_state.motor_controls = self.motor_controls
         self.position_controls = BarePositionControls(app_state)
+        self.app_state.position_controls = self.position_controls
 
     def compose(self) -> ComposeResult:
         yield self.motor_controls
@@ -269,3 +270,26 @@ async def test_abnormal_motion_stop_leaves_motor_disabled():
 
     assert app_state.motion_controller.disabled is True
     assert app_state.motor_state == "disabled"
+
+
+@pytest.mark.asyncio
+async def test_motion_state_locks_all_motion_setting_controls():
+    app_state = FakeAppState()
+    app = EmergencyStopHarness(app_state)
+
+    async with app.run_test():
+        app_state.motor_controls.set_motor_state("moving")
+
+        assert app_state.speed_controls.disabled is True
+        assert app_state.distance_controls.disabled is True
+        assert app_state.position_controls.disabled is True
+        assert app_state.advanced_settings.disabled is True
+        assert app_state.step_mode.disabled is True
+
+        app_state.motor_controls.set_motor_state("enabled")
+
+        assert app_state.speed_controls.disabled is False
+        assert app_state.distance_controls.disabled is False
+        assert app_state.position_controls.disabled is False
+        assert app_state.advanced_settings.disabled is False
+        assert app_state.step_mode.disabled is False
