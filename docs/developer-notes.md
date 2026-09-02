@@ -13,6 +13,16 @@ Run all non-hardware tests:
 uv run pytest -q -m "not hardware"
 ```
 
+Run the same branch-coverage gate used by CI:
+
+```bash
+uv run pytest -q -m "not hardware" --cov=dip_coater --cov=trinamic_wrapper \
+  --cov-branch --cov-report=term-missing --cov-report=xml
+```
+
+The configured floor is 60% across the application and Trinamic wrapper. Raise
+it as coverage improves; do not lower it to accommodate untested changes.
+
 Run hardware tests only when the correct hardware is connected.
 
 The main CI workflow runs the non-hardware suite on the minimum supported
