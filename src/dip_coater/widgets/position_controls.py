@@ -130,6 +130,9 @@ class PositionControls(Static):
         )
         self.app_state.motor_controls.set_motor_state("moving")
         await asyncio.sleep(0.1)
+        if self.app_state.motor_state != "moving":
+            log.write("[dark_orange]-> Movement aborted before starting.[/]")
+            return
         try:
             self.app_state.motion_controller.move_to_position(
                 position_mm, speed_mm_s, acceleration_mm_s2

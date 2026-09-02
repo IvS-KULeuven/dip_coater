@@ -6,6 +6,7 @@ from textual.app import App, ComposeResult
 from textual.widgets import Button, RichLog
 
 from dip_coater.widgets.motor_controls import MotorControls
+from dip_coater.widgets.position_controls import PositionControls
 
 
 class FakeStatus:
@@ -36,6 +37,9 @@ class FakeMotionController:
     def move_down(self, distance_mm, speed_mm_s, acceleration_mm_s2):
         self.move = (distance_mm, speed_mm_s, acceleration_mm_s2)
 
+    def move_to_position(self, position_mm, speed_mm_s, acceleration_mm_s2):
+        self.move = (position_mm, speed_mm_s, acceleration_mm_s2)
+
     async def wait_for_motor_done_async(self, active_limit_direction=None):
         self.wait_started.set()
         if self.disabled:
@@ -55,6 +59,9 @@ class FakeMotionController:
 
     def disable_motor(self):
         self.disabled = True
+
+    def is_homing_found(self):
+        return True
 
 
 class FakeAdvancedSettings:
@@ -90,15 +97,31 @@ class FakeAppState:
         self.motor_controls = None
 
 
+class BarePositionControls(PositionControls):
+    def compose(self) -> ComposeResult:
+        return []
+
+    def _on_mount(self, event):
+        pass
+
+    def watch_position(self, position):
+        pass
+
+    def update_button_states(self, homing_found):
+        pass
+
+
 class EmergencyStopHarness(App):
     def __init__(self, app_state):
         super().__init__()
         self.app_state = app_state
         self.motor_controls = MotorControls(app_state)
         self.app_state.motor_controls = self.motor_controls
+        self.position_controls = BarePositionControls(app_state)
 
     def compose(self) -> ComposeResult:
         yield self.motor_controls
+        yield self.position_controls
         yield RichLog(markup=True, id="logger")
 
     @on(Button.Pressed, "#disable-motor")
@@ -189,6 +212,27 @@ async def test_stop_during_homing_preflight_prevents_homing_command():
             homing_task.cancel()
             await asyncio.gather(homing_task, return_exceptions=True)
 
+    assert app_state.motion_controller.stopped is True
+    assert app_state.motion_controller.disabled is True
+    assert app_state.motor_state == "disabled"
+
+
+@pytest.mark.asyncio
+async def test_stop_during_absolute_move_preflight_prevents_command_submission():
+    app_state = FakeAppState()
+    app = EmergencyStopHarness(app_state)
+
+    async with app.run_test():
+        move_task = asyncio.create_task(
+            app.position_controls.move_to_position(10.0, 2.0, 1.0)
+        )
+        while app_state.motor_state != "moving":
+            await asyncio.sleep(0)
+
+        await app_state.motor_controls.disable_motor_action()
+        await asyncio.wait_for(move_task, 1.0)
+
+    assert not hasattr(app_state.motion_controller, "move")
     assert app_state.motion_controller.stopped is True
     assert app_state.motion_controller.disabled is True
     assert app_state.motor_state == "disabled"
