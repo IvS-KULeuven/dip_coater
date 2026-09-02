@@ -232,7 +232,7 @@ def test_create_tmc5160_driver_uses_trinamic_wrapper_adapter(monkeypatch):
     assert fake_motor.run_current == 2500
     assert fake_motor.standstill_current == 70
     assert fake_motor.step_mode == StepMode.USTEP_16
-    assert fake_motor.accel == 10 / 4.0 / 1.5
+    assert fake_motor.accel == 10 / 4.0 * 1.5
     assert fake_motor.interpolation is True
     assert fake_motor.chopper_mode == 0
     assert fake_motor.stealthchop is False
