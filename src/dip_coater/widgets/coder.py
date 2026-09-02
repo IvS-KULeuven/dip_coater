@@ -215,7 +215,6 @@ class Coder(Static):
             log.write(f"[dark_orange]{e}[/]")
         except Exception as e:
             log.write(f"[red]Error executing code: {e}[/]")
-            raise e
         finally:
             self._is_executing = False
             self._app_loop = None

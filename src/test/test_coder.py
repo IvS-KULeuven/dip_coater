@@ -88,6 +88,33 @@ def test_coder_stop_interrupts_plain_python_loop_promptly():
     assert isinstance(errors[0], CoderExecutionCancelled)
 
 
+@pytest.mark.asyncio
+async def test_coder_script_error_is_logged_without_escaping_ui_handler():
+    messages = []
+
+    def fail_script():
+        raise RuntimeError("script failed")
+
+    coder = SimpleNamespace(
+        _app_loop=None,
+        _stop_requested=False,
+        _is_executing=False,
+        app=SimpleNamespace(
+            query_one=lambda *_args, **_kwargs: SimpleNamespace(
+                write=messages.append
+            )
+        ),
+        exec_code=fail_script,
+        _set_execution_controls_running=lambda _running: None,
+    )
+
+    await Coder.exec_code_async(coder)
+
+    assert coder._is_executing is False
+    assert coder._app_loop is None
+    assert messages[-1] == "[red]Error executing code: script failed[/]"
+
+
 def test_coder_move_to_position_allows_default_speed():
     signature = inspect.signature(Coder.move_to_position)
 
