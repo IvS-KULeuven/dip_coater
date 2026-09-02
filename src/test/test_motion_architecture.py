@@ -55,6 +55,7 @@ class FakeDriver:
         self.cleaned = False
         self.stopped = False
         self.disabled = False
+        self.homing_found = False
         self.shutdown_calls = []
 
     def enable_motor(self):
@@ -116,7 +117,7 @@ class FakeDriver:
         return 12.5
 
     def is_homing_found(self):
-        return False
+        return self.homing_found
 
     def cleanup(self):
         self.cleaned = True
@@ -256,6 +257,7 @@ def test_motion_controller_passes_setup_reference_to_position_calls_when_support
         home_direction=HomeDirection.DOWN,
     )
     driver = FakeDriver()
+    driver.homing_found = True
     controller = MotionController(driver, profile)
 
     controller.move_to_position(10.0, 1.0, 2.0)
@@ -274,6 +276,7 @@ def test_motion_controller_requires_standard_position_contract():
         limit_switches=LimitSwitchSetup.tmc5160_reference(),
     )
     driver = FakeDriver()
+    driver.homing_found = True
     controller = MotionController(driver, profile)
 
     controller.move_to_position(3.0, 0.5, 1.5)
@@ -347,6 +350,7 @@ def test_motion_controller_does_not_retry_typeerror_from_standard_position_contr
             raise TypeError("driver contract bug")
 
     driver = BuggyDriver()
+    driver.homing_found = True
     controller = MotionController(driver, profile)
 
     with pytest.raises(TypeError, match="driver contract bug"):
@@ -368,6 +372,17 @@ def test_motion_controller_rejects_absolute_position_outside_profile_bounds():
 
     with pytest.raises(ValueError, match="outside travel range"):
         controller.move_to_position(21.0, 1.0, 2.0)
+
+    assert driver.last_run_to_position is None
+
+
+def test_motion_controller_rejects_absolute_move_without_home_reference():
+    profile = get_machine_profile(AvailableMachineSetups.SMALL_COATER)
+    driver = FakeDriver()
+    controller = MotionController(driver, profile)
+
+    with pytest.raises(ValueError, match="must be homed"):
+        controller.move_to_position(10.0, 1.0)
 
     assert driver.last_run_to_position is None
 
@@ -669,6 +684,27 @@ def test_motion_controller_refuses_homing_when_opposite_switch_is_triggered():
 
     with pytest.raises(ValueError, match="opposite"):
         controller.home(1.0)
+    assert driver.homed is False
+
+
+def test_failed_rehome_invalidates_previous_home_reference():
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        limit_switches=LimitSwitchSetup.tmc5160_reference(),
+        home_direction=HomeDirection.UP,
+    )
+    driver = FakeReferenceSwitchDriver()
+    driver.homed = True
+    driver.left_endstop = True
+    driver.right_endstop = False
+    controller = MotionController(driver, profile)
+
+    with pytest.raises(ValueError, match="opposite"):
+        controller.home(1.0)
+
+    assert driver.cleared_homing is True
     assert driver.homed is False
     assert driver.moves == []
 

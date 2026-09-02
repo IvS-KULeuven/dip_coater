@@ -463,6 +463,10 @@ class MotorDriverTMC2209(MotorDriver):
         """
         return self.homing_found
 
+    def clear_homing(self) -> None:
+        """Invalidate the current home reference before a new homing attempt."""
+        self.homing_found = False
+
     def test_stallguard_threshold(self, steps: int = None):
         """test method for tuning stallguard threshold
 

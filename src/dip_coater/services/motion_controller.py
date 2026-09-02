@@ -278,6 +278,8 @@ class MotionController:
             "acceleration_mm_s2", acceleration_mm_s2, allow_none=True
         )
         self._raise_if_position_outside_travel(position_mm)
+        if not self.is_homing_found():
+            raise ValueError("The motor must be homed before absolute positioning.")
         current_position_mm = self.get_current_position_mm()
         travel_distance_mm = (
             self.machine_profile.travel_span_mm
@@ -320,6 +322,7 @@ class MotionController:
             raise ValueError(
                 "The current driver/setup combination does not support homing."
             )
+        self._clear_homing_reference()
         if home_direction is None:
             home_direction = self.machine_profile.home_direction
         self.session_log.write(
@@ -358,6 +361,7 @@ class MotionController:
             raise ValueError(
                 "The current driver/setup combination does not support homing."
             )
+        self._clear_homing_reference()
         if home_direction is None:
             home_direction = self.machine_profile.home_direction
         self.session_log.write(
@@ -727,6 +731,11 @@ class MotionController:
             f"{self.machine_profile.min_position_mm:.1f}.."
             f"{self.machine_profile.max_position_mm:.1f} mm."
         )
+
+    def _clear_homing_reference(self) -> None:
+        clear_homing = getattr(self.motor_driver, "clear_homing", None)
+        if callable(clear_homing):
+            clear_homing()
 
     @staticmethod
     def _require_positive_finite(
