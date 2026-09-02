@@ -143,7 +143,7 @@ class MotorDriverTMC2660(MotorDriver):
             self.dummy_values.update({
                 self.lb.GP.DriversEnable: False,
                 self.motor.AP.PositionReachedFlag: True,
-                self.motor.AP.MicrostepResolution: step_mode,
+                self.motor.AP.MicrostepResolution: self.verify_microsteps(step_mode),
                 self.motor.AP.VSense: VSenseFullScale.VSENSE_FULL_SCALE_305mV.value,
                 self.motor.AP.MaxCurrent: self._convert_current_to_value(current_mA),
                 self.motor.AP.StandbyCurrent: self._convert_current_to_value(current_standstill_mA),
@@ -250,9 +250,11 @@ class MotorDriverTMC2660(MotorDriver):
     # --------------- MOTOR CONFIGURATION ---------------
 
     def set_microsteps(self, microsteps: int):
-        self.verify_microsteps(microsteps)
+        microstep_index = self.verify_microsteps(microsteps)
         self.microsteps = microsteps
-        self._set_axis_parameter(self.motor.AP.MicrostepResolution, microsteps)
+        self._set_axis_parameter(
+            self.motor.AP.MicrostepResolution, microstep_index
+        )
 
         verify_microsteps = self.get_microsteps()
         if self.microsteps != verify_microsteps:
@@ -263,10 +265,7 @@ class MotorDriverTMC2660(MotorDriver):
 
     def get_microsteps(self) -> int:
         mstep = self._get_axis_parameter(self.motor.AP.MicrostepResolution, self.axis)
-        if self.is_dummy:
-            return mstep
-        else:
-            return self.microstep_idx_to_steps(mstep)
+        return self.microstep_idx_to_steps(mstep)
 
     def set_vsense_full_scale(self, vsense_full_scale: VSenseFullScale):
         if vsense_full_scale not in [VSenseFullScale.VSENSE_FULL_SCALE_305mV, VSenseFullScale.VSENSE_FULL_SCALE_165mV]:
