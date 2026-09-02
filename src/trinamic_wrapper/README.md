@@ -157,9 +157,13 @@ Calling an unsupported feature raises `UnsupportedFeatureError` (a subclass of `
 ## Safety
 
 - `MotorConfig.max_current_mA_limit` (default 2000 mA) is a soft cap enforced in software before any write reaches the hardware. Raise or disable at your own risk.
+- Current, speed, acceleration, revolution, and timeout inputs reject non-finite
+  values such as `NaN` and infinity.
 - `set_run_current_mA()` and `set_standstill_current_mA()` reject negative values.
 - `set_speed_rps()` rejects negatives (use `Direction.CCW` for the other direction).
 - `set_acceleration_rps2()` rejects zero and negatives.
+- Motion directions and microstep modes must use the `Direction` and `StepMode`
+  enums so invalid raw values cannot reach the firmware.
 - `set_stallguard_threshold()` enforces the ±64 range.
 - Requested currents that round to CS > 31 are clamped to CS=31 with a `UserWarning` (use `conversions.mA_rms_to_cs(..., clamp=False)` to raise instead).
 

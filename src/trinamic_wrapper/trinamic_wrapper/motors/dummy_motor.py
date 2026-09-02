@@ -4,6 +4,11 @@ from __future__ import annotations
 
 import time
 
+from .._validation import (
+    require_finite,
+    require_nonnegative_finite,
+    require_positive_finite,
+)
 from ..config import Direction, MotorConfig, StepMode
 from ..exceptions import OutOfRangeError
 
@@ -82,17 +87,17 @@ class DummyStepperMotor:
         return self._standstill_current_mA
 
     def set_speed_rps(self, speed_rps: float) -> None:
-        if speed_rps < 0:
-            raise OutOfRangeError("speed must be non-negative; use direction=CCW")
+        require_nonnegative_finite("speed", speed_rps)
         self._speed_rps = speed_rps
 
     def set_acceleration_rps2(self, accel_rps2: float) -> None:
-        if accel_rps2 <= 0:
-            raise OutOfRangeError("acceleration must be positive")
+        require_positive_finite("acceleration", accel_rps2)
         self._acceleration_rps2 = accel_rps2
 
     def set_step_mode(self, mode: StepMode) -> None:
-        self._step_mode = StepMode(mode)
+        if not isinstance(mode, StepMode):
+            raise ValueError("mode must be a StepMode")
+        self._step_mode = mode
 
     def get_step_mode(self) -> StepMode:
         return self._step_mode
@@ -102,6 +107,8 @@ class DummyStepperMotor:
         speed_rps: float | None = None,
         direction: Direction = Direction.CW,
     ) -> None:
+        if not isinstance(direction, Direction):
+            raise ValueError("direction must be a Direction")
         self._update_motion_state()
         if speed_rps is not None:
             self.set_speed_rps(speed_rps)
@@ -114,6 +121,9 @@ class DummyStepperMotor:
         revolutions: float,
         direction: Direction = Direction.CW,
     ) -> None:
+        require_finite("revolutions", revolutions)
+        if not isinstance(direction, Direction):
+            raise ValueError("direction must be a Direction")
         self._update_motion_state()
         delta_rot = abs(revolutions) * int(direction)
         duration_s = self._duration_for_revolutions(abs(delta_rot))
@@ -132,6 +142,8 @@ class DummyStepperMotor:
         self._position_reached = False
 
     def wait_until_reached(self, timeout_s: float | None = None) -> bool:
+        if timeout_s is not None:
+            require_nonnegative_finite("timeout_s", timeout_s)
         self._update_motion_state()
         if self._position_reached:
             return True
@@ -283,8 +295,7 @@ class DummyStepperMotor:
         self._position_reached = True
 
     def _check_current(self, current_mA: float) -> None:
-        if current_mA < 0:
-            raise OutOfRangeError("current must be non-negative")
+        require_nonnegative_finite("current", current_mA)
         limit = self._config.max_current_mA_limit
         if limit is not None and current_mA > limit:
             raise OutOfRangeError(

@@ -16,6 +16,11 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any
 
+from .._validation import (
+    require_finite,
+    require_nonnegative_finite,
+    require_positive_finite,
+)
 from ..config import Direction, MotorConfig, StepMode
 from ..conversions import (
     revolutions_to_usteps,
@@ -157,8 +162,7 @@ class BaseStepperMotor(ABC):
         return self._cached_standstill_current_mA
 
     def _check_current_limit(self, current_mA: float) -> None:
-        if current_mA < 0:
-            raise OutOfRangeError("current must be non-negative")
+        require_nonnegative_finite("current", current_mA)
         limit = self._config.max_current_mA_limit
         if limit is not None and current_mA > limit:
             raise OutOfRangeError(
@@ -172,17 +176,17 @@ class BaseStepperMotor(ABC):
     # ------------------------------------------------------------------ #
 
     def set_speed_rps(self, speed_rps: float) -> None:
-        if speed_rps < 0:
-            raise OutOfRangeError("speed must be non-negative; use direction=CCW")
+        require_nonnegative_finite("speed", speed_rps)
         self._desired_speed_rps = speed_rps
         self._set_speed_raw(self._rps_to_raw_speed(speed_rps))
 
     def set_acceleration_rps2(self, accel_rps2: float) -> None:
-        if accel_rps2 <= 0:
-            raise OutOfRangeError("acceleration must be positive")
+        require_positive_finite("acceleration", accel_rps2)
         self._set_accel_raw(self._rps2_to_raw_accel(accel_rps2))
 
     def set_step_mode(self, mode: StepMode) -> None:
+        if not isinstance(mode, StepMode):
+            raise ValueError("mode must be a StepMode")
         self._motor.set_axis_parameter(
             self._motor.AP.MicrostepResolution, int(mode)
         )
@@ -200,6 +204,8 @@ class BaseStepperMotor(ABC):
         speed_rps: float | None = None,
         direction: Direction = Direction.CW,
     ) -> None:
+        if not isinstance(direction, Direction):
+            raise ValueError("direction must be a Direction")
         if speed_rps is not None:
             self.set_speed_rps(speed_rps)
         self._restore_run_current_for_motion()
@@ -211,6 +217,9 @@ class BaseStepperMotor(ABC):
         revolutions: float,
         direction: Direction = Direction.CW,
     ) -> None:
+        require_finite("revolutions", revolutions)
+        if not isinstance(direction, Direction):
+            raise ValueError("direction must be a Direction")
         self._restore_run_current_for_motion()
         usteps = revolutions_to_usteps(
             revolutions,
@@ -236,6 +245,8 @@ class BaseStepperMotor(ABC):
             self._set_run_current_raw(self._cached_standstill_raw)
 
     def wait_until_reached(self, timeout_s: float | None = None) -> bool:
+        if timeout_s is not None:
+            require_nonnegative_finite("timeout_s", timeout_s)
         deadline = None if timeout_s is None else time.monotonic() + timeout_s
         while True:
             # Axis-parameter 8 = PositionReachedFlag on both chips (via firmware)

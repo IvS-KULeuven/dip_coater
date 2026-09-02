@@ -14,7 +14,9 @@ from tests.fake_connection import FakeConnection
 from trinamic_wrapper import (
     Chip,
     Direction,
+    DummyStepperMotor,
     MotorConfig,
+    OutOfRangeError,
     StepMode,
     StepperMotor,
     TMC2660Motor,
@@ -37,6 +39,10 @@ def _make_2660() -> tuple[TMC2660Motor, FakeConnection]:
     motor = TMC2660Motor(board, MotorConfig(sense_resistor_ohms=0.1))
     conn.calls.clear()
     return motor, conn
+
+
+def _make_dummy() -> tuple[DummyStepperMotor, None]:
+    return DummyStepperMotor(), None
 
 
 class TestProtocolConformance:
@@ -83,6 +89,57 @@ class TestChipAgnosticUsage:
         if motor.has_feature("interpolation"):
             motor.set_interpolation(True)
         # No exceptions — user code is portable.
+
+
+class TestCommandValidation:
+    @pytest.mark.parametrize("maker", [_make_5160, _make_2660, _make_dummy])
+    @pytest.mark.parametrize(
+        ("method_name", "value"),
+        [
+            ("set_run_current_mA", float("nan")),
+            ("set_standstill_current_mA", float("inf")),
+            ("set_speed_rps", float("nan")),
+            ("set_speed_rps", float("inf")),
+            ("set_acceleration_rps2", float("nan")),
+            ("set_acceleration_rps2", float("inf")),
+            ("rotate_by", float("nan")),
+            ("rotate_by", float("inf")),
+        ],
+    )
+    def test_nonfinite_motor_commands_are_rejected(
+        self, maker, method_name, value
+    ):
+        motor, _ = maker()
+
+        with pytest.raises(OutOfRangeError, match="finite"):
+            getattr(motor, method_name)(value)
+
+    @pytest.mark.parametrize("maker", [_make_5160, _make_2660, _make_dummy])
+    def test_nonfinite_wait_timeout_is_rejected(self, maker):
+        motor, conn = maker()
+        if conn is not None:
+            conn.axis_parameters[(motor._motor.AP.PositionReachedFlag, 0)] = 1
+
+        with pytest.raises(OutOfRangeError, match="timeout_s"):
+            motor.wait_until_reached(timeout_s=float("nan"))
+
+    @pytest.mark.parametrize("maker", [_make_5160, _make_2660, _make_dummy])
+    def test_step_mode_requires_enum_value(self, maker):
+        motor, _ = maker()
+
+        with pytest.raises(ValueError, match="StepMode"):
+            motor.set_step_mode(16)
+
+    @pytest.mark.parametrize("maker", [_make_5160, _make_2660, _make_dummy])
+    @pytest.mark.parametrize("method_name", ["rotate", "rotate_by"])
+    def test_motion_direction_requires_enum_value(self, maker, method_name):
+        motor, _ = maker()
+
+        with pytest.raises(ValueError, match="Direction"):
+            if method_name == "rotate":
+                motor.rotate(direction=0)
+            else:
+                motor.rotate_by(1.0, direction=0)
 
 
 class TestFactory:
