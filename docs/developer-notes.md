@@ -15,6 +15,11 @@ uv run pytest -q -m "not hardware"
 
 Run hardware tests only when the correct hardware is connected.
 
+The main CI workflow runs the non-hardware suite on the minimum supported
+Python (3.10), current Python (3.14), and Windows. Separate jobs lint the whole
+repository, build the documentation strictly, build both distributions, and
+launch the installed wheel outside the source tree.
+
 ## TMC5160 Hardware Tests
 
 Set the hardware port:
@@ -174,7 +179,8 @@ self-hosted hardware bench. Non-motion checks run first. Motion is optional and
 runs only after those checks pass and a reviewer approves the protected
 `dip-coater-hardware-motion` environment. Configure runner labels and serial-port
 repository variables before using the workflow; a missing port fails rather than
-silently passing a skipped test.
+silently passing a skipped test. Keep each self-hosted Actions runner at version
+2.329.0 or newer so the Node 24-based actions can run.
 
 ## Documentation Style
 
