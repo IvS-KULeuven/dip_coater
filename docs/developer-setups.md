@@ -77,6 +77,11 @@ LimitSwitchPolarity.ACTIVE_LOW
 
 `ACTIVE_LOW` means raw `False` is triggered.
 
+Both switches in a pair must use the same hardware source. GPIO pairs require
+two distinct, non-negative integer pin numbers; driver-reference switches do
+not accept GPIO pin numbers. Invalid wiring descriptions are rejected when the
+profile is constructed.
+
 ## GPIO Switches
 
 Use GPIO switches for Raspberry Pi wiring, such as the small TMC2209 setup:
@@ -205,6 +210,10 @@ _PROFILES[AvailableMachineSetups.MY_COATER] = MachineProfile(
 ```
 
 ## Safety Checks
+
+Profile travel bounds must be finite, with `max_position_mm` greater than
+`min_position_mm`. `homing_max_distance_mm` must be finite and positive. These
+checks happen before any motor connection is opened.
 
 After changing a setup profile:
 

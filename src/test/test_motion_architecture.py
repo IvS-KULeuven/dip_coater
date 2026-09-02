@@ -8,6 +8,7 @@ from dip_coater.setup_profiles import create_custom_profile, get_machine_profile
 from dip_coater.setup_profiles.machine_profile import (
     AvailableMachineSetups,
     HomeDirection,
+    LimitSwitch,
     LimitSwitchPair,
     LimitSwitchPolarity,
     LimitSwitchSetup,
@@ -227,6 +228,128 @@ def test_custom_profile_can_override_setup_geometry_and_direction():
     assert custom_profile.invert_motor_direction is True
     assert custom_profile.home_direction == HomeDirection.DOWN
     assert base_profile.invert_motor_direction is False
+
+
+@pytest.mark.parametrize(
+    ("overrides", "field_name"),
+    [
+        ({"min_position_mm": float("nan")}, "min_position_mm"),
+        ({"max_position_mm": float("inf")}, "max_position_mm"),
+        (
+            {"min_position_mm": 10.0, "max_position_mm": 5.0},
+            "max_position_mm",
+        ),
+        (
+            {"min_position_mm": 10.0, "max_position_mm": 10.0},
+            "max_position_mm",
+        ),
+        ({"homing_max_distance_mm": 0.0}, "homing_max_distance_mm"),
+        ({"homing_max_distance_mm": float("nan")}, "homing_max_distance_mm"),
+    ],
+)
+def test_machine_profile_rejects_invalid_safety_limits(overrides, field_name):
+    values = {
+        "key": AvailableMachineSetups.CUSTOM,
+        "label": "Custom",
+        "mechanical_setup": MechanicalSetup(mm_per_revolution=4.0),
+    }
+    values.update(overrides)
+
+    with pytest.raises(ValueError, match=field_name):
+        MachineProfile(**values)
+
+
+@pytest.mark.parametrize(
+    ("overrides", "field_name"),
+    [
+        ({"key": "custom"}, "key"),
+        ({"label": "  "}, "label"),
+        ({"mechanical_setup": None}, "mechanical_setup"),
+        ({"invert_motor_direction": 1}, "invert_motor_direction"),
+        ({"home_direction": "up"}, "home_direction"),
+        ({"limit_switches": object()}, "limit_switches"),
+    ],
+)
+def test_machine_profile_rejects_invalid_field_types(overrides, field_name):
+    values = {
+        "key": AvailableMachineSetups.CUSTOM,
+        "label": "Custom",
+        "mechanical_setup": MechanicalSetup(mm_per_revolution=4.0),
+    }
+    values.update(overrides)
+
+    with pytest.raises(ValueError, match=field_name):
+        MachineProfile(**values)
+
+
+@pytest.mark.parametrize(
+    ("switch_values", "field_name"),
+    [
+        (
+            {
+                "source": LimitSwitchSource.GPIO,
+                "polarity": LimitSwitchPolarity.ACTIVE_HIGH,
+                "pin": None,
+            },
+            "pin",
+        ),
+        (
+            {
+                "source": LimitSwitchSource.GPIO,
+                "polarity": LimitSwitchPolarity.ACTIVE_HIGH,
+                "pin": -1,
+            },
+            "pin",
+        ),
+        (
+            {
+                "source": LimitSwitchSource.DRIVER_REFERENCE,
+                "polarity": LimitSwitchPolarity.ACTIVE_LOW,
+                "pin": 19,
+            },
+            "pin",
+        ),
+        (
+            {
+                "source": "gpio",
+                "polarity": LimitSwitchPolarity.ACTIVE_HIGH,
+                "pin": 19,
+            },
+            "source",
+        ),
+        (
+            {
+                "source": LimitSwitchSource.GPIO,
+                "polarity": "active_high",
+                "pin": 19,
+            },
+            "polarity",
+        ),
+    ],
+)
+def test_limit_switch_rejects_invalid_wiring(switch_values, field_name):
+    with pytest.raises(ValueError, match=field_name):
+        LimitSwitch(**switch_values)
+
+
+def test_limit_switch_setup_rejects_duplicate_gpio_pins():
+    with pytest.raises(ValueError, match="different GPIO pins"):
+        LimitSwitchSetup.gpio(up_pin=19, down_pin=19)
+
+
+def test_limit_switch_setup_rejects_mixed_hardware_sources():
+    with pytest.raises(ValueError, match="same hardware source"):
+        LimitSwitchSetup(
+            up=LimitSwitch(
+                source=LimitSwitchSource.GPIO,
+                polarity=LimitSwitchPolarity.ACTIVE_HIGH,
+                pin=19,
+            ),
+            down=LimitSwitch(
+                source=LimitSwitchSource.DRIVER_REFERENCE,
+                polarity=LimitSwitchPolarity.ACTIVE_LOW,
+            ),
+        )
 
 
 def test_motion_controller_homing_uses_machine_profile_direction_and_switch_config():

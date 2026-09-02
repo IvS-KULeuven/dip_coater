@@ -1,7 +1,16 @@
 from dataclasses import dataclass, replace
 from enum import Enum
+import math
 
 from dip_coater.mechanical.mechanical_setup import MechanicalSetup
+
+
+def _is_finite_number(value: object) -> bool:
+    return (
+        not isinstance(value, bool)
+        and isinstance(value, (int, float))
+        and math.isfinite(value)
+    )
 
 
 class AvailableMachineSetups(str, Enum):
@@ -46,6 +55,22 @@ class LimitSwitch:
     polarity: LimitSwitchPolarity
     pin: int | None = None
 
+    def __post_init__(self) -> None:
+        """Reject incomplete or contradictory switch wiring."""
+        if not isinstance(self.source, LimitSwitchSource):
+            raise ValueError("source must be a LimitSwitchSource")
+        if not isinstance(self.polarity, LimitSwitchPolarity):
+            raise ValueError("polarity must be a LimitSwitchPolarity")
+        if self.source == LimitSwitchSource.GPIO:
+            if (
+                isinstance(self.pin, bool)
+                or not isinstance(self.pin, int)
+                or self.pin < 0
+            ):
+                raise ValueError("pin must be a non-negative integer for GPIO")
+        elif self.pin is not None:
+            raise ValueError("pin must be None for a driver-reference switch")
+
     def is_triggered(self, raw_state: bool) -> bool:
         """Interpret a raw switch state using the configured polarity.
 
@@ -75,6 +100,20 @@ class LimitSwitchSetup:
 
     up: LimitSwitch
     down: LimitSwitch
+
+    def __post_init__(self) -> None:
+        """Validate that the switch pair can be handled as one homing setup."""
+        if not isinstance(self.up, LimitSwitch) or not isinstance(
+            self.down, LimitSwitch
+        ):
+            raise ValueError("up and down must both be LimitSwitch instances")
+        if self.up.source != self.down.source:
+            raise ValueError("up and down switches must use the same hardware source")
+        if (
+            self.up.source == LimitSwitchSource.GPIO
+            and self.up.pin == self.down.pin
+        ):
+            raise ValueError("up and down switches must use different GPIO pins")
 
     @classmethod
     def gpio(
@@ -247,6 +286,36 @@ class MachineProfile:
     min_position_mm: float = 0.0
     max_position_mm: float = 100.0
     homing_max_distance_mm: float = 100.0
+
+    def __post_init__(self) -> None:
+        """Validate profile identity, wiring, and physical safety bounds."""
+        if not isinstance(self.key, AvailableMachineSetups):
+            raise ValueError("key must be an AvailableMachineSetups value")
+        if not isinstance(self.label, str) or not self.label.strip():
+            raise ValueError("label must be a non-empty string")
+        if not isinstance(self.mechanical_setup, MechanicalSetup):
+            raise ValueError("mechanical_setup must be a MechanicalSetup")
+        if not isinstance(self.invert_motor_direction, bool):
+            raise ValueError("invert_motor_direction must be a boolean")
+        if not isinstance(self.home_direction, HomeDirection):
+            raise ValueError("home_direction must be a HomeDirection")
+        if self.limit_switches is not None and not isinstance(
+            self.limit_switches, LimitSwitchSetup
+        ):
+            raise ValueError("limit_switches must be a LimitSwitchSetup or None")
+
+        for field_name in ("min_position_mm", "max_position_mm"):
+            if not _is_finite_number(getattr(self, field_name)):
+                raise ValueError(f"{field_name} must be finite")
+        if self.max_position_mm <= self.min_position_mm:
+            raise ValueError("max_position_mm must be greater than min_position_mm")
+        if (
+            not _is_finite_number(self.homing_max_distance_mm)
+            or self.homing_max_distance_mm <= 0
+        ):
+            raise ValueError(
+                "homing_max_distance_mm must be a finite positive number"
+            )
 
     @property
     def homes_up(self) -> bool:
