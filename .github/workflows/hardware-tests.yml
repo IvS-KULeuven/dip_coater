@@ -1,0 +1,159 @@
+name: Hardware-in-the-loop tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Hardware bench to test
+        required: true
+        type: choice
+        options:
+          - tmc5160
+          - tmc2660
+          - tmc2209
+      run_motion:
+        description: Run protected tests that physically move the motor
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dip-coater-hardware
+  cancel-in-progress: false
+
+jobs:
+  tmc5160_safe:
+    if: inputs.target == 'tmc5160'
+    runs-on: [self-hosted, Linux, dip-coater-hardware, tmc5160]
+    env:
+      DIP_COATER_TMC5160_HARDWARE: "1"
+      DIP_COATER_TMC5160_PORT: ${{ vars.DIP_COATER_TMC5160_PORT }}
+      DIP_COATER_TMC5160_CURRENT_MA: "500"
+      DIP_COATER_TMC5160_STANDSTILL_MA: "100"
+      TRINAMIC_HW_PORT: ${{ vars.DIP_COATER_TMC5160_PORT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: uv sync --locked
+      - name: Require the configured serial port
+        if: env.DIP_COATER_TMC5160_PORT == ''
+        run: exit 1
+      - name: Run safe application-driver checks
+        run: uv run pytest src/test/test_tmc5160_hardware.py -q -m "hardware and not hardware_motion"
+      - name: Run safe wrapper checks
+        run: >-
+          uv run pytest src/trinamic_wrapper/tests/hardware -q
+          -m "hardware and not hardware_motion" --run-hardware
+          --hw-port "$TRINAMIC_HW_PORT" --hw-chip TMC5160
+          --hw-rsense 0.075 --hw-current-mA 500 --hw-standstill-mA 100
+          --hw-max-mA 1000
+
+  tmc5160_motion:
+    needs: tmc5160_safe
+    if: inputs.target == 'tmc5160' && inputs.run_motion
+    environment: dip-coater-hardware-motion
+    runs-on: [self-hosted, Linux, dip-coater-hardware, tmc5160]
+    env:
+      DIP_COATER_TMC5160_HARDWARE: "1"
+      DIP_COATER_TMC5160_RUN_MOTION: "1"
+      DIP_COATER_TMC5160_PORT: ${{ vars.DIP_COATER_TMC5160_PORT }}
+      DIP_COATER_TMC5160_CURRENT_MA: "500"
+      TRINAMIC_HW_PORT: ${{ vars.DIP_COATER_TMC5160_PORT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: uv sync --locked
+      - run: uv run pytest src/test/test_tmc5160_hardware.py -q -m "hardware_motion"
+      - run: >-
+          uv run pytest src/trinamic_wrapper/tests/hardware -q -m "hardware_motion"
+          --run-hardware --run-hardware-motion --hw-port "$TRINAMIC_HW_PORT"
+          --hw-chip TMC5160 --hw-rsense 0.075 --hw-current-mA 500
+          --hw-standstill-mA 100 --hw-max-mA 1000
+
+  tmc2660_safe:
+    if: inputs.target == 'tmc2660'
+    runs-on: [self-hosted, Linux, dip-coater-hardware, tmc2660]
+    env:
+      TRINAMIC_HW_PORT: ${{ vars.DIP_COATER_TMC2660_PORT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: uv sync --locked
+      - name: Require the configured serial port
+        if: env.TRINAMIC_HW_PORT == ''
+        run: exit 1
+      - run: >-
+          uv run pytest src/trinamic_wrapper/tests/hardware -q
+          -m "hardware and not hardware_motion" --run-hardware
+          --hw-port "$TRINAMIC_HW_PORT" --hw-chip TMC2660
+          --hw-rsense 0.1 --hw-current-mA 500 --hw-standstill-mA 100
+          --hw-max-mA 1000
+
+  tmc2660_motion:
+    needs: tmc2660_safe
+    if: inputs.target == 'tmc2660' && inputs.run_motion
+    environment: dip-coater-hardware-motion
+    runs-on: [self-hosted, Linux, dip-coater-hardware, tmc2660]
+    env:
+      TRINAMIC_HW_PORT: ${{ vars.DIP_COATER_TMC2660_PORT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: uv sync --locked
+      - run: >-
+          uv run pytest src/trinamic_wrapper/tests/hardware -q -m "hardware_motion"
+          --run-hardware --run-hardware-motion --hw-port "$TRINAMIC_HW_PORT"
+          --hw-chip TMC2660 --hw-rsense 0.1 --hw-current-mA 500
+          --hw-standstill-mA 100 --hw-max-mA 1000
+
+  tmc2209_safe:
+    if: inputs.target == 'tmc2209'
+    runs-on: [self-hosted, Linux, ARM64, dip-coater-hardware, tmc2209]
+    env:
+      DIP_COATER_TMC2209_HARDWARE: "1"
+      DIP_COATER_TMC2209_CURRENT_MA: "500"
+      DIP_COATER_TMC2209_STANDSTILL_MA: "100"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: uv sync --extra rpi --locked
+      - run: uv run pytest src/test/test_tmc2209_hardware.py -q -m "hardware and not hardware_motion"
+
+  tmc2209_motion:
+    needs: tmc2209_safe
+    if: inputs.target == 'tmc2209' && inputs.run_motion
+    environment: dip-coater-hardware-motion
+    runs-on: [self-hosted, Linux, ARM64, dip-coater-hardware, tmc2209]
+    env:
+      DIP_COATER_TMC2209_HARDWARE: "1"
+      DIP_COATER_TMC2209_RUN_MOTION: "1"
+      DIP_COATER_TMC2209_CURRENT_MA: "500"
+      DIP_COATER_TMC2209_STANDSTILL_MA: "100"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: uv sync --extra rpi --locked
+      - run: uv run pytest src/test/test_tmc2209_hardware.py -q -m "hardware_motion"

@@ -143,6 +143,35 @@ on `develop`, and can also be started manually.
 Configure the repository's Pages source as **GitHub Actions**. Do not publish a
 separate `gh-pages` branch from a developer workstation.
 
+## Hardware-in-the-loop tests
+
+Hardware tests are deliberately excluded from normal CI and require a supervised,
+secured bench. Check that the mechanism is restrained, travel is unobstructed,
+limit switches and the physical emergency stop work, and the configured current is
+safe for the attached motor before arming a test.
+
+The Trinamic wrapper suite has two independent gates. Safe register and current
+checks require `--run-hardware`; tests that rotate the motor additionally require
+`--run-hardware-motion`:
+
+```console
+uv run pytest src/trinamic_wrapper/tests/hardware -m "hardware and not hardware_motion" \
+  --run-hardware --hw-port=/dev/tty.usbmodemTMCEVAL1 --hw-chip=TMC5160 \
+  --hw-current-mA=500 --hw-max-mA=1000
+```
+
+The application-level TMC5160 and TMC2209 suites use the equivalent
+`DIP_COATER_TMC5160_HARDWARE=1` and `DIP_COATER_TMC2209_HARDWARE=1`
+environment gates. Their motion tests need a separate `*_RUN_MOTION=1` flag.
+All fixtures stop, disable, and clean up their driver even when a test fails.
+
+The manual **Hardware-in-the-loop tests** GitHub Actions workflow selects one
+self-hosted hardware bench. Non-motion checks run first. Motion is optional and
+runs only after those checks pass and a reviewer approves the protected
+`dip-coater-hardware-motion` environment. Configure runner labels and serial-port
+repository variables before using the workflow; a missing port fails rather than
+silently passing a skipped test.
+
 ## Documentation Style
 
 Write for users who are operating a machine, not for Python developers.

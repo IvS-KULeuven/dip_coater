@@ -25,6 +25,8 @@ from pytrinamic.ic import TMC5160
 
 from trinamic_wrapper import Direction, StepMode
 
+pytestmark = pytest.mark.hardware
+
 
 # ------------------------------------------------------------------------- #
 # Basic connectivity & identity
@@ -141,6 +143,7 @@ class TestCurrentRoundTrip:
 # Motion — does the motor actually move by the commanded amount?
 # ------------------------------------------------------------------------- #
 
+@pytest.mark.hardware_motion
 class TestMotion:
     """Verify the motor physically responds to motion commands.
 

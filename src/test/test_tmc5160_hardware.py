@@ -49,6 +49,11 @@ def _env_flag(name: str) -> bool:
 
 @pytest.fixture(scope="module")
 def hardware_driver():
+    if not _env_flag("DIP_COATER_TMC5160_HARDWARE"):
+        pytest.skip(
+            "Set DIP_COATER_TMC5160_HARDWARE=1 after checking the supervised bench."
+        )
+
     port = os.getenv("DIP_COATER_TMC5160_PORT")
     if not port:
         pytest.skip("Set DIP_COATER_TMC5160_PORT to run TMC5160 hardware tests.")
@@ -114,6 +119,7 @@ def test_tmc5160_hardware_microsteps_roundtrip(hardware_driver):
 
 
 @pytest.mark.hardware
+@pytest.mark.hardware_motion
 def test_tmc5160_hardware_optional_motion(hardware_driver):
     if not _env_flag("DIP_COATER_TMC5160_RUN_MOTION"):
         pytest.skip("Set DIP_COATER_TMC5160_RUN_MOTION=1 to run the motion smoke test.")

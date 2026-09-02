@@ -38,8 +38,24 @@ from trinamic_wrapper import (
 logger = logging.getLogger(__name__)
 
 
+def _env_flag(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def pytest_addoption(parser):
     group = parser.getgroup("trinamic hardware")
+    group.addoption(
+        "--run-hardware",
+        action="store_true",
+        default=_env_flag("TRINAMIC_RUN_HARDWARE"),
+        help="Arm tests that communicate with and energise real hardware.",
+    )
+    group.addoption(
+        "--run-hardware-motion",
+        action="store_true",
+        default=_env_flag("TRINAMIC_RUN_MOTION"),
+        help="Additionally arm tests that physically move the motor.",
+    )
     group.addoption(
         "--hw-port",
         default=os.environ.get("TRINAMIC_HW_PORT"),
@@ -82,6 +98,25 @@ def pytest_addoption(parser):
         default=float(os.environ.get("TRINAMIC_HW_MAX", "1000")),
         help="Hard safety cap on current (mA). Tests that would exceed this fail.",
     )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def require_hardware_opt_in(request):
+    if not request.config.getoption("--run-hardware"):
+        pytest.skip(
+            "Hardware access is not armed; pass --run-hardware after checking the bench."
+        )
+
+
+@pytest.fixture(autouse=True)
+def require_motion_opt_in(request):
+    if (
+        request.node.get_closest_marker("hardware_motion")
+        and not request.config.getoption("--run-hardware-motion")
+    ):
+        pytest.skip(
+            "Motor motion is not armed; pass --run-hardware-motion under supervision."
+        )
 
 
 @pytest.fixture(scope="session")

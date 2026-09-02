@@ -74,6 +74,7 @@ dip_coater = [
 asyncio_default_fixture_loop_scope = "function"
 markers = [
     "hardware: integration tests that require connected hardware",
+    "hardware_motion: supervised hardware tests that physically move a motor",
 ]
 
 [build-system]
