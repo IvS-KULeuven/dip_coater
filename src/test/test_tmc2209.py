@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from dip_coater.gpio import GpioEdge, GpioState
+from dip_coater.mechanical.mechanical_setup import MechanicalSetup
 from dip_coater.motor_driver.tmc2209.tmc2209 import MotorDriverTMC2209
 
 
@@ -131,3 +132,14 @@ def test_cleanup_stops_worker_before_disabling_and_releasing_gpio():
         "gpio_cleanup",
     ]
     assert calls[2] == ("enabled", False)
+
+
+def test_configured_speed_can_be_read_for_timeout_estimates():
+    driver = MotorDriverTMC2209.__new__(MotorDriverTMC2209)
+    driver.mechanical_setup = MechanicalSetup(mm_per_revolution=4.0)
+    driver.microsteps = 8
+    driver.tmc = SimpleNamespace(set_max_speed=lambda steps_per_second: None)
+
+    driver.set_speed_rps(0.5)
+
+    assert driver.get_speed_rps() == pytest.approx(0.5)

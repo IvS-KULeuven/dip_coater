@@ -316,8 +316,9 @@ class MotionController:
             if current_position_mm is None
             else abs(position_mm - current_position_mm)
         )
+        timeout_speed_mm_s = self._resolve_timeout_speed_mm_s(speed_mm_s)
         self._last_motion_timeout_s = self._estimate_motion_timeout_s(
-            travel_distance_mm, speed_mm_s
+            travel_distance_mm, timeout_speed_mm_s
         )
         self.session_log.write(
             "motion_requested",
@@ -780,14 +781,32 @@ class MotionController:
     def _estimate_motion_timeout_s(
         distance_mm: float,
         speed_mm_s: float | None,
-    ) -> float:
-        if speed_mm_s is None or speed_mm_s <= 0:
-            return _MOTION_TIMEOUT_MIN_S
+    ) -> float | None:
+        if speed_mm_s is None:
+            return None
         expected_duration_s = abs(distance_mm) / speed_mm_s
         return max(
             _MOTION_TIMEOUT_MIN_S,
             expected_duration_s * _MOTION_TIMEOUT_SCALE + _MOTION_TIMEOUT_SETTLE_S,
         )
+
+    def _resolve_timeout_speed_mm_s(
+        self, requested_speed_mm_s: float | None
+    ) -> float | None:
+        if requested_speed_mm_s is not None:
+            return requested_speed_mm_s
+        get_speed_rps = getattr(self.motor_driver, "get_speed_rps", None)
+        if not callable(get_speed_rps):
+            return None
+        speed_rps = get_speed_rps()
+        if speed_rps is None:
+            return None
+        speed_mm_s = abs(
+            self.machine_profile.mechanical_setup.rps_to_mm_s(speed_rps)
+        )
+        if not math.isfinite(speed_mm_s) or speed_mm_s <= 0:
+            return None
+        return speed_mm_s
 
     def _reenable_driver_reference_stop(self, direction: HomeDirection) -> None:
         if direction not in self._disabled_driver_reference_stops:

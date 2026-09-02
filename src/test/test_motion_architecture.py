@@ -422,6 +422,39 @@ def test_motion_controller_rejects_absolute_move_without_home_reference():
     assert driver.last_run_to_position is None
 
 
+def test_absolute_move_timeout_uses_driver_speed_when_speed_is_omitted():
+    class RetainedSpeedDriver(FakeDriver):
+        def get_speed_rps(self):
+            return 0.25
+
+    profile = MachineProfile(
+        key=AvailableMachineSetups.CUSTOM,
+        label="Custom",
+        mechanical_setup=MechanicalSetup(mm_per_revolution=4.0),
+        min_position_mm=0.0,
+        max_position_mm=100.0,
+    )
+    driver = RetainedSpeedDriver()
+    driver.homing_found = True
+    controller = MotionController(driver, profile)
+
+    controller.move_to_position(32.5, speed_mm_s=None)
+
+    assert controller._last_motion_timeout_s == pytest.approx(65.0)
+    assert driver.last_run_to_position[1] is None
+
+
+def test_absolute_move_without_known_speed_disables_timeout_estimate():
+    profile = get_machine_profile(AvailableMachineSetups.SMALL_COATER)
+    driver = FakeDriver()
+    driver.homing_found = True
+    controller = MotionController(driver, profile)
+
+    controller.move_to_position(32.5, speed_mm_s=None)
+
+    assert controller._last_motion_timeout_s is None
+
+
 def test_motion_controller_rejects_relative_move_that_would_exceed_profile_bounds_when_homed():
     profile = MachineProfile(
         key=AvailableMachineSetups.CUSTOM,

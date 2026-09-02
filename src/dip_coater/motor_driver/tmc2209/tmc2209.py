@@ -40,6 +40,7 @@ class MotorDriverTMC2209(MotorDriver):
         self.homing_found = False
         # Stores each limit-switch pin and its electrical trigger edge.
         self.limit_switch_bindings = {}
+        self._configured_speed_rps = None
 
         # Get the appropriate GPIO instance
         self.GPIO = app_state.gpio
@@ -377,6 +378,10 @@ class MotorDriverTMC2209(MotorDriver):
             return
         steps_per_second = self.mechanical_setup.rps_to_stepss(rps, self.microsteps)
         self.tmc.set_max_speed(steps_per_second)
+        self._configured_speed_rps = rps
+
+    def get_speed_rps(self) -> float | None:
+        return getattr(self, "_configured_speed_rps", None)
 
     def set_acceleration_rpss(self, rpss: float):
         if rpss is None:
