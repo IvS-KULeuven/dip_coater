@@ -20,22 +20,25 @@ Run hardware tests only when the correct hardware is connected.
 Set the hardware port:
 
 ```bash
+DIP_COATER_TMC5160_HARDWARE=1 \
 DIP_COATER_TMC5160_PORT=/dev/tty.usbmodemTMCEVAL1 \
-uv run pytest -m hardware src/test/test_tmc5160_hardware.py
+uv run pytest -m "hardware and not hardware_motion" src/test/test_tmc5160_hardware.py
 ```
 
 Optional motion smoke test:
 
 ```bash
+DIP_COATER_TMC5160_HARDWARE=1 \
 DIP_COATER_TMC5160_PORT=/dev/tty.usbmodemTMCEVAL1 \
 DIP_COATER_TMC5160_RUN_MOTION=1 \
-uv run pytest -m hardware src/test/test_tmc5160_hardware.py
+uv run pytest -m hardware_motion src/test/test_tmc5160_hardware.py
 ```
 
 Supported hardware-test variables:
 
 | Variable | Meaning |
 |---|---|
+| `DIP_COATER_TMC5160_HARDWARE` | Required explicit hardware opt-in; set to `1` |
 | `DIP_COATER_TMC5160_PORT` | Required serial port |
 | `DIP_COATER_TMC5160_INTERFACE` | Interface type, defaults to `usb_tmcl` |
 | `DIP_COATER_TMC5160_STEP_MODE` | Step mode, defaults to `16` |
@@ -43,6 +46,7 @@ Supported hardware-test variables:
 | `DIP_COATER_TMC5160_STANDSTILL_MA` | Standstill current, defaults to `0` |
 | `DIP_COATER_TMC5160_STANDSTILL_NONZERO_MA` | Non-zero standstill check current, defaults to `140` |
 | `DIP_COATER_TMC5160_RSENSE_MOHM` | Sense resistor value, defaults to `75` |
+| `DIP_COATER_TMC5160_RUN_MOTION` | Separate motion opt-in; set to `1` |
 
 ## Build the Docs
 

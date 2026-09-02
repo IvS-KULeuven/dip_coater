@@ -50,8 +50,15 @@ def test_hardware_workflow_is_manual_supervised_and_current_limited():
 
 def test_developer_docs_explain_hardware_test_safety_gates():
     developer_docs = (ROOT / "docs" / "developer-notes.md").read_text()
+    non_motion_command, motion_section = developer_docs.split(
+        "Optional motion smoke test:", maxsplit=1
+    )
 
     assert "Hardware-in-the-loop tests" in developer_docs
+    assert "DIP_COATER_TMC5160_HARDWARE=1" in non_motion_command
+    assert 'pytest -m "hardware and not hardware_motion"' in non_motion_command
+    assert "DIP_COATER_TMC5160_RUN_MOTION=1" in motion_section
+    assert "pytest -m hardware_motion" in motion_section
     assert "--run-hardware" in developer_docs
     assert "--run-hardware-motion" in developer_docs
     assert "dip-coater-hardware-motion" in developer_docs
