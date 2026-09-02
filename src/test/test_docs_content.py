@@ -1,6 +1,15 @@
 from pathlib import Path
 
 
+def test_readme_links_to_published_documentation():
+    readme = (Path(__file__).parents[2] / "README.md").read_text()
+    docs_url = "https://ivs-kuleuven.github.io/dip_coater/"
+
+    assert f"[documentation]({docs_url})" in readme
+    assert f"[Developer Notes]({docs_url}developer-notes/)" in readme
+    assert "](docs/" not in readme
+
+
 def test_install_docs_explain_software_updates_and_version_check():
     install_docs = (Path(__file__).parents[2] / "docs" / "install.md").read_text()
 
