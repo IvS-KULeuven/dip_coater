@@ -12,10 +12,6 @@ from dip_coater.motor_driver.tmc2209.tmc2209_dummy import DummyTMC2209
 
 
 class MotorDriverTMC2209(MotorDriver):
-    homing_found = False
-    # Stores the limit switch pin and the corresponding edge trigger event
-    limit_switch_bindings = {}
-
     """ Class to control the TMC2209 motor driver for the dip coater"""
     def __init__(self, app_state, step_mode: int = 8, current_mA: int = 1000,
                  current_standstill_mA: int = 150, invert_direction: bool = False,
@@ -41,6 +37,9 @@ class MotorDriverTMC2209(MotorDriver):
                     (default: None = use default formatter)
         """
         super().__init__(app_state.mechanical_setup)
+        self.homing_found = False
+        # Stores each limit-switch pin and its electrical trigger edge.
+        self.limit_switch_bindings = {}
 
         # Get the appropriate GPIO instance
         self.GPIO = app_state.gpio
@@ -236,14 +235,20 @@ class MotorDriverTMC2209(MotorDriver):
 
         # Move the coater towards the home switch and wait for the home switch to be triggered
         self.homing_found = False
-        self.GPIO.add_event_detect(home_pin, home_trigger_event,
-                                   callback=self._stop_homing_callback, bouncetime=5)
-        self.GPIO.add_event_detect(other_pin, other_trigger_event,
-                                   callback=self._stop_homing_callback_other_pin, bouncetime=5)
-        self.move(distance_mm, speed_mm_s)
-        self.wait_for_motor_done()
-        self.GPIO.remove_event_detect(home_pin)
-        self.GPIO.remove_event_detect(other_pin)
+        self.limit_switch_bindings[home_pin] = home_trigger_event
+        self.limit_switch_bindings[other_pin] = other_trigger_event
+        try:
+            self.GPIO.add_event_detect(home_pin, home_trigger_event,
+                                       callback=self._stop_homing_callback, bouncetime=5)
+            self.GPIO.add_event_detect(other_pin, other_trigger_event,
+                                       callback=self._stop_homing_callback_other_pin, bouncetime=5)
+            self.move(distance_mm, speed_mm_s)
+            self.wait_for_motor_done()
+        finally:
+            self.GPIO.remove_event_detect(home_pin)
+            self.GPIO.remove_event_detect(other_pin)
+            self.limit_switch_bindings.pop(home_pin, None)
+            self.limit_switch_bindings.pop(other_pin, None)
 
         # Move the coater away from the home switch if homing was found
         if self.homing_found:
