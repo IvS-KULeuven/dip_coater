@@ -142,10 +142,34 @@ def test_mkdocs_navigation_groups_user_and_developer_pages():
     assert "  - Dip Coater:\n      - Start: index.md" in mkdocs
     assert "      - Troubleshooting: troubleshooting.md" in mkdocs
     assert "\n  - Troubleshooting: troubleshooting.md" not in mkdocs
-    assert (
-        "  - Developer:\n"
-        "      - Notes: developer-notes.md\n"
-        "      - Setup Profiles: developer-setups.md"
-    ) in mkdocs
+    assert "  - Developer:\n      - Notes: developer-notes.md" in mkdocs
+    assert "      - Architecture: architecture.md" in mkdocs
+    assert "      - Setup Profiles: developer-setups.md" in mkdocs
     assert "\n  - Developer Notes: developer-notes.md" not in mkdocs
     assert "\n  - Developer Setup Profiles: developer-setups.md" not in mkdocs
+
+
+def test_ui_docs_cover_diagnostics_and_fault_recovery():
+    root = Path(__file__).parents[2]
+    ui_docs = (root / "docs" / "using-the-ui.md").read_text()
+    troubleshooting_docs = (root / "docs" / "troubleshooting.md").read_text()
+
+    assert "five main tabs" in ui_docs
+    assert "- Diagnostics" in ui_docs
+    assert "## Diagnostics Tab" in ui_docs
+    assert "## Motor State Is `FAULT`" in troubleshooting_docs
+    assert "Stop and disable" in troubleshooting_docs
+    assert "session log" in troubleshooting_docs
+
+
+def test_architecture_docs_define_component_boundaries_and_safety_invariants():
+    root = Path(__file__).parents[2]
+    architecture_docs = (root / "docs" / "architecture.md").read_text()
+    mkdocs = (root / "mkdocs.yml").read_text()
+
+    assert "Architecture: architecture.md" in mkdocs
+    assert "MotionController" in architecture_docs
+    assert "driver registry" in architecture_docs
+    assert "AppState" in architecture_docs
+    assert "Safety invariants" in architecture_docs
+    assert "homing reference" in architecture_docs

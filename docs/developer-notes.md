@@ -134,31 +134,14 @@ dip-coater --version
 
 ## Publish With GitHub Pages
 
-One simple option is to use GitHub Actions:
+The active [`.github/workflows/docs.yml`](https://github.com/IvS-KULeuven/dip_coater/blob/develop/.github/workflows/docs.yml)
+workflow builds the strict MkDocs site, uploads a GitHub Pages artifact, and
+deploys it through the repository's `github-pages` environment. It runs after
+documentation, MkDocs configuration, dependency, or public API source changes
+on `develop`, and can also be started manually.
 
-```yaml
-name: docs
-
-on:
-  push:
-    branches: [main]
-
-permissions:
-  contents: write
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - uses: astral-sh/setup-uv@v5
-      - run: uv run --extra docs mkdocs gh-deploy --force
-```
-
-Then enable GitHub Pages for the `gh-pages` branch in the repository settings.
+Configure the repository's Pages source as **GitHub Actions**. Do not publish a
+separate `gh-pages` branch from a developer workstation.
 
 ## Documentation Style
 

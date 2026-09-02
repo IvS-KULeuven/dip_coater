@@ -1,10 +1,11 @@
 # Use the Interface
 
-The app has four main tabs:
+The app has five main tabs:
 
 - Main
-- Advanced
 - Logs
+- Advanced
+- Diagnostics
 - Coder
 
 ## Main Tab
@@ -95,6 +96,16 @@ Use the Logs tab for debugging and setup checks.
 ![Logs tab](https://raw.githubusercontent.com/IvS-KULeuven/dip_coater/develop/images/dip-coater-dark-logs.png)
 
 Increase the logging level when you need more detail.
+
+## Diagnostics Tab
+
+Use Diagnostics to confirm the selected driver and setup, motor and homing
+state, interpreted limit-switch state, and raw TMC reference inputs. Press
+`Refresh diagnostics` after changing wiring or clearing a fault.
+
+If a value reports an error or disagrees with the physical machine, stop and
+disable the motor before investigating. Do not use Diagnostics as permission
+to bypass a triggered safety input.
 
 ## Coder Tab
 

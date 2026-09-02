@@ -45,6 +45,7 @@ nav:
       - Helpers: api/helpers.md
   - Developer:
       - Notes: developer-notes.md
+      - Architecture: architecture.md
       - Setup Profiles: developer-setups.md
   - Reference:
       - TMC2660 EVAL Parameters: TMC2660_EVALParameters.md

@@ -99,6 +99,26 @@ Absolute position movement requires homing.
 
 Press `Home` first. After homing succeeds, the position controls become available.
 
+## Motor State Is `FAULT`
+
+`FAULT` means a motion, hardware communication, status-polling, or shutdown
+operation failed. The application attempts to stop and disable the motor when
+this happens.
+
+1. Press `Stop and disable` to return the UI to `DISABLED`.
+2. Confirm the moving assembly has stopped and remove motor power if its state
+   is uncertain.
+3. Open Diagnostics and refresh the values. Check both limit switches and raw
+   reference inputs against the physical machine.
+4. Check the Logs tab and the persistent session log for the first error,
+   `motion_fault`, or `motion_timeout` event.
+5. Correct the connection, wiring, obstruction, or configuration problem.
+6. Re-enable only after the machine is clear. Home again before using absolute
+   positioning because a failed homing attempt invalidates the homing reference.
+
+Do not repeatedly re-enable after a communication or limit-switch fault without
+finding its cause.
+
 ## Raspberry Pi Serial Port Setup
 
 For the TMC2209 library, Raspberry Pi serial settings may need to be enabled.
