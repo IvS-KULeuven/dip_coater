@@ -29,3 +29,22 @@ def require_positive_finite(name: str, value: float) -> None:
     require_finite(name, value)
     if value <= 0:
         raise OutOfRangeError(f"{name} must be positive")
+
+
+def require_bool(name: str, value: bool) -> None:
+    """Require an actual boolean rather than a truthy substitute."""
+    if not isinstance(value, bool):
+        raise ValueError(f"{name} must be a boolean")
+
+
+def require_int_range(
+    name: str,
+    value: int,
+    minimum: int,
+    maximum: int,
+) -> None:
+    """Require a non-boolean integer inside an inclusive hardware range."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{name} must be an integer")
+    if not minimum <= value <= maximum:
+        raise ValueError(f"{name} must be in [{minimum}, {maximum}]")

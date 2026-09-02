@@ -13,6 +13,7 @@ from typing import Any
 
 from pytrinamic.ic import TMC5160
 
+from .._validation import require_bool, require_positive_finite
 from ..config import MotorConfig
 from ..conversions import (
     cs_to_mA_rms,
@@ -143,6 +144,7 @@ class TMC5160Motor(BaseStepperMotor):
 
     def set_interpolation(self, enabled: bool) -> None:
         """Enable/disable 256-microstep interpolation (INTPOL bit)."""
+        require_bool("enabled", enabled)
         self._eval.write_register_field(TMC5160.FIELD.INTPOL, 1 if enabled else 0)
 
     def set_stealthchop(
@@ -156,6 +158,10 @@ class TMC5160Motor(BaseStepperMotor):
         and SpreadCycle above. The TPWMTHRS register holds the transition
         point (lower TPWMTHRS = higher threshold speed — see datasheet §5.4).
         """
+        require_bool("enabled", enabled)
+        if threshold_rps is not None:
+            require_positive_finite("threshold_rps", threshold_rps)
+
         # EN_PWM_MODE bit in GCONF enables StealthChop globally
         self._eval.write_register_field(
             TMC5160.FIELD.EN_PWM_MODE, 1 if enabled else 0
@@ -165,8 +171,6 @@ class TMC5160Motor(BaseStepperMotor):
         if threshold_rps is None:
             return
         # TPWMTHRS = f_clk / (256 * N * rps) — time-per-ustep threshold
-        if threshold_rps <= 0:
-            raise ValueError("threshold_rps must be positive")
         ustep_per_s = threshold_rps * 256 * self._config.full_steps_per_rev
         tpwmthrs = int(round(self._config.clock_hz / ustep_per_s))
         tpwmthrs = max(0, min(tpwmthrs, (1 << 20) - 1))  # 20-bit field
@@ -174,9 +178,7 @@ class TMC5160Motor(BaseStepperMotor):
 
     def set_coolstep_threshold_rps(self, rps: float) -> None:
         """Enable CoolStep above the given speed (0 disables)."""
-        if rps < 0:
-            raise ValueError("rps must be non-negative")
-        self.set_coolstep_threshold_raw(self._rps_to_raw_speed(rps) if rps > 0 else 0)
+        super().set_coolstep_threshold_rps(rps)
 
     @property
     def raw_ic(self) -> TMC5160:

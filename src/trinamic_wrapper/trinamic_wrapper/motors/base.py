@@ -17,7 +17,9 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from .._validation import (
+    require_bool,
     require_finite,
+    require_int_range,
     require_nonnegative_finite,
     require_positive_finite,
 )
@@ -301,8 +303,7 @@ class BaseStepperMotor(ABC):
 
         0 selects SpreadCycle. 1 selects classic constant TOff.
         """
-        if mode not in (0, 1):
-            raise ValueError("chopper mode must be 0 (SpreadCycle) or 1 (Constant TOff)")
+        require_int_range("chopper mode", mode, 0, 1)
         self._chopper_mode = mode
         self._motor.set_axis_parameter(self._motor.AP.ConstantTOffMode, mode)
 
@@ -316,20 +317,21 @@ class BaseStepperMotor(ABC):
 
     def set_stallguard_enabled(self, enabled: bool) -> None:
         self._require_feature("stallguard")
+        require_bool("enabled", enabled)
         self._stallguard_enabled = enabled
         threshold = self._stallguard_threshold if enabled else 0
         self._motor.set_axis_parameter(self._motor.AP.SG2Threshold, threshold)
 
     def set_stallguard_filter_enabled(self, enabled: bool) -> None:
         self._require_feature("stallguard")
+        require_bool("enabled", enabled)
         self._motor.set_axis_parameter(
             self._motor.AP.SG2FilterEnable, 1 if enabled else 0
         )
 
     def set_stallguard_threshold(self, threshold: int) -> None:
         self._require_feature("stallguard")
-        if not -64 <= threshold <= 63:
-            raise ValueError("threshold must be in [-64, 63]")
+        require_int_range("threshold", threshold, -64, 63)
         self._stallguard_threshold = threshold
         if self._stallguard_enabled:
             self._motor.set_axis_parameter(self._motor.AP.SG2Threshold, threshold)
@@ -344,11 +346,11 @@ class BaseStepperMotor(ABC):
         threshold_speed: int = 0,
     ) -> None:
         self._require_feature("coolstep")
-        self._check_range("min_current", min_current, 0, 1)
-        self._check_range("current_down_step", current_down_step, 0, 3)
-        self._check_range("current_up_step", current_up_step, 0, 3)
-        self._check_range("hysteresis", hysteresis, 0, 15)
-        self._check_range("threshold_speed", threshold_speed, 0, (1 << 31) - 1)
+        require_int_range("min_current", min_current, 0, 1)
+        require_int_range("current_down_step", current_down_step, 0, 3)
+        require_int_range("current_up_step", current_up_step, 0, 3)
+        require_int_range("hysteresis", hysteresis, 0, 15)
+        require_int_range("threshold_speed", threshold_speed, 0, (1 << 31) - 1)
         self._coolstep_threshold_raw = threshold_speed
         self._coolstep_enabled = threshold_speed > 0
         self._motor.set_axis_parameter(self._motor.AP.SEIMIN, min_current)
@@ -363,6 +365,7 @@ class BaseStepperMotor(ABC):
 
     def set_coolstep_enabled(self, enabled: bool) -> None:
         self._require_feature("coolstep")
+        require_bool("enabled", enabled)
         self._coolstep_enabled = enabled
         threshold = self._coolstep_threshold_raw if enabled else 0
         self._motor.set_axis_parameter(
@@ -371,7 +374,7 @@ class BaseStepperMotor(ABC):
 
     def set_coolstep_threshold_raw(self, threshold: int) -> None:
         self._require_feature("coolstep")
-        self._check_range("threshold", threshold, 0, (1 << 31) - 1)
+        require_int_range("threshold", threshold, 0, (1 << 31) - 1)
         self._coolstep_threshold_raw = threshold
         if threshold > 0:
             self._coolstep_enabled = True
@@ -382,8 +385,7 @@ class BaseStepperMotor(ABC):
 
     def set_coolstep_threshold_rps(self, rps: float) -> None:
         self._require_feature("coolstep")
-        if rps < 0:
-            raise ValueError("rps must be non-negative")
+        require_nonnegative_finite("rps", rps)
         self.set_coolstep_threshold_raw(self._rps_to_raw_speed(rps) if rps > 0 else 0)
 
     def enable_reference_stops(
@@ -394,6 +396,8 @@ class BaseStepperMotor(ABC):
     ) -> None:
         """Enable/disable automatic stop on hardware reference switch events."""
         self._require_feature("reference_switches")
+        require_bool("left", left)
+        require_bool("right", right)
         self._motor.set_axis_parameter(
             self._motor.AP.AutomaticLeftStop, 1 if left else 0
         )
@@ -410,11 +414,6 @@ class BaseStepperMotor(ABC):
         """Return True when the right reference switch input is active."""
         self._require_feature("reference_switches")
         return bool(self._motor.get_axis_parameter(self._motor.AP.RightEndstop))
-
-    @staticmethod
-    def _check_range(name: str, value: int, minimum: int, maximum: int) -> None:
-        if not minimum <= value <= maximum:
-            raise ValueError(f"{name} must be in [{minimum}, {maximum}]")
 
     # ------------------------------------------------------------------ #
     # Abstract hooks — subclasses MUST provide

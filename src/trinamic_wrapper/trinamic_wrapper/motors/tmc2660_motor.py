@@ -15,6 +15,7 @@ from typing import Any
 
 from pytrinamic.ic import TMC2660
 
+from .._validation import require_bool
 from ..config import MotorConfig
 from ..conversions import (
     cs_to_mA_rms,
@@ -132,6 +133,7 @@ class TMC2660Motor(BaseStepperMotor):
 
     def set_interpolation(self, enabled: bool) -> None:
         """Enable/disable interpolation to 256 μsteps (INTPOL bit in DRVCTRL)."""
+        require_bool("enabled", enabled)
         self._motor.set_axis_parameter(self._motor.AP.Intpol, 1 if enabled else 0)
 
     def set_stealthchop(
@@ -149,9 +151,7 @@ class TMC2660Motor(BaseStepperMotor):
 
     def set_coolstep_threshold_rps(self, rps: float) -> None:
         """Enable CoolStep above the given speed (0 disables)."""
-        if rps < 0:
-            raise ValueError("rps must be non-negative")
-        self.set_coolstep_threshold_raw(self._rps_to_raw_speed(rps) if rps > 0 else 0)
+        super().set_coolstep_threshold_rps(rps)
 
     @property
     def raw_ic(self) -> TMC2660:

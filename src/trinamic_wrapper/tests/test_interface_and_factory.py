@@ -141,6 +141,93 @@ class TestCommandValidation:
             else:
                 motor.rotate_by(1.0, direction=0)
 
+    @pytest.mark.parametrize("maker", [_make_5160, _make_2660, _make_dummy])
+    @pytest.mark.parametrize(
+        ("method_name", "value"),
+        [
+            ("set_chopper_mode", True),
+            ("set_stallguard_threshold", 1.5),
+            ("set_stallguard_threshold", True),
+            ("set_coolstep_threshold_raw", 1.5),
+            ("set_coolstep_threshold_raw", True),
+        ],
+    )
+    def test_raw_advanced_settings_require_integers(
+        self, maker, method_name, value
+    ):
+        motor, _ = maker()
+
+        with pytest.raises(ValueError, match="integer"):
+            getattr(motor, method_name)(value)
+
+    @pytest.mark.parametrize("maker", [_make_5160, _make_2660, _make_dummy])
+    @pytest.mark.parametrize(
+        ("field_name", "value"),
+        [
+            ("min_current", True),
+            ("current_down_step", 1.5),
+            ("current_up_step", True),
+            ("hysteresis", 1.5),
+            ("threshold_speed", True),
+        ],
+    )
+    def test_coolstep_configuration_requires_integer_fields(
+        self, maker, field_name, value
+    ):
+        motor, _ = maker()
+
+        with pytest.raises(ValueError, match="integer"):
+            motor.configure_coolstep(**{field_name: value})
+
+    @pytest.mark.parametrize("maker", [_make_5160, _make_2660, _make_dummy])
+    def test_nonfinite_coolstep_threshold_is_rejected(self, maker):
+        motor, _ = maker()
+
+        with pytest.raises(OutOfRangeError, match="finite"):
+            motor.set_coolstep_threshold_rps(float("nan"))
+
+    @pytest.mark.parametrize("maker", [_make_5160, _make_dummy])
+    def test_invalid_stealthchop_threshold_does_not_change_state(self, maker):
+        motor, conn = maker()
+
+        with pytest.raises(OutOfRangeError, match="finite"):
+            motor.set_stealthchop(True, threshold_rps=float("nan"))
+
+        if conn is None:
+            assert motor._stealthchop is False
+        else:
+            assert conn.registers.get(0, 0) & 0b100 == 0
+
+    @pytest.mark.parametrize("maker", [_make_5160, _make_2660, _make_dummy])
+    @pytest.mark.parametrize(
+        "method_name",
+        [
+            "set_interpolation",
+            "set_stallguard_enabled",
+            "set_stallguard_filter_enabled",
+            "set_coolstep_enabled",
+        ],
+    )
+    def test_advanced_switches_require_booleans(self, maker, method_name):
+        motor, _ = maker()
+
+        with pytest.raises(ValueError, match="boolean"):
+            getattr(motor, method_name)(1)
+
+    @pytest.mark.parametrize("maker", [_make_5160, _make_dummy])
+    def test_stealthchop_enabled_requires_boolean(self, maker):
+        motor, _ = maker()
+
+        with pytest.raises(ValueError, match="boolean"):
+            motor.set_stealthchop(1)
+
+    @pytest.mark.parametrize("maker", [_make_5160, _make_dummy])
+    def test_reference_stop_switches_require_booleans(self, maker):
+        motor, _ = maker()
+
+        with pytest.raises(ValueError, match="boolean"):
+            motor.enable_reference_stops(left=1)
+
 
 class TestFactory:
     def test_factory_returns_tmc5160_for_tmc5160(self):
