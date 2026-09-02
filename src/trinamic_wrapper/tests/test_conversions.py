@@ -55,7 +55,7 @@ class TestCurrentConversion:
             assert cs_back == cs
 
     def test_tmc5160_max_current_matches_datasheet(self):
-        """At CS=31 the datasheet formula gives ~1.77 A RMS."""
+        """At CS=31 the configured sense circuit gives ~2.42 A RMS."""
         mA = cs_to_mA_rms(31, **self.TMC5160_PARAMS)
         # (31+1)/32 * 0.325 / (0.075+0.02) / sqrt(2) * 1000
         expected = 32 / 32 * 0.325 / 0.095 / math.sqrt(2) * 1000

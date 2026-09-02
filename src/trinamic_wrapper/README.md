@@ -176,15 +176,15 @@ pip install pytest
 pytest tests/
 ```
 
-94 unit tests covering:
+The offline suite covers:
 
-- pure conversion math (22 tests — roundtrip, datasheet cross-checks, clamping, monotonicity)
-- `TMC5160Motor` behaviour against a fake connection (33 tests)
+- pure conversion math (round trips, datasheet cross-checks, clamping, monotonicity)
+- `TMC5160Motor` behaviour against a fake connection
 - `TMC5160Motor` advanced features — StealthChop, interpolation, StallGuard
-- `TMC2660Motor` behaviour (22 tests)
-- `StepperMotor` Protocol conformance and chip-swap equivalence (17 tests)
+- `TMC2660Motor` behaviour
+- `StepperMotor` Protocol conformance and chip-swap equivalence
 
-All 94 tests run offline against a `FakeConnection` that records TMCL calls — no Landungsbrücke required for CI.
+The tests run offline against a `FakeConnection` that records TMCL calls — no Landungsbrücke required for CI.
 
 ### Hardware (with a real Landungsbrücke)
 

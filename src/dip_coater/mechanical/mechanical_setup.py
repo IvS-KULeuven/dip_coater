@@ -185,7 +185,9 @@ class MechanicalSetup:
         """
         return stepss * self.mm_per_step(microsteps)
 
-    def mm_s2_to_rpss(self, acceleration_mm_s2: float) -> float:
+    def mm_s2_to_rpss(
+        self, acceleration_mm_s2: float | None
+    ) -> float | None:
         """Convert linear acceleration to rotations per second squared.
 
         :param acceleration_mm_s2: Linear acceleration in millimeters per second squared.
@@ -197,7 +199,7 @@ class MechanicalSetup:
             else acceleration_mm_s2 / self.mm_per_revolution * self.gearbox_ratio
         )
 
-    def rpss_to_mm_s2(self, rpss: float) -> float:
+    def rpss_to_mm_s2(self, rpss: float | None) -> float | None:
         """Convert rotations per second squared to linear acceleration.
 
         :param rpss: Rotations per second squared.
@@ -205,7 +207,9 @@ class MechanicalSetup:
         """
         return None if not rpss else rpss * self.mm_per_revolution / self.gearbox_ratio
 
-    def rpss_to_stepss(self, rpss: float, microsteps: int) -> int:
+    def rpss_to_stepss(
+        self, rpss: float | None, microsteps: int
+    ) -> int | None:
         """Convert rotations per second squared to microsteps per second squared.
 
         :param rpss: Rotations per second squared.
@@ -218,7 +222,9 @@ class MechanicalSetup:
             else round(rpss * self.steps_per_revolution * microsteps)
         )
 
-    def stepss_to_rpss(self, stepss: int, microsteps: int) -> float:
+    def stepss_to_rpss(
+        self, stepss: int | None, microsteps: int
+    ) -> float | None:
         """Convert microsteps per second squared to rotations per second squared.
 
         :param stepss: Microsteps per second squared.
@@ -227,7 +233,9 @@ class MechanicalSetup:
         """
         return None if not stepss else stepss / (self.steps_per_revolution * microsteps)
 
-    def mm_s2_to_rpmm(self, acceleration_mm_s2: float) -> float:
+    def mm_s2_to_rpmm(
+        self, acceleration_mm_s2: float | None
+    ) -> float | None:
         """Convert linear acceleration to rotations per minute per minute.
 
         :param acceleration_mm_s2: Linear acceleration in millimeters per second squared.
@@ -239,7 +247,7 @@ class MechanicalSetup:
             else self.mm_s2_to_rpss(acceleration_mm_s2) * 3600
         )
 
-    def rpmm_to_mm_s2(self, rpmm: float) -> float:
+    def rpmm_to_mm_s2(self, rpmm: float | None) -> float | None:
         """Convert rotations per minute per minute to linear acceleration.
 
         :param rpmm: Rotations per minute per minute.
@@ -247,7 +255,9 @@ class MechanicalSetup:
         """
         return None if not rpmm else self.rpss_to_mm_s2(rpmm / 3600)
 
-    def mm_s2_to_stepss2(self, acceleration_mm_s2: float, microsteps: int) -> int:
+    def mm_s2_to_stepss2(
+        self, acceleration_mm_s2: float | None, microsteps: int
+    ) -> int | None:
         """Convert linear acceleration to microsteps per second squared.
 
         :param acceleration_mm_s2: Linear acceleration in millimeters per second squared.
@@ -260,7 +270,9 @@ class MechanicalSetup:
             else round(acceleration_mm_s2 / self.mm_per_step(microsteps))
         )
 
-    def stepss2_to_mm_s2(self, stepss2: int, microsteps: int) -> float:
+    def stepss2_to_mm_s2(
+        self, stepss2: int | None, microsteps: int
+    ) -> float | None:
         """Convert microsteps per second squared to linear acceleration.
 
         :param stepss2: Microsteps per second squared.
