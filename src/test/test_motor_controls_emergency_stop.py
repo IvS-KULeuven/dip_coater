@@ -32,8 +32,13 @@ class FakeMotionController:
     def move_up(self, distance_mm, speed_mm_s, acceleration_mm_s2):
         self.move = (distance_mm, speed_mm_s, acceleration_mm_s2)
 
+    def move_down(self, distance_mm, speed_mm_s, acceleration_mm_s2):
+        self.move = (distance_mm, speed_mm_s, acceleration_mm_s2)
+
     async def wait_for_motor_done_async(self, active_limit_direction=None):
         self.wait_started.set()
+        if self.disabled:
+            return None
         try:
             await asyncio.Event().wait()
         except asyncio.CancelledError:
@@ -132,4 +137,26 @@ async def test_stop_and_disable_button_interrupts_motion_started_from_ui_click()
     assert app_state.motion_controller.stopped is True
     assert app_state.motion_controller.disabled is True
     assert app_state.motion_controller.wait_cancelled is True
+    assert app_state.motor_state == "disabled"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method_name", ["move_up", "move_down"])
+async def test_stop_during_motion_preflight_prevents_command_submission(method_name):
+    app_state = FakeAppState()
+    app = EmergencyStopHarness(app_state)
+
+    async with app.run_test():
+        move_task = asyncio.create_task(
+            getattr(app_state.motor_controls, method_name)(10.0, 2.0, 1.0)
+        )
+        while app_state.motor_state != "moving":
+            await asyncio.sleep(0)
+
+        await app_state.motor_controls.disable_motor_action()
+        await asyncio.wait_for(move_task, 1.0)
+
+    assert not hasattr(app_state.motion_controller, "move")
+    assert app_state.motion_controller.stopped is True
+    assert app_state.motion_controller.disabled is True
     assert app_state.motor_state == "disabled"

@@ -144,6 +144,9 @@ class MotorControls(Static):
             )
             self.set_motor_state("moving")
             await asyncio.sleep(0.1)
+            if self.app_state.motor_state != "moving":
+                log.write("[dark_orange]-> Movement aborted before starting.[/]")
+                return
             try:
                 self.app_state.motion_controller.move_up(
                     distance_mm, speed_mm_s, acceleration_mm_s2
@@ -189,6 +192,9 @@ class MotorControls(Static):
             )
             self.set_motor_state("moving")
             await asyncio.sleep(0.1)
+            if self.app_state.motor_state != "moving":
+                log.write("[dark_orange]-> Movement aborted before starting.[/]")
+                return
             try:
                 self.app_state.motion_controller.move_down(
                     distance_mm, speed_mm_s, acceleration_mm_s2
